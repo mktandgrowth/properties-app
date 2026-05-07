@@ -28,30 +28,35 @@ const C = {
 const Fs = "'Fraunces', 'Cormorant Garamond', Georgia, serif";
 const Fb = "'Inter', system-ui, -apple-system, sans-serif";
 
-// ── Data ──
+// ── Data — 3 propiedades de Valentina Sanchez ──
+const SELLER = { name:"Valentina Sanchez", avatar:"VS", wa:"+56986420055" };
+
+// Helper: build a clean wa.me URL (strips "+" and non-digits, which wa.me requires)
+const waUrl = (num, msg) => `https://wa.me/${String(num||"").replace(/\D/g,"")}${msg?`?text=${encodeURIComponent(msg)}`:""}`;
+
 const PROPS = [
-  { id:1,type:"Departamento",price:3102,cur:"UF",loc:"Santiago Centro",comuna:"Santiago",beds:2,baths:1,parks:1,area:52,nuevo:true,amenities:["bodega","gimnasio","piscina"],title:"Edificio Centenario — 2D/1B Piso 8",desc:"Departamento nuevo con amenities completos. Orientación norte, excelente luminosidad. Cocina equipada, 1 estacionamiento incluido.",img:"https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop",user:"Inmobiliaria Ingevec",avatar:"IN",liked:false,saved:false,wa:"+56912345678",tags:["Nuevo","Amenities","Metro"],photos:8,hasVideo:true },
-  { id:2,type:"Casa",price:8500,cur:"UF",loc:"La Reina, Santiago",comuna:"La Reina",beds:4,baths:3,parks:2,area:180,nuevo:false,amenities:["piscina","quincho","jardin","terraza"],title:"Casa mediterránea con piscina y quincho",desc:"Amplia casa familiar. Living comedor con salida a terraza, jardín con piscina, quincho y bodega. Barrio residencial consolidado.",img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",user:"Claudia Mendez",avatar:"CM",liked:true,saved:false,wa:"+56987654321",tags:["Piscina","Jardín","Quincho"],photos:12,hasVideo:true },
-  { id:3,type:"Terreno",price:2800,cur:"UF",loc:"Chicureo, Santiago",comuna:"Chicureo",beds:0,baths:0,parks:0,area:800,nuevo:false,amenities:[],title:"Terreno plano en condominio cerrado",desc:"Con factibilidad de agua y luz. Acceso pavimentado, vigilancia 24hrs. Ideal para proyecto familiar o inversión.",img:"https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&h=600&fit=crop",user:"Felipe Araya",avatar:"FA",liked:false,saved:true,wa:"+56911223344",tags:["Condominio","Factibilidad"],photos:5,hasVideo:false },
-  { id:4,type:"Departamento",price:4900,cur:"UF",loc:"Ñuñoa, Santiago",comuna:"Ñuñoa",beds:3,baths:2,parks:2,area:78,nuevo:true,amenities:["terraza","gimnasio"],title:"Depto esquina con doble terraza panorámica",desc:"Último piso, vista despejada a la cordillera. Cocina equipada Bosch, 2 estacionamientos. Entrega inmediata.",img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop",user:"Landes Inmobiliaria",avatar:"LI",liked:false,saved:false,wa:"+56955667788",tags:["Último piso","Entrega inmediata"],photos:10,hasVideo:true },
-  { id:5,type:"Casa",price:12000,cur:"UF",loc:"Lo Barnechea",comuna:"Lo Barnechea",beds:5,baths:4,parks:3,area:280,nuevo:false,amenities:["piscina","quincho","jardin","terraza","bodega"],title:"Casa contemporánea — condominio premium",desc:"Triple altura en living. Cocina gourmet, sala de estar, oficina. Jardín 400m² con piscina temperada y spa.",img:"https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop",user:"María José Prieto",avatar:"MP",liked:false,saved:false,wa:"+56944332211",tags:["Premium","Piscina temperada"],photos:15,hasVideo:true },
-  { id:6,type:"Departamento",price:3107,cur:"UF",loc:"Estación Central",comuna:"Estación Central",beds:2,baths:1,parks:1,area:45,nuevo:true,amenities:["bodega","gimnasio","piscina"],title:"El Aromo — Depto nuevo con bodega y metro",desc:"Proyecto con piscina, gym y cowork. Bodega incluida. A 3 min caminando del metro.",img:"https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&h=600&fit=crop",user:"Inmobiliaria Ingevec",avatar:"IN",liked:false,saved:false,wa:"+56912345678",tags:["Nuevo","Bodega","Metro"],photos:6,hasVideo:false },
-  { id:7,type:"Terreno",price:1500,cur:"UF",loc:"Melipilla, RM",comuna:"Melipilla",beds:0,baths:0,parks:0,area:5000,nuevo:false,amenities:["jardin"],title:"Parcela 5.000m² — camino a la costa",desc:"Parcela con árboles frutales, pozo profundo y electricidad trifásica. A 30 min de Santiago por autopista.",img:"https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=600&fit=crop",user:"Roberto Muñoz",avatar:"RM",liked:false,saved:false,wa:"+56977889900",tags:["5.000m²","Pozo"],photos:9,hasVideo:true },
-  { id:8,type:"Casa",price:6800,cur:"UF",loc:"Providencia",comuna:"Providencia",beds:3,baths:2,parks:2,area:140,nuevo:false,amenities:["terraza","jardin","bodega"],title:"Casa remodelada en barrio Italia",desc:"Casa completamente renovada con diseño de autor. 2 pisos, patio interior, estacionamiento para 2 autos.",img:"https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop",user:"Corredora BHP",avatar:"BH",liked:false,saved:true,wa:"+56933445566",tags:["Remodelada","Barrio Italia"],photos:11,hasVideo:true },
+  { id:1,type:"Casa",price:8500,cur:"UF",loc:"La Reina, Santiago",comuna:"La Reina",beds:4,baths:3,parks:2,area:180,nuevo:false,amenities:["piscina","quincho","jardin","terraza"],title:"Casa mediterránea con piscina y quincho",desc:"Amplia casa familiar. Living comedor con salida a terraza, jardín con piscina, quincho y bodega. Barrio residencial consolidado.",img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Piscina","Jardín","Quincho"],photos:12,hasVideo:true },
+  { id:2,type:"Departamento",price:4900,cur:"UF",loc:"Ñuñoa, Santiago",comuna:"Ñuñoa",beds:3,baths:2,parks:2,area:78,nuevo:true,amenities:["terraza","gimnasio","bodega"],title:"Depto esquina con doble terraza panorámica",desc:"Último piso, vista despejada a la cordillera. Cocina equipada Bosch, 2 estacionamientos. Entrega inmediata.",img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Último piso","Entrega inmediata","Cordillera"],photos:10,hasVideo:true },
+  { id:3,type:"Parcela",price:1500,cur:"UF",loc:"Melipilla, RM",comuna:"Melipilla",beds:0,baths:0,parks:0,area:5000,nuevo:false,amenities:["jardin"],title:"Parcela 5.000m² — camino a la costa",desc:"Parcela con árboles frutales, pozo profundo y electricidad trifásica. A 30 min de Santiago por autopista.",img:"https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["5.000m²","Pozo","Frutales"],photos:9,hasVideo:true },
 ];
 
 const REELS = [
-  { id:1,propId:2,views:"15.2K",caption:"Recorrido casa La Reina — piscina y quincho",likes:842 },
-  { id:2,propId:5,views:"28.1K",caption:"Casa premium Lo Barnechea — triple altura",likes:1523 },
-  { id:3,propId:4,views:"9.8K",caption:"Doble terraza Ñuñoa — último piso con vista",likes:456 },
-  { id:4,propId:8,views:"11.6K",caption:"Casa remodelada barrio Italia — diseño de autor",likes:677 },
-  { id:5,propId:7,views:"6.3K",caption:"Parcela en Melipilla — tu escape de Santiago",likes:312 },
+  { id:1,propId:1,views:"15.2K",caption:"Recorrido casa La Reina — piscina y quincho",likes:842 },
+  { id:2,propId:2,views:"9.8K",caption:"Doble terraza Ñuñoa — último piso con vista",likes:456 },
+  { id:3,propId:3,views:"6.3K",caption:"Parcela en Melipilla — tu escape de Santiago",likes:312 },
 ];
 
 const CONVOS = [
-  { id:1,name:"Claudia Mendez",av:"CM",prop:"Casa La Reina",last:"Perfecto, agendemos la visita",time:"1h",unread:2,sched:true,days:["Lun","Mié","Vie"],hrs:"10:00-18:00" },
-  { id:2,name:"Felipe Araya",av:"FA",prop:"Terreno Chicureo",last:"El terreno tiene factibilidad al día",time:"Ayer",unread:0,sched:false,days:["Mar","Jue","Sáb"],hrs:"09:00-14:00" },
-  { id:3,name:"Corredora BHP",av:"BH",prop:"Casa Barrio Italia",last:"Te envío los planos",time:"3d",unread:0,sched:false,days:["Lun-Vie"],hrs:"09:00-17:00" },
+  { id:1,name:"Camila Rojas",   av:"CR",propId:1,prop:"Casa La Reina",       last:"Perfecto, agendemos la visita",     time:"1h",  unread:2,sched:true,  days:["Lun","Mié","Vie"],hrs:"10:00-18:00" },
+  { id:2,name:"Pedro Hernández",av:"PH",propId:2,prop:"Depto Ñuñoa",         last:"¿Está disponible este sábado?",      time:"Ayer",unread:0,sched:false, days:["Sáb","Dom"],       hrs:"10:00-14:00" },
+  { id:3,name:"Andrés Soto",    av:"AS",propId:3,prop:"Parcela Melipilla",   last:"Me interesa, ¿hay agua y luz?",      time:"3d",  unread:0,sched:false, days:["Lun-Vie"],         hrs:"09:00-17:00" },
+];
+
+const NOTIFS = [
+  { id:1, t:"Camila R. te envió un mensaje",         d:"Casa La Reina",            time:"1h",  icon:"chat", unread:true },
+  { id:2, t:"Pedro H. quiere agendar una visita",    d:"Depto Ñuñoa · sábado 10AM",time:"3h",  icon:"calendar", unread:true },
+  { id:3, t:"Tu publicación tiene 234 vistas nuevas",d:"Parcela Melipilla",        time:"1d",  icon:"eye",  unread:false },
+  { id:4, t:"Andrés S. guardó tu propiedad",          d:"Parcela Melipilla",        time:"2d",  icon:"bookmark", unread:false },
 ];
 
 const PHOTO_GUIDE = [
@@ -191,6 +196,8 @@ function Nav({active,go}) {
 
 // ── Header ──
 function Header({sub}) {
+  const [open,setOpen]=useState(false);
+  const unreadCount = NOTIFS.filter(n=>n.unread).length;
   return (
     <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(252,251,248,0.88)",backdropFilter:"blur(20px)",padding:"14px 18px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -200,10 +207,36 @@ function Header({sub}) {
           {sub&&<p style={{margin:"3px 0 0",fontSize:9,color:C.muted,fontFamily:Fb,letterSpacing:"0.14em",textTransform:"uppercase",fontWeight:500}}>{sub}</p>}
         </div>
       </div>
-      <button style={{width:36,height:36,borderRadius:"50%",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+      <button onClick={()=>setOpen(!open)} style={{width:36,height:36,borderRadius:"50%",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
         <Icon name="bell" size={16} color={C.text} stroke={1.5} />
-        <div style={{position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:C.terracotta,border:`2px solid ${C.surface}`}} />
+        {unreadCount>0 && <div style={{position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:C.terracotta,border:`2px solid ${C.surface}`}} />}
       </button>
+      {open && <>
+        <div onClick={()=>setOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
+        <div style={{position:"absolute",top:56,right:14,width:300,maxWidth:"calc(100vw - 28px)",background:C.surface,borderRadius:14,border:`1px solid ${C.line}`,boxShadow:`0 12px 32px ${C.ink}18`,overflow:"hidden",zIndex:201}}>
+          <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.lineSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>Notificaciones</span>
+            {unreadCount>0 && <span style={{fontSize:9.5,color:C.brand,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>{unreadCount} nuevas</span>}
+          </div>
+          <div style={{maxHeight:340,overflowY:"auto"}}>
+            {NOTIFS.map(n=>(
+              <div key={n.id} style={{padding:"11px 16px",display:"flex",gap:10,borderBottom:`1px solid ${C.lineSoft}`,background:n.unread?C.brandWash+"40":"transparent",cursor:"pointer"}}>
+                <div style={{width:30,height:30,borderRadius:"50%",background:n.unread?C.brandWash:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Icon name={n.icon} size={14} color={n.unread?C.brand:C.muted} stroke={1.5}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{margin:0,fontSize:12,fontWeight:n.unread?500:400,color:C.ink,fontFamily:Fb,lineHeight:1.35}}>{n.t}</p>
+                  <p style={{margin:"2px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{n.d} · {n.time}</p>
+                </div>
+                {n.unread && <div style={{width:6,height:6,borderRadius:"50%",background:C.terracotta,marginTop:6,flexShrink:0}}/>}
+              </div>
+            ))}
+          </div>
+          <div style={{padding:"10px 16px",textAlign:"center",borderTop:`1px solid ${C.lineSoft}`,background:C.bg}}>
+            <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Ver todas las notificaciones</span>
+          </div>
+        </div>
+      </>}
     </div>
   );
 }
@@ -637,7 +670,7 @@ function Detail({p,back,onLike,onSave}) {
           </div>
         </div>
         <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>window.open(`https://wa.me/${p.wa}`,"_blank")} style={{flex:1,padding:14,borderRadius:12,background:C.ink,border:"none",cursor:"pointer",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
+          <button onClick={()=>window.open(waUrl(p.wa,`Hola ${p.user}, vi tu publicación "${p.title}" en properties. Me interesa coordinar una visita.`),"_blank")} style={{flex:1,padding:14,borderRadius:12,background:C.ink,border:"none",cursor:"pointer",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
             <Icon name="whatsapp" size={18} color={C.surface} stroke={1.6}/>WhatsApp
           </button>
           <button onClick={()=>onLike(p.id)} style={{width:50,height:50,borderRadius:12,background:p.liked?C.brandWash:C.surface,border:`1px solid ${p.liked?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -653,7 +686,7 @@ function Detail({p,back,onLike,onSave}) {
 }
 
 // ═══ REELS ═══
-function Reels({props,onLike,onSave,onOpen,startPropId}) {
+function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   // If startPropId is provided, jump to that reel
   const startIdx = startPropId ? Math.max(0, REELS.findIndex(r=>r.propId===startPropId)) : 0;
   const [idx,setIdx]=useState(startIdx);
@@ -683,7 +716,7 @@ function Reels({props,onLike,onSave,onOpen,startPropId}) {
           <Icon name="heart" size={27} color={lk?C.terracotta:C.surface} stroke={1.6} fill={lk?C.terracotta:"none"}/>
           <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{r.likes}</span>
         </button>
-        <button style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+        <button onClick={()=>onChat&&onChat(p)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
           <Icon name="chat" size={27} color={C.surface} stroke={1.6}/>
           <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Chat</span>
         </button>
@@ -691,7 +724,7 @@ function Reels({props,onLike,onSave,onOpen,startPropId}) {
           <Icon name="bookmark" size={27} color={sv?C.brandSoft:C.surface} stroke={1.6} fill={sv?C.brandSoft:"none"}/>
           <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Guardar</span>
         </button>
-        <button onClick={()=>{if(p)window.open(`https://wa.me/${p.wa}`,"_blank");}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+        <button onClick={()=>{if(p)window.open(waUrl(p.wa,`Hola ${p.user}, vi tu reel sobre "${p.title}" en properties. Me interesa.`),"_blank");}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
           <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
           <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
         </button>
@@ -733,12 +766,20 @@ function Reels({props,onLike,onSave,onOpen,startPropId}) {
         </>}
       </div>
 
-      <button onClick={()=>setIdx(Math.max(0,idx-1))} style={{position:"absolute",left:"50%",top:56,transform:"translateX(-50%)",background:"rgba(255,255,255,0.12)",border:"none",borderRadius:"50%",width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.25:0.7,zIndex:10}}>
-        <Icon name="chevronUp" size={15} color={C.surface} stroke={1.8}/>
-      </button>
-      <button onClick={()=>setIdx(Math.min(REELS.length-1,idx+1))} style={{position:"absolute",left:"50%",top:"42%",transform:"translateX(-50%)",background:"rgba(255,255,255,0.12)",border:"none",borderRadius:"50%",width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===REELS.length-1?0.25:0.7,zIndex:10}}>
-        <Icon name="chevronDown" size={15} color={C.surface} stroke={1.8}/>
-      </button>
+      {/* Pager indicator + arrows on the LEFT side, vertically centered */}
+      <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:10}}>
+        <button onClick={()=>setIdx(Math.max(0,idx-1))} disabled={idx===0} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.3:1}}>
+          <Icon name="chevronUp" size={16} color={C.surface} stroke={1.8}/>
+        </button>
+        <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
+          {REELS.map((_,i)=>(
+            <div key={i} style={{width:3,height:i===idx?16:6,borderRadius:2,background:i===idx?C.surface:"rgba(255,255,255,0.4)",transition:"all 0.2s"}}/>
+          ))}
+        </div>
+        <button onClick={()=>setIdx(Math.min(REELS.length-1,idx+1))} disabled={idx===REELS.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===REELS.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===REELS.length-1?0.3:1}}>
+          <Icon name="chevronDown" size={16} color={C.surface} stroke={1.8}/>
+        </button>
+      </div>
     </div>
   );
 }
@@ -1004,14 +1045,33 @@ function SavedView({props,onTap}) {
   );
 }
 
+// ─── Sheet Modal — generic full-screen sheet ───
+function Sheet({title,onClose,children}){
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,maxHeight:"90vh",background:C.bg,borderRadius:"20px 20px 0 0",display:"flex",flexDirection:"column",animation:"slideUp 0.25s ease"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.line}`}}>
+          <button onClick={onClose} style={{width:34,height:34,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Icon name="close" size={18} color={C.ink} stroke={1.7}/>
+          </button>
+          <h3 style={{margin:0,fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{title}</h3>
+          <div style={{width:34}}/>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"22px 18px"}}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
 // ═══ PROFILE ═══
 function Profile({props}) {
   const [gear,setGear]=useState(false);const [tab,setTab]=useState("pub");
+  const [panel,setPanel]=useState(null);
   const menuItems=[
-    {icon:"chart",l:"Estadísticas"},
-    {icon:"card",l:"Pagos y plan"},
-    {icon:"help",l:"Centro de ayuda"},
-    {icon:"logout",l:"Cerrar sesión"},
+    {id:"stats", icon:"chart",l:"Estadísticas"},
+    {id:"pagos", icon:"card", l:"Pagos y plan"},
+    {id:"ayuda", icon:"help", l:"Centro de ayuda"},
+    {id:"logout",icon:"logout",l:"Cerrar sesión"},
   ];
   const stats=[
     {n:"3",l:"Likes",icon:"heart"},
@@ -1023,13 +1083,87 @@ function Profile({props}) {
       {gear&&<div style={{position:"fixed",inset:0,zIndex:200}} onClick={()=>setGear(false)}>
         <div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:56,right:18,width:220,background:C.surface,borderRadius:14,border:`1px solid ${C.line}`,boxShadow:`0 12px 32px ${C.ink}15`,overflow:"hidden"}}>
           {menuItems.map((x,idx)=>(
-            <div key={idx} style={{padding:"12px 16px",borderBottom:idx<3?`1px solid ${C.lineSoft}`:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontSize:13,fontFamily:Fb,fontWeight:400,color:C.ink}}
+            <div key={idx} onClick={()=>{setPanel(x.id);setGear(false);}} style={{padding:"12px 16px",borderBottom:idx<3?`1px solid ${C.lineSoft}`:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontSize:13,fontFamily:Fb,fontWeight:400,color:x.id==="logout"?C.terracotta:C.ink}}
               onMouseEnter={e=>e.currentTarget.style.background=C.bg} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-              <Icon name={x.icon} size={16} color={C.text} stroke={1.5}/>{x.l}
+              <Icon name={x.icon} size={16} color={x.id==="logout"?C.terracotta:C.text} stroke={1.5}/>{x.l}
             </div>
           ))}
         </div>
       </div>}
+
+      {panel==="stats" && <Sheet title="Estadísticas" onClose={()=>setPanel(null)}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18}}>
+          {[{l:"Vistas totales",n:"2.341",icon:"eye"},{l:"Mensajes recibidos",n:"18",icon:"chat"},{l:"Visitas agendadas",n:"4",icon:"calendar"},{l:"Likes recibidos",n:"56",icon:"heart"}].map(x=>(
+            <div key={x.l} style={{padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                <Icon name={x.icon} size={13} color={C.brand} stroke={1.5}/>
+                <span style={{fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.08em",textTransform:"uppercase"}}>{x.l}</span>
+              </div>
+              <div style={{fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{x.n}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{padding:14,borderRadius:12,background:C.brandWash,border:`1px solid ${C.line}`,display:"flex",alignItems:"center",gap:10}}>
+          <Icon name="sparkle" size={16} color={C.brand} stroke={1.5}/>
+          <p style={{margin:0,fontSize:12,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>Próximamente: gráficos detallados, comparación con la zona y tracking de visitas en tiempo real.</p>
+        </div>
+      </Sheet>}
+
+      {panel==="pagos" && <Sheet title="Pagos y plan" onClose={()=>setPanel(null)}>
+        <p style={{margin:"0 0 14px",fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,letterSpacing:"0.04em"}}>Tu plan actual</p>
+        <div style={{padding:18,borderRadius:14,background:C.surface,border:`2px solid ${C.brand}`,marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs}}>Gratis</span>
+            <span style={{fontSize:9.5,color:C.brand,fontFamily:Fb,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",background:C.brandWash,padding:"3px 9px",borderRadius:999}}>Activo</span>
+          </div>
+          <p style={{margin:"0 0 10px",fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>Hasta 3 publicaciones simultáneas</p>
+          {["3 publicaciones activas","Coordinación de visitas","Métricas básicas"].map(f=><div key={f} style={{display:"flex",alignItems:"center",gap:7,fontSize:12,color:C.text,fontFamily:Fb,fontWeight:400,padding:"4px 0"}}><Icon name="check" size={13} color={C.forest} stroke={2}/>{f}</div>)}
+        </div>
+        <p style={{margin:"0 0 14px",fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,letterSpacing:"0.04em"}}>Mejora tu plan</p>
+        <div style={{padding:18,borderRadius:14,background:C.ink,color:C.surface,position:"relative"}}>
+          <div style={{position:"absolute",top:-9,right:14,padding:"3px 9px",borderRadius:999,background:C.brand,fontSize:9,fontWeight:600,fontFamily:Fb,letterSpacing:"0.12em",textTransform:"uppercase"}}>Próximamente</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:18,fontWeight:400,fontFamily:Fs}}>Premium</span>
+            <span style={{fontSize:14,fontFamily:Fs}}>UF 1,5/mes</span>
+          </div>
+          <p style={{margin:"0 0 10px",fontSize:11.5,opacity:0.75,fontFamily:Fb,fontWeight:400}}>Para corredores y proyectos inmobiliarios</p>
+          {["Publicaciones ilimitadas","Posición destacada","IA para textos y videos","Soporte prioritario","Estadísticas avanzadas"].map(f=><div key={f} style={{display:"flex",alignItems:"center",gap:7,fontSize:12,fontFamily:Fb,fontWeight:400,padding:"4px 0",opacity:0.95}}><Icon name="check" size={13} color={C.brandSoft} stroke={2}/>{f}</div>)}
+        </div>
+      </Sheet>}
+
+      {panel==="ayuda" && <Sheet title="Centro de ayuda" onClose={()=>setPanel(null)}>
+        {[
+          {q:"¿Cómo publico una propiedad?",a:"Toca el botón '+' al centro de la barra inferior y completa los 6 pasos del flujo Vender. Te guiamos foto por foto y video por video."},
+          {q:"¿Es gratis publicar?",a:"Sí. El plan Gratis te permite hasta 3 publicaciones activas. Próximamente lanzamos el plan Premium con más funcionalidades."},
+          {q:"¿Cómo funciona la coordinación de visitas?",a:"En tu perfil defines tus días y horarios disponibles. Cuando un comprador interesado quiere visitar, cruzamos las dos agendas automáticamente."},
+          {q:"¿Mis datos están seguros?",a:"Sí. Tu información personal solo se comparte con interesados verificados. Tu número de WhatsApp solo aparece cuando confirmas el contacto."},
+        ].map((f,i)=>(
+          <div key={i} style={{padding:"14px 0",borderBottom:i<3?`1px solid ${C.line}`:"none"}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+              <Icon name="help" size={15} color={C.brand} stroke={1.5}/>
+              <div style={{flex:1}}>
+                <p style={{margin:0,fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>{f.q}</p>
+                <p style={{margin:"5px 0 0",fontSize:12,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.55}}>{f.a}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+        <div style={{marginTop:16,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,textAlign:"center"}}>
+          <p style={{margin:"0 0 6px",fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400}}>¿Necesitas más ayuda?</p>
+          <a href={waUrl(SELLER.wa,"Hola, necesito ayuda con properties.")} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12.5,color:C.forest,fontFamily:Fb,fontWeight:500,textDecoration:"none"}}>
+            <Icon name="whatsapp" size={15} color={C.forest} stroke={1.6}/>Escríbenos por WhatsApp
+          </a>
+        </div>
+      </Sheet>}
+
+      {panel==="logout" && <Sheet title="Cerrar sesión" onClose={()=>setPanel(null)}>
+        <p style={{margin:"0 0 22px",fontSize:14,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.55,textAlign:"center"}}>¿Estás segura que quieres cerrar tu sesión en properties?</p>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={()=>setPanel(null)} style={{flex:1,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Cancelar</button>
+          <button onClick={()=>{alert("Sesión cerrada (demo).");setPanel(null);}} style={{flex:1,padding:14,borderRadius:12,background:C.terracotta,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Sí, salir</button>
+        </div>
+      </Sheet>}
+
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
         <button onClick={()=>setGear(!gear)} style={{width:36,height:36,borderRadius:"50%",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <Icon name="gear" size={16} color={C.text} stroke={1.5}/>
@@ -1122,33 +1256,94 @@ export default function App() {
   const [tab,setTab]=useState("feed");
   const [view,setView]=useState(null);
   const [reelStart,setReelStart]=useState(null);
+  const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
-  const like=id=>setProps(ps=>ps.map(p=>p.id===id?{...p,liked:!p.liked}:p));
-  const save=id=>setProps(ps=>ps.map(p=>p.id===id?{...p,saved:!p.saved}:p));
+  const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2000); };
+  const like=id=>{
+    setProps(ps=>ps.map(p=>p.id===id?{...p,liked:!p.liked}:p));
+    const p = props.find(x=>x.id===id);
+    showToast(p?.liked?"Quitado de tus likes":"Agregado a tus likes");
+  };
+  const save=id=>{
+    setProps(ps=>ps.map(p=>p.id===id?{...p,saved:!p.saved}:p));
+    const p = props.find(x=>x.id===id);
+    showToast(p?.saved?"Quitado de guardados":"Guardado en tu lista");
+  };
   const open=p=>setView({t:"d",p});
   const openReel=id=>{setReelStart(id);setTab("reels");setView(null);};
+  const openChat=()=>{setTab("saved");setView(null);};
   const go=id=>{setTab(id);setView(null);if(id!=="reels")setReelStart(null);};
 
   return (
-    <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,position:"relative",fontFamily:Fb}}>
+    <div style={{minHeight:"100vh",background:`linear-gradient(180deg, ${C.bg} 0%, ${C.brandWash} 100%)`,fontFamily:Fb,position:"relative"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
         * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        body { margin: 0; background: ${C.bg}; }
+        html, body { margin: 0; background: ${C.bg}; }
         input::placeholder, textarea::placeholder { color: ${C.subtle}; font-weight: 400; }
         input:focus, textarea:focus { border-color: ${C.brand} !important; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes toastIn { 0%{opacity:0;transform:translate(-50%, 20px)} 100%{opacity:1;transform:translate(-50%, 0)} }
+        .pc-side { display:none; }
+        @media (min-width: 900px) {
+          .pc-side { display: flex; }
+          .pc-frame { box-shadow: 0 20px 60px rgba(28,26,23,0.18), 0 4px 14px rgba(28,26,23,0.08); border-radius: 28px !important; overflow: hidden; }
+        }
       `}</style>
-      {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} />}
-      {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} />:(
-        <>
-          {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
-          {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} startPropId={reelStart} />}
-          {tab==="sell"&&<Sell />}
-          {tab==="saved"&&<SavedView props={props} onTap={open} />}
-          {tab==="profile"&&<Profile props={props} />}
-        </>
-      )}
-      <Nav active={tab} go={go} />
+
+      {/* Desktop side panels — only visible on PC */}
+      <div className="pc-side" style={{position:"fixed",left:0,top:0,bottom:0,width:"calc(50vw - 215px)",alignItems:"center",justifyContent:"flex-end",padding:"40px 50px",pointerEvents:"none"}}>
+        <div style={{maxWidth:340,textAlign:"right"}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:8,marginBottom:18}}>
+            <Logo size={32}/>
+            <span style={{fontSize:28,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em"}}>properties<span style={{color:C.brand}}>.</span></span>
+          </div>
+          <h2 style={{margin:"0 0 12px",fontSize:32,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em",lineHeight:1.15}}>Tu próxima propiedad, en formato Instagram.</h2>
+          <p style={{margin:"0 0 24px",fontSize:14,fontFamily:Fb,fontWeight:400,color:C.text,lineHeight:1.6}}>Marketplace inmobiliario para LatAm. Explora, mira reels, agenda visitas y publica tu propiedad — todo desde una sola app.</p>
+          <p style={{margin:"0 0 6px",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase"}}>Demo móvil</p>
+          <p style={{margin:0,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5,fontStyle:"italic"}}>Diseñada mobile-first. Para la experiencia completa, abre desde tu celular.</p>
+        </div>
+      </div>
+
+      <div className="pc-side" style={{position:"fixed",right:0,top:0,bottom:0,width:"calc(50vw - 215px)",alignItems:"center",justifyContent:"flex-start",padding:"40px 50px",pointerEvents:"none"}}>
+        <div style={{maxWidth:340}}>
+          <p style={{margin:"0 0 12px",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase"}}>Qué hace properties.</p>
+          {[
+            {icon:"grid",t:"Explora como Instagram",d:"Grid editorial con propiedades destacadas y reels."},
+            {icon:"reels",t:"Reels de propiedades",d:"Recorridos en video tipo TikTok, editados con IA."},
+            {icon:"sparkle",t:"Coordinación inteligente",d:"Cruzamos tu agenda con la del corredor."},
+            {icon:"plus",t:"Publica en 6 pasos",d:"Te guiamos foto por foto y video por video."},
+          ].map((f,i)=>(
+            <div key={i} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:i<3?`1px solid ${C.line}`:"none"}}>
+              <div style={{width:34,height:34,borderRadius:10,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <Icon name={f.icon} size={16} color={C.brand} stroke={1.6}/>
+              </div>
+              <div>
+                <p style={{margin:0,fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>{f.t}</p>
+                <p style={{margin:"3px 0 0",fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{f.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Phone-shaped main app frame */}
+      <div className="pc-frame" style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,position:"relative"}}>
+        {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} />}
+        {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} />:(
+          <>
+            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
+            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
+            {tab==="sell"&&<Sell />}
+            {tab==="saved"&&<SavedView props={props} onTap={open} />}
+            {tab==="profile"&&<Profile props={props} />}
+          </>
+        )}
+        <Nav active={tab} go={go} />
+
+        {/* Toast feedback */}
+        {toast && <div style={{position:"fixed",bottom:96,left:"50%",transform:"translateX(-50%)",padding:"10px 18px",borderRadius:999,background:C.ink,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,boxShadow:"0 8px 24px rgba(28,26,23,0.3)",zIndex:400,animation:"toastIn 0.2s ease",letterSpacing:"0.01em",pointerEvents:"none"}}>{toast}</div>}
+      </div>
     </div>
   );
 }
