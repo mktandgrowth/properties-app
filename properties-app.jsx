@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 /* ═══════════════════════════════════════════════
    properties. — Sector Inmobiliario
@@ -195,7 +195,7 @@ function Nav({active,go}) {
 }
 
 // ── Header ──
-function Header({sub}) {
+function Header({sub,onNotif}) {
   const [open,setOpen]=useState(false);
   const unreadCount = NOTIFS.filter(n=>n.unread).length;
   return (
@@ -220,7 +220,7 @@ function Header({sub}) {
           </div>
           <div style={{maxHeight:340,overflowY:"auto"}}>
             {NOTIFS.map(n=>(
-              <div key={n.id} style={{padding:"11px 16px",display:"flex",gap:10,borderBottom:`1px solid ${C.lineSoft}`,background:n.unread?C.brandWash+"40":"transparent",cursor:"pointer"}}>
+              <div key={n.id} onClick={()=>{setOpen(false); onNotif&&onNotif(n);}} style={{padding:"11px 16px",display:"flex",gap:10,borderBottom:`1px solid ${C.lineSoft}`,background:n.unread?C.brandWash+"40":"transparent",cursor:"pointer"}}>
                 <div style={{width:30,height:30,borderRadius:"50%",background:n.unread?C.brandWash:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                   <Icon name={n.icon} size={14} color={n.unread?C.brand:C.muted} stroke={1.5}/>
                 </div>
@@ -692,7 +692,40 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   const [idx,setIdx]=useState(startIdx);
   const r=REELS[idx]; const p=props.find(x=>x.id===r.propId);
   const [lk,setLk]=useState(false);const [sv,setSv]=useState(false);
+  const [touchY,setTouchY]=useState(null);
+  const wheelLockRef = useRef(0);
   useEffect(()=>{if(p){setLk(p.liked);setSv(p.saved);}},[idx,p?.liked,p?.saved]);
+
+  // Navigation helpers
+  const goNext = () => setIdx(i => Math.min(REELS.length-1, i+1));
+  const goPrev = () => setIdx(i => Math.max(0, i-1));
+
+  // Swipe (mobile)
+  const onTS = e => setTouchY(e.touches[0].clientY);
+  const onTE = e => {
+    if (touchY===null) return;
+    const dy = touchY - e.changedTouches[0].clientY;
+    if (Math.abs(dy) > 50) (dy > 0 ? goNext : goPrev)();
+    setTouchY(null);
+  };
+  // Wheel (desktop) — throttled
+  const onWheel = e => {
+    e.preventDefault();
+    const now = Date.now();
+    if (now - wheelLockRef.current < 600) return;
+    if (Math.abs(e.deltaY) < 20) return;
+    wheelLockRef.current = now;
+    (e.deltaY > 0 ? goNext : goPrev)();
+  };
+  // Keyboard arrows (desktop)
+  useEffect(()=>{
+    const onKey = e => {
+      if (e.key === "ArrowDown" || e.key === "PageDown") { e.preventDefault(); goNext(); }
+      if (e.key === "ArrowUp"   || e.key === "PageUp")   { e.preventDefault(); goPrev(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const Stat = ({icon,val}) => (
     <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12.5,color:C.surface,fontFamily:Fb,fontWeight:500,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>
@@ -701,7 +734,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   );
 
   return (
-    <div style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000"}}>
+    <div onTouchStart={onTS} onTouchEnd={onTE} onWheel={onWheel} style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000",touchAction:"none"}}>
       {p&&<img src={p.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}} />}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}} />
 
@@ -925,8 +958,86 @@ function Sell() {
 }
 
 // ═══ SAVED — ordenado por prioridad (chats > guardados > likes) ═══
-function SavedView({props,onTap}) {
-  const [tab,setTab]=useState("chats");
+// ─── ChatPanel — open conversation with mock messages ───
+function ChatPanel({convo,onBack}) {
+  const [draft,setDraft] = useState("");
+  const [msgs,setMsgs] = useState(() => {
+    // Mock messages depending on the convo
+    const base = [
+      {from:"them", t:"Hola Valentina, vi tu publicación de "+convo.prop+" en properties. Me interesa mucho.", time:"10:42"},
+      {from:"me",   t:"¡Hola "+convo.name.split(" ")[0]+"! Gracias por escribir. Cuéntame, ¿qué te gustaría saber?", time:"10:45"},
+      {from:"them", t:convo.last, time:convo.time},
+    ];
+    return base;
+  });
+  const send = () => {
+    const t = draft.trim();
+    if (!t) return;
+    const now = new Date(); const hh = String(now.getHours()).padStart(2,"0"); const mm = String(now.getMinutes()).padStart(2,"0");
+    setMsgs(m => [...m, {from:"me", t, time:hh+":"+mm}]);
+    setDraft("");
+    // Simulate reply
+    setTimeout(()=>{
+      setMsgs(m => [...m, {from:"them", t:"Perfecto, ¡gracias! Te confirmo a la brevedad.", time:hh+":"+mm}]);
+    }, 1200);
+  };
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 0px)",animation:"slideRight 0.2s ease"}}>
+      {/* Chat header */}
+      <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",background:C.surface,borderBottom:`1px solid ${C.line}`,position:"sticky",top:0,zIndex:10}}>
+        <button onClick={onBack} style={{width:34,height:34,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Icon name="chevronLeft" size={18} color={C.ink} stroke={1.8}/>
+        </button>
+        <Avatar initials={convo.av} size={38} verified/>
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{margin:0,fontSize:13.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{convo.name}</p>
+          <p style={{margin:"2px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{convo.prop} · en línea</p>
+        </div>
+        <button onClick={()=>window.open(waUrl(SELLER.wa,`Hola ${convo.name.split(" ")[0]}, sigamos por acá la conversación de ${convo.prop}`),"_blank")} style={{width:34,height:34,borderRadius:"50%",background:C.mintWash,border:`1px solid ${C.forest}30`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Icon name="whatsapp" size={16} color={C.forest} stroke={1.6}/>
+        </button>
+      </div>
+
+      {/* Schedule pill */}
+      {convo.sched && (
+        <div style={{padding:"10px 18px",background:C.mintWash,borderBottom:`1px solid #CDDBCE`,display:"flex",alignItems:"center",gap:8}}>
+          <Icon name="calendar" size={14} color={C.forest} stroke={1.6}/>
+          <span style={{fontSize:11.5,color:C.forest,fontFamily:Fb,fontWeight:500}}>Disponibilidad acordada: {convo.days.join(", ")} · {convo.hrs}</span>
+        </div>
+      )}
+
+      {/* Messages */}
+      <div style={{flex:1,overflowY:"auto",padding:"16px 18px 12px",display:"flex",flexDirection:"column",gap:8}}>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:m.from==="me"?"flex-end":"flex-start"}}>
+            <div style={{maxWidth:"78%",padding:"9px 13px",borderRadius:m.from==="me"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.from==="me"?C.ink:C.surface,color:m.from==="me"?C.surface:C.ink,border:m.from==="me"?"none":`1px solid ${C.line}`,fontSize:13,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>
+              {m.t}
+              <div style={{fontSize:9.5,opacity:0.6,marginTop:4,textAlign:"right",fontFamily:Fb,fontWeight:400}}>{m.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div style={{padding:"10px 14px env(safe-area-inset-bottom,90px)",background:C.surface,borderTop:`1px solid ${C.line}`,display:"flex",alignItems:"center",gap:8}}>
+        <input value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Escribe un mensaje..." style={{flex:1,padding:"11px 14px",borderRadius:999,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none"}}/>
+        <button onClick={send} disabled={!draft.trim()} style={{width:40,height:40,borderRadius:"50%",background:draft.trim()?C.ink:C.line,border:"none",cursor:draft.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Icon name="send" size={16} color={C.surface} stroke={1.8}/>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) {
+  const tab = subTab || "chats";
+  const setTab = setSubTab || (()=>{});
+
+  // If a chat is selected, show ChatPanel
+  if (selectedChat) {
+    return <ChatPanel convo={selectedChat} onBack={()=>setSelectedChat(null)}/>;
+  }
+
   const liked=props.filter(p=>p.liked);const saved=props.filter(p=>p.saved);
 
   // Priority config: chats=1 (forest), guardados=2 (brand copper), likes=3 (muted warm)
@@ -980,7 +1091,7 @@ function SavedView({props,onTap}) {
       {tab==="chats"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {CONVOS.map(c=>(
-            <div key={c.id} style={{padding:14,borderRadius:12,display:"flex",gap:12,alignItems:"center",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",position:"relative"}}>
+            <div key={c.id} onClick={()=>setSelectedChat&&setSelectedChat(c)} style={{padding:14,borderRadius:12,display:"flex",gap:12,alignItems:"center",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",position:"relative"}}>
               {/* Left rank stripe */}
               <div style={{position:"absolute",left:0,top:14,bottom:14,width:3,borderRadius:"0 3px 3px 0",background:C.forest}}/>
               <Avatar initials={c.av} size={42} verified/>
@@ -1064,19 +1175,26 @@ function Sheet({title,onClose,children}){
 }
 
 // ═══ PROFILE ═══
-function Profile({props}) {
-  const [gear,setGear]=useState(false);const [tab,setTab]=useState("pub");
-  const [panel,setPanel]=useState(null);
+function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel}) {
+  const [gear,setGear]=useState(false);
+  const tab = subTab || "pub";
+  const setTab = setSubTab || (()=>{});
+  const [panel,setPanel]=useState(initialPanel||null);
+  useEffect(()=>{
+    if (initialPanel) { setPanel(initialPanel); clearPanel&&clearPanel(); }
+  },[initialPanel]);
   const menuItems=[
     {id:"stats", icon:"chart",l:"Estadísticas"},
     {id:"pagos", icon:"card", l:"Pagos y plan"},
     {id:"ayuda", icon:"help", l:"Centro de ayuda"},
     {id:"logout",icon:"logout",l:"Cerrar sesión"},
   ];
+  const liked = props.filter(p=>p.liked).length;
+  const savedC = props.filter(p=>p.saved).length;
   const stats=[
-    {n:"3",l:"Likes",icon:"heart"},
-    {n:"2",l:"Guardados",icon:"bookmark"},
-    {n:"2",l:"Publicados",icon:"house"},
+    {n:String(liked),l:"Likes",icon:"heart",onClick:()=>onGoTo&&onGoTo("saved",{savedSub:"likes"})},
+    {n:String(savedC),l:"Guardados",icon:"bookmark",onClick:()=>onGoTo&&onGoTo("saved",{savedSub:"saved"})},
+    {n:String(props.length),l:"Publicados",icon:"house",onClick:()=>setTab("pub")},
   ];
   return (
     <div style={{padding:"0 14px",paddingBottom:86}}>
@@ -1182,13 +1300,13 @@ function Profile({props}) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
         {stats.map(s=>(
-          <div key={s.l} style={{padding:"14px 6px",borderRadius:12,textAlign:"center",background:C.surface,border:`1px solid ${C.line}`}}>
+          <button key={s.l} onClick={s.onClick} style={{padding:"14px 6px",borderRadius:12,textAlign:"center",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",transition:"all 0.15s",fontFamily:"inherit"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.brand;e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.line;e.currentTarget.style.transform="translateY(0)";}}>
             <div style={{display:"flex",justifyContent:"center",marginBottom:4}}>
               <Icon name={s.icon} size={15} color={C.brand} stroke={1.5}/>
             </div>
             <div style={{fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{s.n}</div>
             <div style={{fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:2}}>{s.l}</div>
-          </div>
+          </button>
         ))}
       </div>
       <div style={{display:"flex",gap:3,marginBottom:14,background:C.surface,borderRadius:999,padding:3,border:`1px solid ${C.line}`}}>
@@ -1252,10 +1370,56 @@ function Profile({props}) {
 }
 
 // ═══ MAIN ═══
+// ─── Desktop sidebar nav ───
+function SidebarNav({active,go}) {
+  const items=[
+    {id:"feed",l:"Explorar",icon:"grid"},
+    {id:"reels",l:"Reels",icon:"reels"},
+    {id:"sell",l:"Vender",icon:"plus",accent:true},
+    {id:"saved",l:"Guardados",icon:"bookmark"},
+    {id:"profile",l:"Perfil",icon:"user"},
+  ];
+  return (
+    <aside className="pc-sidebar" style={{position:"fixed",left:0,top:0,bottom:0,width:240,background:C.surface,borderRight:`1px solid ${C.line}`,padding:"28px 18px",display:"none",flexDirection:"column",zIndex:50}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 8px 28px",borderBottom:`1px solid ${C.lineSoft}`,marginBottom:18}}>
+        <Logo size={32}/>
+        <span style={{fontSize:24,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em"}}>properties<span style={{color:C.brand}}>.</span></span>
+      </div>
+      <nav style={{display:"flex",flexDirection:"column",gap:4}}>
+        {items.map(i => {
+          const on = active===i.id;
+          return (
+            <button key={i.id} onClick={()=>go(i.id)} style={{
+              display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderRadius:12,border:"none",cursor:"pointer",
+              background:on?C.brandWash:i.accent?C.ink:"transparent",
+              color:on?C.brand:i.accent?C.surface:C.text,
+              fontSize:14,fontWeight:on?600:500,fontFamily:Fb,letterSpacing:"0.01em",textAlign:"left",transition:"all 0.15s",
+            }}>
+              <Icon name={i.icon} size={20} color={on?C.brand:i.accent?C.surface:C.text} stroke={1.6}/>
+              {i.l}
+            </button>
+          );
+        })}
+      </nav>
+      <div style={{marginTop:"auto",paddingTop:18,borderTop:`1px solid ${C.lineSoft}`,display:"flex",alignItems:"center",gap:10}}>
+        <Avatar initials={SELLER.avatar} size={36} verified/>
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{SELLER.name}</p>
+          <p style={{margin:"2px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>Cuenta verificada</p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export default function App() {
   const [tab,setTab]=useState("feed");
   const [view,setView]=useState(null);
   const [reelStart,setReelStart]=useState(null);
+  const [savedSubTab,setSavedSubTab]=useState("chats");
+  const [profileSubTab,setProfileSubTab]=useState("pub");
+  const [openProfilePanel,setOpenProfilePanel]=useState(null);
+  const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2000); };
@@ -1271,11 +1435,33 @@ export default function App() {
   };
   const open=p=>setView({t:"d",p});
   const openReel=id=>{setReelStart(id);setTab("reels");setView(null);};
-  const openChat=()=>{setTab("saved");setView(null);};
-  const go=id=>{setTab(id);setView(null);if(id!=="reels")setReelStart(null);};
+  const openChat=()=>{setTab("saved");setSavedSubTab("chats");setView(null);setSelectedChat(null);};
+  const openConvo=convo=>{setTab("saved");setSavedSubTab("chats");setView(null);setSelectedChat(convo);};
+  const go=id=>{setTab(id);setView(null);if(id!=="reels")setReelStart(null);if(id!=="saved")setSelectedChat(null);};
+  // Generic navigator used by Profile stats and Notifications
+  const goTo = (t,opts={}) => {
+    setTab(t); setView(null);
+    if (t!=="reels") setReelStart(null);
+    if (opts.savedSub) setSavedSubTab(opts.savedSub);
+    if (opts.profileSub) setProfileSubTab(opts.profileSub);
+    if (opts.profilePanel) setOpenProfilePanel(opts.profilePanel);
+    if (opts.chat) setSelectedChat(opts.chat); else if (t!=="saved") setSelectedChat(null);
+  };
+  // Notification → action
+  const onNotifAction = (n) => {
+    if (n.icon === "chat" || n.icon === "calendar") {
+      const convo = CONVOS.find(c => n.t.includes(c.name.split(" ")[0]) || (n.d && n.d.includes(c.prop)));
+      if (convo) openConvo(convo);
+      else goTo("saved",{savedSub:"chats"});
+    } else if (n.icon === "eye") {
+      goTo("profile",{profilePanel:"stats"});
+    } else if (n.icon === "bookmark") {
+      goTo("profile",{profileSub:"pub"});
+    }
+  };
 
   return (
-    <div style={{minHeight:"100vh",background:`linear-gradient(180deg, ${C.bg} 0%, ${C.brandWash} 100%)`,fontFamily:Fb,position:"relative"}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:Fb,position:"relative"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
         * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
@@ -1284,62 +1470,35 @@ export default function App() {
         input:focus, textarea:focus { border-color: ${C.brand} !important; }
         @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         @keyframes toastIn { 0%{opacity:0;transform:translate(-50%, 20px)} 100%{opacity:1;transform:translate(-50%, 0)} }
-        .pc-side { display:none; }
+        @keyframes slideRight { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+        .mob-nav { display:flex; }
+        .pc-only { display:none; }
         @media (min-width: 900px) {
-          .pc-side { display: flex; }
-          .pc-frame { box-shadow: 0 20px 60px rgba(28,26,23,0.18), 0 4px 14px rgba(28,26,23,0.08); border-radius: 28px !important; overflow: hidden; }
+          .mob-nav { display:none; }
+          .pc-only, .pc-sidebar { display:flex !important; }
+          .main-app { max-width: none !important; margin-left: 240px !important; min-height: 100vh; }
+          .feed-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; padding: 0 18px !important; }
+          .reels-frame { max-width: 480px !important; margin: 0 auto !important; height: calc(100vh - 32px) !important; margin-top: 16px !important; border-radius: 24px !important; overflow: hidden; }
+          .pc-content { padding: 16px 24px 32px; max-width: 1100px; margin: 0 auto; }
         }
       `}</style>
 
-      {/* Desktop side panels — only visible on PC */}
-      <div className="pc-side" style={{position:"fixed",left:0,top:0,bottom:0,width:"calc(50vw - 215px)",alignItems:"center",justifyContent:"flex-end",padding:"40px 50px",pointerEvents:"none"}}>
-        <div style={{maxWidth:340,textAlign:"right"}}>
-          <div style={{display:"inline-flex",alignItems:"center",gap:8,marginBottom:18}}>
-            <Logo size={32}/>
-            <span style={{fontSize:28,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em"}}>properties<span style={{color:C.brand}}>.</span></span>
-          </div>
-          <h2 style={{margin:"0 0 12px",fontSize:32,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em",lineHeight:1.15}}>Tu próxima propiedad, en formato Instagram.</h2>
-          <p style={{margin:"0 0 24px",fontSize:14,fontFamily:Fb,fontWeight:400,color:C.text,lineHeight:1.6}}>Marketplace inmobiliario para LatAm. Explora, mira reels, agenda visitas y publica tu propiedad — todo desde una sola app.</p>
-          <p style={{margin:"0 0 6px",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase"}}>Demo móvil</p>
-          <p style={{margin:0,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5,fontStyle:"italic"}}>Diseñada mobile-first. Para la experiencia completa, abre desde tu celular.</p>
-        </div>
-      </div>
+      <SidebarNav active={tab} go={go}/>
 
-      <div className="pc-side" style={{position:"fixed",right:0,top:0,bottom:0,width:"calc(50vw - 215px)",alignItems:"center",justifyContent:"flex-start",padding:"40px 50px",pointerEvents:"none"}}>
-        <div style={{maxWidth:340}}>
-          <p style={{margin:"0 0 12px",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase"}}>Qué hace properties.</p>
-          {[
-            {icon:"grid",t:"Explora como Instagram",d:"Grid editorial con propiedades destacadas y reels."},
-            {icon:"reels",t:"Reels de propiedades",d:"Recorridos en video tipo TikTok, editados con IA."},
-            {icon:"sparkle",t:"Coordinación inteligente",d:"Cruzamos tu agenda con la del corredor."},
-            {icon:"plus",t:"Publica en 6 pasos",d:"Te guiamos foto por foto y video por video."},
-          ].map((f,i)=>(
-            <div key={i} style={{display:"flex",gap:12,padding:"14px 0",borderBottom:i<3?`1px solid ${C.line}`:"none"}}>
-              <div style={{width:34,height:34,borderRadius:10,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                <Icon name={f.icon} size={16} color={C.brand} stroke={1.6}/>
-              </div>
-              <div>
-                <p style={{margin:0,fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>{f.t}</p>
-                <p style={{margin:"3px 0 0",fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{f.d}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Phone-shaped main app frame */}
-      <div className="pc-frame" style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,position:"relative"}}>
-        {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} />}
+      <div className="main-app" style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,position:"relative"}}>
+        {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} />}
+        <div className="pc-content">
         {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} />:(
           <>
             {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
             {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
             {tab==="sell"&&<Sell />}
-            {tab==="saved"&&<SavedView props={props} onTap={open} />}
-            {tab==="profile"&&<Profile props={props} />}
+            {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
+            {tab==="profile"&&<Profile props={props} subTab={profileSubTab} setSubTab={setProfileSubTab} onGoTo={goTo} initialPanel={openProfilePanel} clearPanel={()=>setOpenProfilePanel(null)} />}
           </>
         )}
-        <Nav active={tab} go={go} />
+        </div>
+        <div className="mob-nav"><Nav active={tab} go={go} /></div>
 
         {/* Toast feedback */}
         {toast && <div style={{position:"fixed",bottom:96,left:"50%",transform:"translateX(-50%)",padding:"10px 18px",borderRadius:999,background:C.ink,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,boxShadow:"0 8px 24px rgba(28,26,23,0.3)",zIndex:400,animation:"toastIn 0.2s ease",letterSpacing:"0.01em",pointerEvents:"none"}}>{toast}</div>}
