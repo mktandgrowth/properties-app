@@ -35,9 +35,9 @@ const SELLER = { name:"Valentina Sanchez", avatar:"VS", wa:"+56986420055" };
 const waUrl = (num, msg) => `https://wa.me/${String(num||"").replace(/\D/g,"")}${msg?`?text=${encodeURIComponent(msg)}`:""}`;
 
 const PROPS = [
-  { id:1,type:"Casa",price:8500,cur:"UF",loc:"La Reina, Santiago",comuna:"La Reina",beds:4,baths:3,parks:2,area:180,nuevo:false,amenities:["piscina","quincho","jardin","terraza"],title:"Casa mediterránea con piscina y quincho",desc:"Amplia casa familiar. Living comedor con salida a terraza, jardín con piscina, quincho y bodega. Barrio residencial consolidado.",img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Piscina","Jardín","Quincho"],photos:12,hasVideo:true },
-  { id:2,type:"Departamento",price:4900,cur:"UF",loc:"Ñuñoa, Santiago",comuna:"Ñuñoa",beds:3,baths:2,parks:2,area:78,nuevo:true,amenities:["terraza","gimnasio","bodega"],title:"Depto esquina con doble terraza panorámica",desc:"Último piso, vista despejada a la cordillera. Cocina equipada Bosch, 2 estacionamientos. Entrega inmediata.",img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Último piso","Entrega inmediata","Cordillera"],photos:10,hasVideo:true },
-  { id:3,type:"Parcela",price:1500,cur:"UF",loc:"Melipilla, RM",comuna:"Melipilla",beds:0,baths:0,parks:0,area:5000,nuevo:false,amenities:["jardin"],title:"Parcela 5.000m² — camino a la costa",desc:"Parcela con árboles frutales, pozo profundo y electricidad trifásica. A 30 min de Santiago por autopista.",img:"https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["5.000m²","Pozo","Frutales"],photos:9,hasVideo:true },
+  { id:1,type:"Casa",operacion:"venta",price:8500,cur:"UF",loc:"La Reina, Santiago",comuna:"La Reina",beds:4,baths:3,parks:2,area:180,areaTerreno:280,nuevo:false,amenities:["piscina","quincho","jardin","terraza","condominio","dorm_servicio","calefaccion","cerco_electrico","orientacion_norte"],title:"Casa mediterránea con piscina y quincho",desc:"Amplia casa familiar. Living comedor con salida a terraza, jardín con piscina, quincho y bodega. Barrio residencial consolidado.",img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Piscina","Jardín","Quincho"],photos:12,hasVideo:true },
+  { id:2,type:"Departamento",operacion:"venta",price:4900,cur:"UF",loc:"Ñuñoa, Santiago",comuna:"Ñuñoa",beds:3,baths:2,parks:2,area:78,areaTotal:92,nuevo:true,amenities:["terraza","gimnasio","bodega","calefaccion","conserje_24","piscina_edif","orientacion_norte"],title:"Depto esquina con doble terraza panorámica",desc:"Último piso, vista despejada a la cordillera. Cocina equipada Bosch, 2 estacionamientos. Entrega inmediata.",img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Último piso","Entrega inmediata","Cordillera"],photos:10,hasVideo:true },
+  { id:3,type:"Parcela",operacion:"venta",price:1500,cur:"UF",loc:"Melipilla, RM",comuna:"Melipilla",beds:0,baths:0,parks:0,area:5000,hectareas:0.5,nuevo:false,amenities:["jardin","derechos_agua","frutal"],usoSitio:"agricola",title:"Parcela 5.000m² — camino a la costa",desc:"Parcela con árboles frutales, pozo profundo y electricidad trifásica. A 30 min de Santiago por autopista.",img:"https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["5.000m²","Pozo","Frutales"],photos:9,hasVideo:true },
 ];
 
 const REELS = [
@@ -79,6 +79,129 @@ const VID_GUIDE = [
 
 // UF rate for CLP conversion (mock — production should pull from API)
 const UF_TO_CLP = 40000;
+
+// Comunas de Chile (principales + Región Metropolitana completa)
+const COMUNAS = [
+  // RM
+  ["Las Condes","Región Metropolitana"],["Vitacura","Región Metropolitana"],["Lo Barnechea","Región Metropolitana"],["Providencia","Región Metropolitana"],
+  ["Ñuñoa","Región Metropolitana"],["La Reina","Región Metropolitana"],["Macul","Región Metropolitana"],["Peñalolén","Región Metropolitana"],
+  ["Santiago","Región Metropolitana"],["Estación Central","Región Metropolitana"],["Independencia","Región Metropolitana"],["Recoleta","Región Metropolitana"],
+  ["Huechuraba","Región Metropolitana"],["Conchalí","Región Metropolitana"],["Renca","Región Metropolitana"],["Quilicura","Región Metropolitana"],
+  ["La Florida","Región Metropolitana"],["Maipú","Región Metropolitana"],["Pudahuel","Región Metropolitana"],["San Miguel","Región Metropolitana"],
+  ["San Joaquín","Región Metropolitana"],["La Cisterna","Región Metropolitana"],["El Bosque","Región Metropolitana"],["San Ramón","Región Metropolitana"],
+  ["La Granja","Región Metropolitana"],["La Pintana","Región Metropolitana"],["San Bernardo","Región Metropolitana"],["Puente Alto","Región Metropolitana"],
+  ["Pirque","Región Metropolitana"],["Buin","Región Metropolitana"],["Paine","Región Metropolitana"],["Calera de Tango","Región Metropolitana"],
+  ["Padre Hurtado","Región Metropolitana"],["Peñaflor","Región Metropolitana"],["Talagante","Región Metropolitana"],["Isla de Maipo","Región Metropolitana"],
+  ["El Monte","Región Metropolitana"],["Melipilla","Región Metropolitana"],["Curacaví","Región Metropolitana"],["María Pinto","Región Metropolitana"],
+  ["Colina","Región Metropolitana"],["Chicureo","Región Metropolitana"],["Lampa","Región Metropolitana"],["Tiltil","Región Metropolitana"],
+  ["Cerrillos","Región Metropolitana"],["Cerro Navia","Región Metropolitana"],["Lo Prado","Región Metropolitana"],["Quinta Normal","Región Metropolitana"],
+  // Valparaíso
+  ["Viña del Mar","Valparaíso"],["Valparaíso","Valparaíso"],["Concón","Valparaíso"],["Reñaca","Valparaíso"],["Quilpué","Valparaíso"],["Villa Alemana","Valparaíso"],
+  ["Quintero","Valparaíso"],["Quillota","Valparaíso"],["Limache","Valparaíso"],["La Calera","Valparaíso"],["Olmué","Valparaíso"],["Algarrobo","Valparaíso"],
+  ["El Quisco","Valparaíso"],["Cartagena","Valparaíso"],["San Antonio","Valparaíso"],
+  // Otras regiones
+  ["La Serena","Coquimbo"],["Coquimbo","Coquimbo"],["Ovalle","Coquimbo"],
+  ["Antofagasta","Antofagasta"],["Iquique","Tarapacá"],["Arica","Arica y Parinacota"],
+  ["Concepción","Biobío"],["Talcahuano","Biobío"],["Chiguayante","Biobío"],["San Pedro de la Paz","Biobío"],["Hualpén","Biobío"],
+  ["Temuco","Araucanía"],["Pucón","Araucanía"],["Villarrica","Araucanía"],
+  ["Valdivia","Los Ríos"],["Puerto Montt","Los Lagos"],["Puerto Varas","Los Lagos"],["Frutillar","Los Lagos"],
+  ["Rancagua","O'Higgins"],["Talca","Maule"],["Chillán","Ñuble"],
+];
+
+const PROP_TYPES = [
+  { t:"Casa",          icon:"house" },
+  { t:"Departamento",  icon:"building" },
+  { t:"Sitio",         icon:"land" },
+  { t:"Parcela",       icon:"mountain" },
+  { t:"Oficina",       icon:"briefcase" },
+  { t:"Industrial",    icon:"storage" },
+];
+
+const OPERACIONES = [
+  { k:"venta",    l:"Venta"    },
+  { k:"arriendo", l:"Arriendo" },
+];
+
+// Dynamic filter catalogs per property type — each catalog has the amenities valid for that type
+const FILTER_CATALOGS = {
+  Casa: {
+    amenities: [
+      { k:"piscina",          l:"Piscina",            icon:"pool" },
+      { k:"quincho",          l:"Quincho",            icon:"grill" },
+      { k:"jardin",           l:"Jardín",             icon:"tree" },
+      { k:"condominio",       l:"En condominio",      icon:"house" },
+      { k:"dorm_servicio",    l:"Dorm. servicio",     icon:"bed" },
+      { k:"calefaccion",      l:"Calefacción",        icon:"sparkle" },
+      { k:"orientacion_norte",l:"Orientación norte",  icon:"sparkle" },
+      { k:"cerco_electrico",  l:"Cerco eléctrico",    icon:"sparkle" },
+      { k:"guardia",          l:"Guardia",            icon:"user" },
+      { k:"amoblada",         l:"Amoblada",           icon:"sparkle" },
+    ],
+    showBeds: true, showBaths: true, showParks: true, showArea: true, showTerreno: true,
+  },
+  Departamento: {
+    amenities: [
+      { k:"terraza",          l:"Terraza",            icon:"terrace" },
+      { k:"jardin",           l:"Jardín",             icon:"tree" },
+      { k:"dorm_servicio",    l:"Dorm. servicio",     icon:"bed" },
+      { k:"calefaccion",      l:"Calefacción",        icon:"sparkle" },
+      { k:"bodega",           l:"Bodega",             icon:"storage" },
+      { k:"orientacion_norte",l:"Orientación norte",  icon:"sparkle" },
+      { k:"conserje_24",      l:"Conserje 24h",       icon:"user" },
+      { k:"piscina_edif",     l:"Piscina edificio",   icon:"pool" },
+      { k:"quincho_edif",     l:"Quincho edificio",   icon:"grill" },
+      { k:"gimnasio",         l:"Gimnasio",           icon:"gym" },
+      { k:"salon_eventos",    l:"Salón de eventos",   icon:"sparkle" },
+      { k:"amoblado",         l:"Amoblado",           icon:"sparkle" },
+    ],
+    showBeds: true, showBaths: true, showParks: true, showArea: true, showTotal: true,
+  },
+  Sitio: {
+    amenities: [
+      { k:"urbanizado",       l:"Urbanizado",         icon:"checkCircle" },
+      { k:"plano",            l:"Plano",              icon:"ruler" },
+      { k:"uso_habitacional", l:"Uso habitacional",   icon:"house" },
+      { k:"uso_industrial",   l:"Uso industrial",     icon:"storage" },
+      { k:"uso_comercial",    l:"Uso comercial",      icon:"shop" },
+      { k:"uso_agricola",     l:"Uso agrícola",       icon:"tree" },
+      { k:"construc_altura",  l:"Construcción altura",icon:"building" },
+    ],
+    showBeds: false, showBaths: false, showParks: false, showArea: true, showUrbano: true,
+  },
+  Parcela: {
+    amenities: [
+      { k:"ganadero",         l:"Ganadero",           icon:"tree" },
+      { k:"forestal",         l:"Forestal",           icon:"tree" },
+      { k:"agricola",         l:"Agrícola",           icon:"tree" },
+      { k:"conservacion",     l:"Conservación",       icon:"leaf" },
+      { k:"derechos_agua",    l:"Derechos de agua",   icon:"pool" },
+      { k:"frutal",           l:"Frutales",           icon:"tree" },
+    ],
+    showBeds: false, showBaths: false, showParks: false, showHectareas: true,
+  },
+  Oficina: {
+    amenities: [
+      { k:"planta_libre",     l:"Planta libre",       icon:"grid" },
+      { k:"amoblada_ofi",     l:"Amoblada",           icon:"sparkle" },
+      { k:"conserje_24",      l:"Conserje 24h",       icon:"user" },
+      { k:"cocina",           l:"Cocina",             icon:"sparkle" },
+      { k:"terraza",          l:"Terraza",            icon:"terrace" },
+      { k:"jardin",           l:"Jardín",             icon:"tree" },
+      { k:"bodega",           l:"Bodega",             icon:"storage" },
+    ],
+    showBeds: false, showBaths: true, showParks: true, showArea: true, showPrivados: true,
+  },
+  Industrial: {
+    amenities: [
+      { k:"conserje_24",      l:"Conserje 24h",       icon:"user" },
+      { k:"bodega",           l:"Bodegas",            icon:"storage" },
+      { k:"oficinas_ind",     l:"Oficinas",           icon:"briefcase" },
+    ],
+    showBeds: false, showBaths: false, showParks: false, showArea: true, showTotal: true,
+  },
+};
+
+// Universal/base amenities (when no type selected)
 const AMENITIES = [
   { k:"terraza",  l:"Terraza",  icon:"terrace" },
   { k:"piscina",  l:"Piscina",  icon:"pool" },
@@ -86,15 +209,6 @@ const AMENITIES = [
   { k:"jardin",   l:"Jardín",   icon:"tree" },
   { k:"bodega",   l:"Bodega",   icon:"storage" },
   { k:"gimnasio", l:"Gimnasio", icon:"gym" },
-];
-
-const PROP_TYPES = [
-  { t:"Casa", icon:"house" },
-  { t:"Departamento", icon:"building" },
-  { t:"Terreno", icon:"land" },
-  { t:"Parcela", icon:"mountain" },
-  { t:"Local comercial", icon:"shop" },
-  { t:"Oficina", icon:"briefcase" },
 ];
 
 const fmt = n => n>=10000?`${(n/1000).toFixed(0)}K`:n.toLocaleString("es-CL");
@@ -257,7 +371,7 @@ const Avatar = ({ initials, size = 36, bg = C.inkMuted, verified = false }) => {
 };
 
 // ─── Filter Sheet (modal drawer) ───
-function FilterSheet({draft,setDraft,onApply,onClose,onClear,resultCount}){
+function FilterSheet({draft,setDraft,onApply,onClose,onClear,resultCount,fType,catalog}){
   const Section = ({title,children}) => (
     <div style={{marginBottom:22}}>
       <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:10}}>{title}</div>
@@ -291,7 +405,15 @@ function FilterSheet({draft,setDraft,onApply,onClose,onClear,resultCount}){
 
         {/* Body — scrollable */}
         <div style={{flex:1,overflowY:"auto",padding:"20px 18px 14px"}}>
-          {/* PRICE */}
+          {/* Context badge — show which type we're filtering */}
+          {fType && (
+            <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"6px 12px",borderRadius:999,background:C.brandWash,border:`1px solid ${C.brand}40`,marginBottom:18}}>
+              <Icon name={PROP_TYPES.find(x=>x.t===fType)?.icon||"house"} size={13} color={C.brand} stroke={1.6}/>
+              <span style={{fontSize:11,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em"}}>Filtros específicos de {fType}</span>
+            </div>
+          )}
+
+          {/* PRICE — always shown */}
           <Section title="Precio">
             <div style={{display:"flex",gap:5,marginBottom:10,padding:3,background:C.surface,border:`1px solid ${C.line}`,borderRadius:999,width:"fit-content"}}>
               {["UF","CLP"].map(c=>{
@@ -307,42 +429,95 @@ function FilterSheet({draft,setDraft,onApply,onClose,onClear,resultCount}){
             {draft.currency==="CLP"&&<p style={{margin:"7px 0 0",fontSize:10,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>1 UF ≈ ${UF_TO_CLP.toLocaleString("es-CL")} CLP</p>}
           </Section>
 
-          {/* DORMITORIOS */}
-          <Section title="Dormitorios">
-            <ChipRow value={draft.beds} setValue={v=>setDraft({...draft,beds:v})} opts={[{v:1,l:"1+"},{v:2,l:"2+"},{v:3,l:"3+"},{v:4,l:"4+"},{v:5,l:"5+"}]}/>
-          </Section>
+          {/* SUPERFICIE — Casa, Depto, Sitio, Oficina, Industrial */}
+          {(!catalog || catalog.showArea) && (
+            <Section title={fType==="Casa"?"Superficie construida (m²)":fType==="Departamento"?"Superficie útil (m²)":fType==="Oficina"?"Superficie útil (m²)":"Superficie (m²)"}>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {numInput(draft.areaMin,v=>setDraft({...draft,areaMin:v}),"Mín m²")}
+                <span style={{color:C.subtle,fontSize:12}}>—</span>
+                {numInput(draft.areaMax,v=>setDraft({...draft,areaMax:v}),"Máx m²")}
+              </div>
+            </Section>
+          )}
 
-          {/* BAÑOS */}
-          <Section title="Baños">
-            <ChipRow value={draft.baths} setValue={v=>setDraft({...draft,baths:v})} opts={[{v:1,l:"1+"},{v:2,l:"2+"},{v:3,l:"3+"},{v:4,l:"4+"}]}/>
-          </Section>
+          {/* SUPERFICIE TERRENO — solo Casa */}
+          {catalog?.showTerreno && (
+            <Section title="Superficie terreno (m²)">
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {numInput(draft.terrenoMin,v=>setDraft({...draft,terrenoMin:v}),"Mín m²")}
+                <span style={{color:C.subtle,fontSize:12}}>—</span>
+                {numInput(draft.terrenoMax,v=>setDraft({...draft,terrenoMax:v}),"Máx m²")}
+              </div>
+            </Section>
+          )}
 
-          {/* ESTACIONAMIENTOS */}
-          <Section title="Estacionamientos">
-            <ChipRow value={draft.parks} setValue={v=>setDraft({...draft,parks:v})} opts={[{v:1,l:"1+"},{v:2,l:"2+"},{v:3,l:"3+"}]}/>
-          </Section>
+          {/* SUPERFICIE TOTAL — Depto, Industrial */}
+          {catalog?.showTotal && (
+            <Section title="Superficie total (m²)">
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {numInput(draft.totalMin,v=>setDraft({...draft,totalMin:v}),"Mín m²")}
+                <span style={{color:C.subtle,fontSize:12}}>—</span>
+                {numInput(draft.totalMax,v=>setDraft({...draft,totalMax:v}),"Máx m²")}
+              </div>
+            </Section>
+          )}
 
-          {/* SUPERFICIE */}
-          <Section title="Superficie (m²)">
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              {numInput(draft.areaMin,v=>setDraft({...draft,areaMin:v}),"Mín m²")}
-              <span style={{color:C.subtle,fontSize:12}}>—</span>
-              {numInput(draft.areaMax,v=>setDraft({...draft,areaMax:v}),"Máx m²")}
-            </div>
-          </Section>
+          {/* HECTÁREAS — Parcela */}
+          {catalog?.showHectareas && (
+            <Section title="Hectáreas">
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {numInput(draft.hectMin,v=>setDraft({...draft,hectMin:v}),"Mín ha")}
+                <span style={{color:C.subtle,fontSize:12}}>—</span>
+                {numInput(draft.hectMax,v=>setDraft({...draft,hectMax:v}),"Máx ha")}
+              </div>
+            </Section>
+          )}
 
-          {/* CARACTERÍSTICAS (multi) */}
-          <Section title="Características">
+          {/* URBANO / RURAL — Sitio */}
+          {catalog?.showUrbano && (
+            <Section title="Ubicación">
+              <div style={{display:"flex",gap:6}}>
+                {[{v:"",l:"Indiferente"},{v:"urbano",l:"Urbano"},{v:"rural",l:"Rural"}].map(o=>{
+                  const on=draft.urbano===o.v;
+                  return <button key={o.l} onClick={()=>setDraft({...draft,urbano:o.v})} style={{flex:1,padding:"10px 8px",borderRadius:10,background:on?C.ink:C.surface,border:`1px solid ${on?C.ink:C.line}`,color:on?C.surface:C.text,fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.01em"}}>{o.l}</button>;
+                })}
+              </div>
+            </Section>
+          )}
+
+          {/* DORMITORIOS — Casa, Depto */}
+          {(!catalog || catalog.showBeds) && (
+            <Section title="Dormitorios">
+              <ChipRow value={draft.beds} setValue={v=>setDraft({...draft,beds:v})} opts={[{v:1,l:"1+"},{v:2,l:"2+"},{v:3,l:"3+"},{v:4,l:"4+"},{v:5,l:"5+"}]}/>
+            </Section>
+          )}
+
+          {/* BAÑOS — Casa, Depto, Oficina */}
+          {(!catalog || catalog.showBaths) && (
+            <Section title="Baños">
+              <ChipRow value={draft.baths} setValue={v=>setDraft({...draft,baths:v})} opts={[{v:1,l:"1+"},{v:2,l:"2+"},{v:3,l:"3+"},{v:4,l:"4+"}]}/>
+            </Section>
+          )}
+
+          {/* ESTACIONAMIENTOS — Casa, Depto, Oficina */}
+          {(!catalog || catalog.showParks) && (
+            <Section title="Estacionamientos">
+              <ChipRow value={draft.parks} setValue={v=>setDraft({...draft,parks:v})} opts={[{v:1,l:"1+"},{v:2,l:"2+"},{v:3,l:"3+"}]}/>
+            </Section>
+          )}
+
+          {/* CARACTERÍSTICAS — dinámicas según tipo */}
+          <Section title={fType==="Departamento"?"Características":fType?"Características":"Características"}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              {AMENITIES.map(a=>{
+              {(catalog?.amenities || AMENITIES).map(a=>{
                 const on=draft.amenities.includes(a.k);
                 return (
                   <button key={a.k} onClick={()=>{
                     const next = on ? draft.amenities.filter(x=>x!==a.k) : [...draft.amenities,a.k];
                     setDraft({...draft,amenities:next});
-                  }} style={{padding:"11px 12px",borderRadius:12,background:on?C.brandWash:C.surface,border:`1px solid ${on?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",gap:9}}>
+                  }} style={{padding:"11px 12px",borderRadius:12,background:on?C.brandWash:C.surface,border:`1px solid ${on?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",gap:9,textAlign:"left"}}>
                     <Icon name={a.icon} size={17} color={on?C.brand:C.muted} stroke={1.5}/>
-                    <span style={{fontSize:12.5,fontWeight:500,color:on?C.brand:C.ink,fontFamily:Fb}}>{a.l}</span>
+                    <span style={{fontSize:12,fontWeight:500,color:on?C.brand:C.ink,fontFamily:Fb,lineHeight:1.2}}>{a.l}</span>
                     {on&&<div style={{marginLeft:"auto"}}><Icon name="check" size={13} color={C.brand} stroke={2.2}/></div>}
                   </button>
                 );
@@ -350,15 +525,17 @@ function FilterSheet({draft,setDraft,onApply,onClose,onClear,resultCount}){
             </div>
           </Section>
 
-          {/* ESTADO */}
-          <Section title="Estado">
-            <div style={{display:"flex",gap:6}}>
-              {[{v:"",l:"Indiferente"},{v:"nuevo",l:"Nuevo"},{v:"usado",l:"Usado"}].map(o=>{
-                const on=draft.nuevo===o.v;
-                return <button key={o.l} onClick={()=>setDraft({...draft,nuevo:o.v})} style={{flex:1,padding:"10px 8px",borderRadius:10,background:on?C.ink:C.surface,border:`1px solid ${on?C.ink:C.line}`,color:on?C.surface:C.text,fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.01em"}}>{o.l}</button>;
-              })}
-            </div>
-          </Section>
+          {/* ESTADO — Casa, Depto */}
+          {(!catalog || catalog.showBeds) && (
+            <Section title="Estado">
+              <div style={{display:"flex",gap:6}}>
+                {[{v:"",l:"Indiferente"},{v:"nuevo",l:"Nuevo"},{v:"usado",l:"Usado"}].map(o=>{
+                  const on=draft.nuevo===o.v;
+                  return <button key={o.l} onClick={()=>setDraft({...draft,nuevo:o.v})} style={{flex:1,padding:"10px 8px",borderRadius:10,background:on?C.ink:C.surface,border:`1px solid ${on?C.ink:C.line}`,color:on?C.surface:C.text,fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.01em"}}>{o.l}</button>;
+                })}
+              </div>
+            </Section>
+          )}
         </div>
 
         {/* Sticky footer */}
@@ -374,31 +551,62 @@ function FilterSheet({draft,setDraft,onApply,onClose,onClear,resultCount}){
 
 // ═══ EXPLORE (Instagram-style grid) ═══
 const initialFilters = () => ({
+  operacion:"venta", // "venta" or "arriendo"
   currency:"UF", priceMin:"", priceMax:"",
   beds:"", baths:"", parks:"",
   areaMin:"", areaMax:"",
+  terrenoMin:"", terrenoMax:"",
+  totalMin:"", totalMax:"",
+  hectMin:"", hectMax:"",
+  privadosMin:"",
   amenities:[],
+  urbano:"", // "", "urbano", "rural"
   nuevo:"", // "", "nuevo", "usado"
 });
 
 function Feed({props,onTap,onOpenReel}) {
   const [q,setQ]=useState("");
   const [fType,setFType]=useState("");
+  const [fOperacion,setFOperacion]=useState("venta");
   const [sheet,setSheet]=useState(false);
+  const [typeMenu,setTypeMenu]=useState(false);
+  const [priceMenu,setPriceMenu]=useState(false);
+  const [comunaFocus,setComunaFocus]=useState(false);
+  const [mapInfo,setMapInfo]=useState(false);
   const [filters,setFilters]=useState(initialFilters());
   const [draft,setDraft]=useState(initialFilters());
+
+  // Autocomplete suggestions for comuna
+  const comunaSugs = q.length >= 1
+    ? COMUNAS.filter(([c,r]) => c.toLowerCase().includes(q.toLowerCase()) || r.toLowerCase().includes(q.toLowerCase())).slice(0,8)
+    : [];
+
+  // Price summary for quick button display
+  const priceSummary = (() => {
+    if (!filters.priceMin && !filters.priceMax) return "Cualquier";
+    const lo = filters.priceMin ? Number(filters.priceMin).toLocaleString("es-CL") : "0";
+    const hi = filters.priceMax ? Number(filters.priceMax).toLocaleString("es-CL") : "∞";
+    return `${filters.currency} ${lo}–${hi}`;
+  })();
 
   // Open sheet → init draft from current filters
   const openSheet=()=>{setDraft({...filters,amenities:[...filters.amenities]});setSheet(true);};
   const apply=()=>{setFilters({...draft,amenities:[...draft.amenities]});setSheet(false);};
   const clearAll=()=>setDraft(initialFilters());
 
+  // Get the catalog config for the current type (or null if no type selected)
+  const catalog = fType ? FILTER_CATALOGS[fType] : null;
+
   // Active filter count
   const activeCount = (
     (filters.priceMin||filters.priceMax?1:0) +
     (filters.beds?1:0) + (filters.baths?1:0) + (filters.parks?1:0) +
     (filters.areaMin||filters.areaMax?1:0) +
+    (filters.terrenoMin||filters.terrenoMax?1:0) +
+    (filters.totalMin||filters.totalMax?1:0) +
+    (filters.hectMin||filters.hectMax?1:0) +
     filters.amenities.length +
+    (filters.urbano?1:0) +
     (filters.nuevo?1:0)
   );
 
@@ -411,6 +619,7 @@ function Feed({props,onTap,onOpenReel}) {
   };
 
   const filtered=props.filter(p=>{
+    if(fOperacion && (p.operacion||"venta")!==fOperacion) return false;
     if(fType&&p.type!==fType)return false;
     if(q){
       const s=q.toLowerCase();
@@ -427,6 +636,15 @@ function Feed({props,onTap,onOpenReel}) {
     // Area
     if(filters.areaMin && p.area<+filters.areaMin) return false;
     if(filters.areaMax && p.area>+filters.areaMax) return false;
+    // Superficie terreno (Casa)
+    if(filters.terrenoMin && (p.areaTerreno||0)<+filters.terrenoMin) return false;
+    if(filters.terrenoMax && (p.areaTerreno||Infinity)>+filters.terrenoMax) return false;
+    // Superficie total (Depto, Industrial)
+    if(filters.totalMin && (p.areaTotal||0)<+filters.totalMin) return false;
+    if(filters.totalMax && (p.areaTotal||Infinity)>+filters.totalMax) return false;
+    // Hectáreas (Parcela)
+    if(filters.hectMin && (p.hectareas||0)<+filters.hectMin) return false;
+    if(filters.hectMax && (p.hectareas||Infinity)>+filters.hectMax) return false;
     // Amenities (must include all selected)
     if(filters.amenities.length){
       const set = new Set(p.amenities||[]);
@@ -472,27 +690,95 @@ function Feed({props,onTap,onOpenReel}) {
 
   return (
     <div style={{paddingBottom:82}}>
-      {/* Search bar */}
-      <div style={{padding:"4px 14px 12px"}}>
-        <div style={{position:"relative"}}>
-          <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",pointerEvents:"none"}}>
-            <Icon name="search" size={16} color={C.subtle} stroke={1.6}/>
+      {/* Quick start — 4 main buttons */}
+      <div style={{padding:"4px 14px 8px"}}>
+        {/* Row 1 — Operación toggle (¿Qué buscas?) */}
+        <div style={{marginBottom:10}}>
+          <p style={{margin:"0 0 6px 4px",fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase"}}>¿Qué buscas?</p>
+          <div style={{display:"flex",gap:6,padding:3,background:C.surface,border:`1px solid ${C.line}`,borderRadius:999}}>
+            {OPERACIONES.map(o=>{
+              const on = fOperacion===o.k;
+              return <button key={o.k} onClick={()=>setFOperacion(o.k)} style={{flex:1,padding:"10px 14px",borderRadius:999,border:"none",background:on?C.ink:"transparent",color:on?C.surface:C.muted,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.02em",transition:"all 0.15s"}}>{o.l}</button>;
+            })}
           </div>
-          <input type="text" placeholder="Busca por comuna, barrio o proyecto" value={q} onChange={e=>setQ(e.target.value)} style={{width:"100%",padding:"12px 50px 12px 40px",borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}} />
-          <button onClick={openSheet} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",height:32,padding:"0 10px",borderRadius:8,background:activeCount>0?C.ink:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:5,color:activeCount>0?C.surface:C.muted,fontSize:11,fontWeight:500,fontFamily:Fb,letterSpacing:"0.01em"}}>
-            <Icon name="sliders" size={14} color={activeCount>0?C.surface:C.muted} stroke={1.6}/>
-            Filtros{activeCount>0?` · ${activeCount}`:""}
+        </div>
+
+        {/* Row 2 — 4 quick buttons in 2x2 grid */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+          {/* Tipo */}
+          <button onClick={()=>setTypeMenu(true)} style={{padding:"12px 14px",borderRadius:12,background:fType?C.brandWash:C.surface,border:`1px solid ${fType?C.brand:C.line}`,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:3,fontFamily:Fb,textAlign:"left"}}>
+            <span style={{fontSize:9,color:C.muted,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Tipo de propiedad</span>
+            <span style={{display:"flex",alignItems:"center",gap:6,fontSize:13.5,fontWeight:500,color:fType?C.brand:C.ink}}>
+              <Icon name={fType?(PROP_TYPES.find(x=>x.t===fType)?.icon||"house"):"grid"} size={16} color={fType?C.brand:C.text} stroke={1.6}/>
+              {fType||"Todos"}
+            </span>
+          </button>
+
+          {/* Comuna with autocomplete */}
+          <div style={{position:"relative"}}>
+            <div onClick={()=>setComunaFocus(true)} style={{padding:"8px 12px",borderRadius:12,background:q?C.brandWash:C.surface,border:`1px solid ${(q||comunaFocus)?C.brand:C.line}`,fontFamily:Fb,display:"flex",flexDirection:"column",justifyContent:"center",cursor:"text",minHeight:50,boxSizing:"border-box"}}>
+              <span style={{fontSize:9,color:C.muted,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:2}}>Comuna</span>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <Icon name="pin" size={14} color={q?C.brand:C.text} stroke={1.6}/>
+                <input
+                  value={q}
+                  onChange={e=>{setQ(e.target.value);setComunaFocus(true);}}
+                  onFocus={()=>setComunaFocus(true)}
+                  onBlur={()=>setTimeout(()=>setComunaFocus(false),200)}
+                  placeholder="Cualquiera"
+                  style={{border:"none",background:"transparent",outline:"none",fontSize:13.5,fontWeight:500,color:q?C.brand:C.ink,fontFamily:Fb,padding:0,width:"100%",minWidth:0}}
+                />
+                {q && <button onClick={(e)=>{e.stopPropagation();setQ("");}} style={{background:"transparent",border:"none",cursor:"pointer",padding:2,display:"flex",alignItems:"center"}}>
+                  <Icon name="close" size={11} color={C.muted} stroke={2}/>
+                </button>}
+              </div>
+            </div>
+            {/* Autocomplete dropdown */}
+            {comunaFocus && comunaSugs.length>0 && (
+              <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:100,background:C.surface,border:`1px solid ${C.line}`,borderRadius:12,boxShadow:`0 8px 24px ${C.ink}15`,maxHeight:280,overflowY:"auto"}}>
+                {comunaSugs.map(([c,r],i)=>(
+                  <button
+                    key={c}
+                    onMouseDown={(e)=>{e.preventDefault();setQ(c);setComunaFocus(false);}}
+                    style={{width:"100%",padding:"10px 13px",border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left",borderBottom:i<comunaSugs.length-1?`1px solid ${C.lineSoft}`:"none"}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.bg}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                  >
+                    <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>
+                    <div>
+                      <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c}</div>
+                      <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{r}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Precio */}
+          <button onClick={()=>setPriceMenu(true)} style={{padding:"12px 14px",borderRadius:12,background:(filters.priceMin||filters.priceMax)?C.brandWash:C.surface,border:`1px solid ${(filters.priceMin||filters.priceMax)?C.brand:C.line}`,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:3,fontFamily:Fb,textAlign:"left"}}>
+            <span style={{fontSize:9,color:C.muted,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Precio</span>
+            <span style={{fontSize:13.5,fontWeight:500,color:(filters.priceMin||filters.priceMax)?C.brand:C.ink,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:"100%"}}>
+              {priceSummary}
+            </span>
+          </button>
+
+          {/* Mapa */}
+          <button onClick={()=>setMapInfo(true)} style={{padding:"12px 14px",borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:3,fontFamily:Fb,textAlign:"left"}}>
+            <span style={{fontSize:9,color:C.muted,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Mapa</span>
+            <span style={{display:"flex",alignItems:"center",gap:6,fontSize:13.5,fontWeight:500,color:C.ink}}>
+              <Icon name="pin" size={16} color={C.ink} stroke={1.6}/>Buscar zona
+            </span>
           </button>
         </div>
 
-        {/* Type chips — horizontal scroll */}
-        <div style={{display:"flex",gap:6,marginTop:11,overflowX:"auto",scrollbarWidth:"none",msOverflowStyle:"none",paddingBottom:2}}>
-          <style>{`div::-webkit-scrollbar{display:none}`}</style>
-          {types.map(t=>{
-            const v = t==="Todos"?"":t;
-            const on = fType===v;
-            return <button key={t} onClick={()=>setFType(v)} style={{flexShrink:0,padding:"7px 14px",borderRadius:999,background:on?C.ink:C.surface,border:`1px solid ${on?C.ink:C.line}`,color:on?C.surface:C.text,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.01em",whiteSpace:"nowrap"}}>{t}</button>;
-          })}
+        {/* Row 3 — Filtros avanzados + Active chips */}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={openSheet} style={{padding:"9px 14px",borderRadius:999,background:activeCount>0?C.ink:C.surface,border:`1px solid ${activeCount>0?C.ink:C.line}`,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,color:activeCount>0?C.surface:C.text,fontSize:12,fontWeight:500,fontFamily:Fb,letterSpacing:"0.01em",flexShrink:0}}>
+            <Icon name="sliders" size={14} color={activeCount>0?C.surface:C.text} stroke={1.6}/>
+            Más filtros{activeCount>0?` · ${activeCount}`:""}
+          </button>
+          {fType && <span style={{fontSize:10.5,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em"}}>Filtros de {fType}</span>}
         </div>
 
         {/* Active filter chips */}
@@ -509,6 +795,91 @@ function Feed({props,onTap,onOpenReel}) {
         )}
       </div>
 
+      {/* Tipo picker modal */}
+      {typeMenu && (
+        <div onClick={()=>setTypeMenu(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,background:C.bg,borderRadius:"20px 20px 0 0",padding:"18px 16px env(safe-area-inset-bottom,20px)",animation:"slideUp 0.25s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <h3 style={{margin:0,fontSize:16,fontWeight:400,color:C.ink,fontFamily:Fs}}>Tipo de propiedad</h3>
+              <button onClick={()=>setTypeMenu(false)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <button onClick={()=>{setFType("");setTypeMenu(false);}} style={{padding:"14px 10px",borderRadius:12,background:!fType?C.brandWash:C.surface,border:`1px solid ${!fType?C.brand:C.line}`,cursor:"pointer",fontFamily:Fb}}>
+                <div style={{display:"flex",justifyContent:"center",marginBottom:5}}><Icon name="grid" size={20} color={!fType?C.brand:C.text} stroke={1.5}/></div>
+                <span style={{fontSize:12,fontWeight:500,color:!fType?C.brand:C.ink}}>Todos</span>
+              </button>
+              {PROP_TYPES.map(({t,icon})=>{
+                const on = fType===t;
+                return <button key={t} onClick={()=>{setFType(t);setTypeMenu(false);}} style={{padding:"14px 10px",borderRadius:12,background:on?C.brandWash:C.surface,border:`1px solid ${on?C.brand:C.line}`,cursor:"pointer",fontFamily:Fb}}>
+                  <div style={{display:"flex",justifyContent:"center",marginBottom:5}}><Icon name={icon} size={20} color={on?C.brand:C.text} stroke={1.5}/></div>
+                  <span style={{fontSize:12,fontWeight:500,color:on?C.brand:C.ink}}>{t}</span>
+                </button>;
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mapa placeholder modal */}
+      {mapInfo && (
+        <div onClick={()=>setMapInfo(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{maxWidth:380,background:C.surface,borderRadius:18,padding:"24px 22px",textAlign:"center",animation:"slideUp 0.25s ease"}}>
+            <div style={{margin:"0 auto 12px",width:56,height:56,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="pin" size={26} color={C.brand} stroke={1.5}/></div>
+            <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Búsqueda por mapa</h3>
+            <p style={{margin:"0 0 18px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Pronto vas a poder arrastrar el mapa para encontrar propiedades en cualquier zona — estilo Airbnb.</p>
+            <button onClick={()=>setMapInfo(false)} style={{padding:"11px 20px",borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Entendido</button>
+          </div>
+        </div>
+      )}
+
+      {/* Precio quick-filter modal */}
+      {priceMenu && (() => {
+        const presets = filters.currency === "UF"
+          ? [{label:"Hasta UF 3.000",min:"",max:"3000"},{label:"UF 3.000 – 6.000",min:"3000",max:"6000"},{label:"UF 6.000 – 10.000",min:"6000",max:"10000"},{label:"Más de UF 10.000",min:"10000",max:""}]
+          : [{label:"Hasta $120M",min:"",max:"120000000"},{label:"$120M – $250M",min:"120000000",max:"250000000"},{label:"$250M – $400M",min:"250000000",max:"400000000"},{label:"Más de $400M",min:"400000000",max:""}];
+        return (
+          <div onClick={()=>setPriceMenu(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+            <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,background:C.bg,borderRadius:"20px 20px 0 0",animation:"slideUp 0.25s ease"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderBottom:`1px solid ${C.line}`}}>
+                <button onClick={()=>setPriceMenu(false)} style={{width:34,height:34,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={18} color={C.ink} stroke={1.7}/></button>
+                <h3 style={{margin:0,fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs}}>Precio</h3>
+                <button onClick={()=>setFilters({...filters,priceMin:"",priceMax:""})} style={{padding:"6px 10px",background:"transparent",border:"none",cursor:"pointer",color:C.muted,fontSize:12,fontWeight:500,fontFamily:Fb}}>Limpiar</button>
+              </div>
+              <div style={{padding:"20px 18px env(safe-area-inset-bottom,18px)"}}>
+                {/* Currency toggle */}
+                <div style={{display:"flex",gap:5,marginBottom:14,padding:3,background:C.surface,border:`1px solid ${C.line}`,borderRadius:999,width:"fit-content"}}>
+                  {["UF","CLP"].map(c=>{
+                    const on=filters.currency===c;
+                    return <button key={c} onClick={()=>setFilters({...filters,currency:c,priceMin:"",priceMax:""})} style={{padding:"6px 18px",borderRadius:999,border:"none",background:on?C.ink:"transparent",color:on?C.surface:C.muted,fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.04em"}}>{c}</button>;
+                  })}
+                </div>
+
+                {/* Presets */}
+                <p style={{margin:"0 0 10px",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase"}}>Rangos sugeridos</p>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:18}}>
+                  {presets.map(p=>{
+                    const on = filters.priceMin===p.min && filters.priceMax===p.max;
+                    return <button key={p.label} onClick={()=>setFilters({...filters,priceMin:p.min,priceMax:p.max})} style={{padding:"11px 10px",borderRadius:10,background:on?C.brandWash:C.surface,border:`1px solid ${on?C.brand:C.line}`,cursor:"pointer",color:on?C.brand:C.text,fontSize:11.5,fontWeight:500,fontFamily:Fb,textAlign:"center"}}>{p.label}</button>;
+                  })}
+                </div>
+
+                {/* Custom range */}
+                <p style={{margin:"0 0 10px",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase"}}>O define el rango</p>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:18}}>
+                  <input type="number" placeholder={`Mín ${filters.currency}`} value={filters.priceMin} onChange={e=>setFilters({...filters,priceMin:e.target.value})} style={{flex:1,padding:"11px 12px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:500,outline:"none",minWidth:0}}/>
+                  <span style={{color:C.subtle,fontSize:12}}>—</span>
+                  <input type="number" placeholder={`Máx ${filters.currency}`} value={filters.priceMax} onChange={e=>setFilters({...filters,priceMax:e.target.value})} style={{flex:1,padding:"11px 12px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:500,outline:"none",minWidth:0}}/>
+                </div>
+
+                {filters.currency==="CLP" && <p style={{margin:"0 0 14px",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>1 UF ≈ ${UF_TO_CLP.toLocaleString("es-CL")} CLP</p>}
+
+                <button onClick={()=>setPriceMenu(false)} style={{width:"100%",padding:14,borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.02em"}}>Aplicar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Results count */}
       <div style={{padding:"0 16px 8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em"}}>{filtered.length} {filtered.length===1?"propiedad":"propiedades"}</span>
@@ -516,7 +887,7 @@ function Feed({props,onTap,onOpenReel}) {
       </div>
 
       {/* FILTER SHEET */}
-      {sheet && <FilterSheet draft={draft} setDraft={setDraft} onApply={apply} onClose={()=>setSheet(false)} onClear={clearAll} resultCount={
+      {sheet && <FilterSheet fType={fType} catalog={catalog} draft={draft} setDraft={setDraft} onApply={apply} onClose={()=>setSheet(false)} onClear={clearAll} resultCount={
         props.filter(p=>{
           const pp = priceIn(p,draft.currency);
           if(draft.priceMin && pp<+draft.priceMin) return false;
@@ -735,7 +1106,12 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
 
   return (
     <div onTouchStart={onTS} onTouchEnd={onTE} onWheel={onWheel} style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000",touchAction:"none"}}>
-      {p&&<img src={p.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}} />}
+      <style>{`
+        @keyframes reelIn { 0%{opacity:0;transform:scale(1.06) translateY(8px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
+        @keyframes reelInfoIn { 0%{opacity:0;transform:translateY(16px)} 100%{opacity:1;transform:translateY(0)} }
+      `}</style>
+      {/* Background image with smooth fade transition between reels */}
+      {p&&<img key={"img-"+idx} src={p.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)",animation:"reelIn 0.45s ease"}} />}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}} />
 
       <div style={{position:"absolute",top:18,left:18,zIndex:10,display:"flex",alignItems:"center",gap:8}}>
@@ -763,8 +1139,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         </button>
       </div>
 
-      {/* Bottom info panel */}
-      <div style={{position:"absolute",bottom:80,left:0,right:0,zIndex:10,padding:"0 16px"}}>
+      {/* Bottom info panel — animates in when reel changes */}
+      <div key={"info-"+idx} style={{position:"absolute",bottom:80,left:0,right:0,zIndex:10,padding:"0 16px",animation:"reelInfoIn 0.35s ease 0.05s both"}}>
         {/* User row */}
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
           <Avatar initials={p?.avatar} size={28} bg="rgba(255,255,255,0.22)"/>
@@ -820,11 +1196,44 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
 // ═══ SELL ═══
 function Sell() {
   const [step,setStep]=useState(1);
-  const [form,setForm]=useState({type:"",title:"",desc:"",price:"",loc:"",beds:"",baths:"",area:"",photos:[]});
+  const [form,setForm]=useState({
+    type:"", operacion:"venta", title:"", desc:"",
+    currency:"UF", price:"",
+    loc:"", beds:"", baths:"", parks:"",
+    area:"", areaTerreno:"", areaTotal:"", hectareas:"", privados:"",
+    photos:[], videoUp:false, amenities:[],
+  });
   const [aiDone,setAiDone]=useState(false);
+  const [uploadFor,setUploadFor]=useState(null);
+  const [mapModal,setMapModal]=useState(false);
+  const [locFocus,setLocFocus]=useState(false);
   const total=6;
+  // Filter catalog for the current type
+  const sellCatalog = form.type ? FILTER_CATALOGS[form.type] : null;
+  const sellAmenities = sellCatalog?.amenities || AMENITIES;
+  // Autocomplete sugs for location input
+  const locSugs = form.loc.length>=1
+    ? COMUNAS.filter(([c,r])=>c.toLowerCase().includes(form.loc.toLowerCase())||r.toLowerCase().includes(form.loc.toLowerCase())).slice(0,6)
+    : [];
   const inp={display:"block",width:"100%",padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",marginTop:6,boxSizing:"border-box"};
   const lbl={fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.1em"};
+
+  // When the user picks a file via <input type="file">, save its objectURL and mark slot as filled
+  const onFileChosen = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file || !uploadFor) { setUploadFor(null); return; }
+    const url = URL.createObjectURL(file);
+    if (uploadFor.kind === "photo") {
+      const slot = uploadFor.slot;
+      const existing = form.photoFiles || {};
+      const newPhotos = form.photos.includes(slot) ? form.photos : [...form.photos, slot];
+      setForm({...form, photos: newPhotos, photoFiles: {...existing, [slot]: url}});
+    } else if (uploadFor.kind === "video") {
+      setForm({...form, videoUp: true, videoFile: url});
+    }
+    setUploadFor(null);
+    e.target.value = ""; // reset so the same file can be picked again
+  };
 
   return (
     <div style={{padding:"0 18px",paddingBottom:92}}>
@@ -846,22 +1255,140 @@ function Sell() {
       </div>}
 
       {step===2&&<div>
-        <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 18px",letterSpacing:"-0.01em"}}>Detalles</h3>
-        {[{k:"title",l:"Título",ph:"Ej: Casa 4D en La Reina con piscina"},{k:"loc",l:"Ubicación (comuna)",ph:"La Reina, Santiago"},{k:"price",l:"Precio (UF)",ph:"3.500",type:"number"},{k:"area",l:"Superficie m²",ph:"120",type:"number"}].map(({k,l,ph,type})=>(
-          <div key={k} style={{marginBottom:14}}><label style={lbl}>{l}</label><input type={type||"text"} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={inp} /></div>
-        ))}
-        <div style={{display:"flex",gap:8}}>
-          {[{k:"beds",l:"Dormitorios"},{k:"baths",l:"Baños"}].map(({k,l})=>(
-            <div key={k} style={{flex:1}}><label style={lbl}>{l}</label><input type="number" placeholder="0" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={inp} /></div>
-          ))}
-        </div>
-        <div style={{marginTop:16}}>
-          <label style={{...lbl,display:"flex",alignItems:"center",gap:5}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>Ubicación en el mapa</label>
-          <div style={{marginTop:8,borderRadius:12,border:`1px dashed ${C.brand}`,height:110,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6,cursor:"pointer"}}>
-            <Logo size={26} />
-            <span style={{fontSize:11,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Toca para marcar en el mapa</span>
+        <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Detalles de tu {form.type||"propiedad"}</h3>
+        <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 18px"}}>Completa lo que aplique. Los campos marcados con * son obligatorios.</p>
+
+        {/* Operación */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Operación *</label>
+          <div style={{display:"flex",gap:5,marginTop:6,padding:3,background:C.surface,border:`1px solid ${C.line}`,borderRadius:999,width:"fit-content"}}>
+            {OPERACIONES.map(o=>{
+              const on=form.operacion===o.k;
+              return <button key={o.k} onClick={()=>setForm({...form,operacion:o.k})} style={{padding:"6px 18px",borderRadius:999,border:"none",background:on?C.ink:"transparent",color:on?C.surface:C.muted,fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.02em"}}>{o.l}</button>;
+            })}
           </div>
         </div>
+
+        {/* Título opcional */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Título <span style={{textTransform:"none",fontWeight:400,letterSpacing:"0",color:C.subtle,marginLeft:4}}>(opcional)</span></label>
+          <input type="text" placeholder={`Ej: ${form.type==="Casa"?"Casa con piscina y quincho":form.type==="Departamento"?"Depto con vista a la cordillera":"Propiedad destacada"}`} value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={inp}/>
+          <p style={{margin:"5px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Si lo dejas en blanco, lo armamos automáticamente con la IA según los datos.</p>
+        </div>
+
+        {/* Ubicación (comuna) con autocomplete */}
+        <div style={{marginBottom:14,position:"relative"}}>
+          <label style={lbl}>Ubicación (comuna) *</label>
+          <input
+            type="text"
+            placeholder="Empieza a escribir tu comuna..."
+            value={form.loc}
+            onChange={e=>{setForm({...form,loc:e.target.value});setLocFocus(true);}}
+            onFocus={()=>setLocFocus(true)}
+            onBlur={()=>setTimeout(()=>setLocFocus(false),200)}
+            style={inp}
+          />
+          {locFocus && locSugs.length>0 && (
+            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:100,background:C.surface,border:`1px solid ${C.line}`,borderRadius:12,boxShadow:`0 8px 24px ${C.ink}15`,maxHeight:240,overflowY:"auto"}}>
+              {locSugs.map(([c,r],i)=>(
+                <button key={c} onMouseDown={(e)=>{e.preventDefault();setForm({...form,loc:c});setLocFocus(false);}} style={{width:"100%",padding:"10px 13px",border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left",borderBottom:i<locSugs.length-1?`1px solid ${C.lineSoft}`:"none"}}>
+                  <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>
+                  <div>
+                    <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c}</div>
+                    <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{r}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Precio con toggle UF/CLP */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Precio *</label>
+          <div style={{display:"flex",gap:8,marginTop:6,alignItems:"stretch"}}>
+            <div style={{display:"flex",gap:3,padding:3,background:C.surface,border:`1px solid ${C.line}`,borderRadius:10}}>
+              {["UF","CLP"].map(c=>{
+                const on=form.currency===c;
+                return <button key={c} onClick={()=>setForm({...form,currency:c})} style={{padding:"0 14px",borderRadius:8,border:"none",background:on?C.ink:"transparent",color:on?C.surface:C.muted,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>{c}</button>;
+              })}
+            </div>
+            <input type="number" placeholder={form.currency==="UF"?"Ej: 3.500":"Ej: 140000000"} value={form.price} onChange={e=>setForm({...form,price:e.target.value})} style={{...inp,marginTop:0,flex:1}}/>
+          </div>
+        </div>
+
+        {/* Superficies dinámicas por tipo */}
+        {form.type==="Casa" && (
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            <div style={{flex:1}}><label style={lbl}>Sup. construida (m²) *</label><input type="number" placeholder="120" value={form.area} onChange={e=>setForm({...form,area:e.target.value})} style={inp}/></div>
+            <div style={{flex:1}}><label style={lbl}>Sup. terreno (m²) *</label><input type="number" placeholder="250" value={form.areaTerreno} onChange={e=>setForm({...form,areaTerreno:e.target.value})} style={inp}/></div>
+          </div>
+        )}
+        {form.type==="Departamento" && (
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            <div style={{flex:1}}><label style={lbl}>Sup. útil (m²) *</label><input type="number" placeholder="80" value={form.area} onChange={e=>setForm({...form,area:e.target.value})} style={inp}/></div>
+            <div style={{flex:1}}><label style={lbl}>Sup. total (m²)</label><input type="number" placeholder="95" value={form.areaTotal} onChange={e=>setForm({...form,areaTotal:e.target.value})} style={inp}/></div>
+          </div>
+        )}
+        {form.type==="Sitio" && (
+          <div style={{marginBottom:14}}><label style={lbl}>Sup. total (m²) *</label><input type="number" placeholder="500" value={form.area} onChange={e=>setForm({...form,area:e.target.value})} style={inp}/></div>
+        )}
+        {form.type==="Parcela" && (
+          <div style={{marginBottom:14}}><label style={lbl}>Hectáreas *</label><input type="number" placeholder="0.5" value={form.hectareas} onChange={e=>setForm({...form,hectareas:e.target.value})} style={inp}/></div>
+        )}
+        {form.type==="Oficina" && (
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            <div style={{flex:1}}><label style={lbl}>Sup. útil (m²) *</label><input type="number" placeholder="60" value={form.area} onChange={e=>setForm({...form,area:e.target.value})} style={inp}/></div>
+            <div style={{flex:1}}><label style={lbl}>N° privados</label><input type="number" placeholder="3" value={form.privados} onChange={e=>setForm({...form,privados:e.target.value})} style={inp}/></div>
+          </div>
+        )}
+        {form.type==="Industrial" && (
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            <div style={{flex:1}}><label style={lbl}>Sup. útil (m²) *</label><input type="number" placeholder="400" value={form.area} onChange={e=>setForm({...form,area:e.target.value})} style={inp}/></div>
+            <div style={{flex:1}}><label style={lbl}>Sup. total (m²)</label><input type="number" placeholder="600" value={form.areaTotal} onChange={e=>setForm({...form,areaTotal:e.target.value})} style={inp}/></div>
+          </div>
+        )}
+
+        {/* Dorms/Baños/Estac — solo si aplica */}
+        {(sellCatalog?.showBeds || sellCatalog?.showBaths || sellCatalog?.showParks) && (
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            {sellCatalog?.showBeds && <div style={{flex:1}}><label style={lbl}>Dorms.</label><input type="number" placeholder="0" value={form.beds} onChange={e=>setForm({...form,beds:e.target.value})} style={inp}/></div>}
+            {sellCatalog?.showBaths && <div style={{flex:1}}><label style={lbl}>Baños</label><input type="number" placeholder="0" value={form.baths} onChange={e=>setForm({...form,baths:e.target.value})} style={inp}/></div>}
+            {sellCatalog?.showParks && <div style={{flex:1}}><label style={lbl}>Estac.</label><input type="number" placeholder="0" value={form.parks} onChange={e=>setForm({...form,parks:e.target.value})} style={inp}/></div>}
+          </div>
+        )}
+
+        {/* Mapa */}
+        <div style={{marginBottom:18}}>
+          <label style={{...lbl,display:"flex",alignItems:"center",gap:5}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>Ubicación en el mapa</label>
+          <div onClick={()=>setMapModal(true)} style={{marginTop:8,borderRadius:12,border:`1px dashed ${C.brand}`,height:100,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6,cursor:"pointer"}}>
+            <Logo size={26} />
+            <span style={{fontSize:11,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Toca para marcar el pin exacto</span>
+          </div>
+        </div>
+
+        {/* Características dinámicas según tipo */}
+        {sellAmenities.length>0 && (
+          <div style={{marginBottom:8}}>
+            <label style={lbl}>Características especiales</label>
+            <p style={{margin:"4px 0 10px",fontSize:11,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Marca todas las que tenga tu {form.type?.toLowerCase()||"propiedad"} — atrae más interesados.</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+              {sellAmenities.map(a=>{
+                const on=form.amenities.includes(a.k);
+                return (
+                  <button key={a.k} onClick={()=>{
+                    const next = on ? form.amenities.filter(x=>x!==a.k) : [...form.amenities,a.k];
+                    setForm({...form,amenities:next});
+                  }} style={{padding:"10px 11px",borderRadius:10,background:on?C.brandWash:C.surface,border:`1px solid ${on?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left",fontFamily:Fb}}>
+                    <Icon name={a.icon} size={15} color={on?C.brand:C.muted} stroke={1.5}/>
+                    <span style={{fontSize:11.5,fontWeight:500,color:on?C.brand:C.ink,lineHeight:1.2,flex:1}}>{a.l}</span>
+                    {on&&<Icon name="check" size={12} color={C.brand} stroke={2.2}/>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>}
 
       {step===3&&<div>
@@ -870,15 +1397,25 @@ function Sell() {
         <div style={{display:"flex",flexDirection:"column",gap:7}}>
           {PHOTO_GUIDE.map(g=>{
             const up=form.photos.includes(g.s);
-            return <div key={g.s} onClick={()=>!up&&setForm({...form,photos:[...form.photos,g.s]})} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,background:up?C.brandWash:C.surface,border:`1px solid ${up?C.brand:C.line}`,cursor:"pointer"}}>
-              <div style={{width:38,height:38,borderRadius:10,background:up?C.brand:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                {up?<Icon name="check" size={16} color={C.surface} stroke={2}/>:<Icon name="camera" size={16} color={C.subtle} stroke={1.5}/>}
-              </div>
+            const previewUrl = (form.photoFiles||{})[g.s];
+            return <div key={g.s} onClick={()=>setUploadFor({kind:"photo",slot:g.s,label:g.l})} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,background:up?C.brandWash:C.surface,border:`1px solid ${up?C.brand:C.line}`,cursor:"pointer"}}>
+              {previewUrl ? (
+                <div style={{width:42,height:42,borderRadius:10,overflow:"hidden",flexShrink:0,position:"relative"}}>
+                  <img src={previewUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  <div style={{position:"absolute",top:2,right:2,width:14,height:14,borderRadius:"50%",background:C.brand,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <Icon name="check" size={9} color={C.surface} stroke={2.5}/>
+                  </div>
+                </div>
+              ) : (
+                <div style={{width:38,height:38,borderRadius:10,background:up?C.brand:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  {up?<Icon name="check" size={16} color={C.surface} stroke={2}/>:<Icon name="camera" size={16} color={C.subtle} stroke={1.5}/>}
+                </div>
+              )}
               <div style={{flex:1}}>
                 <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,display:"flex",alignItems:"center",gap:5}}>
                   {g.l}{g.r&&<span style={{color:C.terracotta,fontSize:10}}>*</span>}
                 </div>
-                <div style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{g.t}</div>
+                <div style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{up?"Toca para cambiar":g.t}</div>
               </div>
             </div>;
           })}
@@ -906,8 +1443,8 @@ function Sell() {
             </div>
           </div>
         ))}
-        <button style={{width:"100%",padding:14,borderRadius:12,marginTop:8,background:C.surface,border:`1.5px dashed ${C.brand}60`,cursor:"pointer",color:C.brand,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <Icon name="video" size={18} color={C.brand} stroke={1.5}/>Subir video (4 tomas)
+        <button onClick={()=>setUploadFor({kind:"video",slot:null,label:"video"})} style={{width:"100%",padding:14,borderRadius:12,marginTop:8,background:form.videoUp?C.brandWash:C.surface,border:`1.5px ${form.videoUp?"solid":"dashed"} ${C.brand}${form.videoUp?"":"60"}`,cursor:"pointer",color:C.brand,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <Icon name={form.videoUp?"checkCircle":"video"} size={18} color={C.brand} stroke={1.5}/>{form.videoUp?"Video listo (4 tomas)":"Subir video (4 tomas)"}
         </button>
         <div style={{marginTop:10,padding:12,borderRadius:10,background:C.brandWash,border:`1px solid ${C.line}`,display:"flex",alignItems:"center",gap:10}}>
           <Icon name="sparkle" size={16} color={C.brand} stroke={1.5}/>
@@ -924,24 +1461,52 @@ function Sell() {
         </button>
       </div>}
 
-      {step===6&&<div style={{textAlign:"center",padding:"20px 0"}}>
-        <div style={{width:68,height:68,borderRadius:"50%",margin:"0 auto 14px",background:C.mintWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <Icon name="checkCircle" size={32} color={C.forest} stroke={1.5}/>
-        </div>
-        <h3 style={{fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 6px",letterSpacing:"-0.01em"}}>Listo para publicar</h3>
-        <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 18px"}}>Revisa el resumen antes de enviar</p>
-        <div style={{padding:18,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,textAlign:"left",margin:"0 0 18px"}}>
-          {[["Tipo",form.type||"Casa"],["Título",form.title||"Mi propiedad"],["Ubicación",form.loc||"Santiago"],["Precio",`UF ${form.price||"3.500"}`],["Fotos",`${form.photos.length||6}`],["Video","4 tomas (IA)"],["Texto",aiDone?"IA ✓":"Original"]].map(([k,v],i)=>(
-            <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:i<6?`1px solid ${C.lineSoft}`:"none"}}>
-              <span style={{fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,letterSpacing:"0.04em",textTransform:"uppercase"}}>{k}</span>
-              <span style={{fontSize:12.5,color:C.ink,fontFamily:Fb,fontWeight:500}}>{v}</span>
+      {step===6&&(()=>{
+        // Build dynamic summary rows based on type
+        const rows = [
+          ["Tipo", form.type||"—"],
+          ["Operación", form.operacion==="arriendo"?"Arriendo":"Venta"],
+          ["Título", form.title||"(Auto IA según datos)"],
+          ["Ubicación", form.loc||"—"],
+          ["Precio", form.price?`${form.currency} ${Number(form.price).toLocaleString("es-CL")}`:"—"],
+        ];
+        if (form.type==="Casa")          rows.push(["Sup. construida", `${form.area||"—"} m²`], ["Sup. terreno", `${form.areaTerreno||"—"} m²`]);
+        else if (form.type==="Departamento") rows.push(["Sup. útil", `${form.area||"—"} m²`], ["Sup. total", `${form.areaTotal||"—"} m²`]);
+        else if (form.type==="Sitio")     rows.push(["Sup. total", `${form.area||"—"} m²`]);
+        else if (form.type==="Parcela")   rows.push(["Hectáreas", `${form.hectareas||"—"}`]);
+        else if (form.type==="Oficina")   rows.push(["Sup. útil", `${form.area||"—"} m²`], ["N° privados", form.privados||"—"]);
+        else if (form.type==="Industrial")rows.push(["Sup. útil", `${form.area||"—"} m²`], ["Sup. total", `${form.areaTotal||"—"} m²`]);
+        if (form.beds||form.baths||form.parks) {
+          const dbp = [form.beds&&`${form.beds} dorm.`, form.baths&&`${form.baths} baños`, form.parks&&`${form.parks} estac.`].filter(Boolean).join(" · ");
+          if (dbp) rows.push(["Distribución", dbp]);
+        }
+        rows.push(
+          ["Características", form.amenities.length?`${form.amenities.length} seleccionadas`:"Ninguna"],
+          ["Fotos", `${form.photos.length||0} de 4 mínimo`],
+          ["Video", form.videoUp?"Listo ✓":"Pendiente"],
+          ["Texto", aiDone?"Mejorado con IA ✓":"Manual"],
+        );
+        return (
+          <div style={{textAlign:"center",padding:"20px 0"}}>
+            <div style={{width:68,height:68,borderRadius:"50%",margin:"0 auto 14px",background:C.mintWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Icon name="checkCircle" size={32} color={C.forest} stroke={1.5}/>
             </div>
-          ))}
-        </div>
-        <button style={{width:"100%",padding:15,borderRadius:12,background:C.forest,border:"none",cursor:"pointer",color:C.surface,fontSize:13.5,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:`0 4px 14px ${C.forest}30`}}>
-          Publicar propiedad<Icon name="send" size={16} color={C.surface} stroke={1.6}/>
-        </button>
-      </div>}
+            <h3 style={{fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 6px",letterSpacing:"-0.01em"}}>Listo para publicar</h3>
+            <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 18px"}}>Revisa el resumen antes de enviar</p>
+            <div style={{padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,textAlign:"left",margin:"0 0 18px"}}>
+              {rows.map(([k,v],i)=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<rows.length-1?`1px solid ${C.lineSoft}`:"none"}}>
+                  <span style={{fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.06em",textTransform:"uppercase",flexShrink:0}}>{k}</span>
+                  <span style={{fontSize:12.5,color:C.ink,fontFamily:Fb,fontWeight:500,textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <button style={{width:"100%",padding:15,borderRadius:12,background:C.forest,border:"none",cursor:"pointer",color:C.surface,fontSize:13.5,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:`0 4px 14px ${C.forest}30`}}>
+              Publicar propiedad<Icon name="send" size={16} color={C.surface} stroke={1.6}/>
+            </button>
+          </div>
+        );
+      })()}
 
       {step>1&&step<6&&(
         <div style={{display:"flex",gap:8,marginTop:18}}>
@@ -951,6 +1516,60 @@ function Sell() {
           <button onClick={()=>setStep(step+1)} style={{flex:1,padding:"12px 18px",borderRadius:10,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6,letterSpacing:"0.01em"}}>
             Siguiente<Icon name="arrowRight" size={15} color={C.surface} stroke={1.6}/>
           </button>
+        </div>
+      )}
+
+      {/* Upload source modal — Cámara o Galería */}
+      {uploadFor && (
+        <div onClick={()=>setUploadFor(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,background:C.bg,borderRadius:"20px 20px 0 0",padding:"18px 16px env(safe-area-inset-bottom,20px)",animation:"slideUp 0.25s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <h3 style={{margin:0,fontSize:16,fontWeight:400,color:C.ink,fontFamily:Fs}}>
+                {uploadFor.kind==="photo"?`Foto: ${uploadFor.label}`:"Subir video"}
+              </h3>
+              <button onClick={()=>setUploadFor(null)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+            </div>
+            <p style={{margin:"0 0 16px",fontSize:12.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>¿Cómo quieres {uploadFor.kind==="photo"?"subir la foto":"subir el video"}?</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {/* Cámara — capture="environment" abre la cámara trasera en mobile */}
+              <label style={{padding:"18px 12px",borderRadius:14,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",fontFamily:Fb,textAlign:"center",display:"block"}}>
+                <input
+                  type="file"
+                  accept={uploadFor.kind==="photo"?"image/*":"video/*"}
+                  capture="environment"
+                  onChange={onFileChosen}
+                  style={{position:"absolute",width:1,height:1,opacity:0,pointerEvents:"none"}}
+                />
+                <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icon name={uploadFor.kind==="photo"?"camera":"video"} size={28} color={C.brand} stroke={1.5}/></div>
+                <div style={{fontSize:13.5,fontWeight:500,color:C.ink,marginBottom:2}}>Usar cámara</div>
+                <div style={{fontSize:10.5,color:C.muted,fontWeight:400}}>{uploadFor.kind==="photo"?"Toma una foto ahora":"Graba ahora"}</div>
+              </label>
+              {/* Galería — sin capture, abre el selector estándar (camera roll/files) */}
+              <label style={{padding:"18px 12px",borderRadius:14,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",fontFamily:Fb,textAlign:"center",display:"block"}}>
+                <input
+                  type="file"
+                  accept={uploadFor.kind==="photo"?"image/*":"video/*"}
+                  onChange={onFileChosen}
+                  style={{position:"absolute",width:1,height:1,opacity:0,pointerEvents:"none"}}
+                />
+                <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icon name="grid" size={28} color={C.brand} stroke={1.5}/></div>
+                <div style={{fontSize:13.5,fontWeight:500,color:C.ink,marginBottom:2}}>Desde galería</div>
+                <div style={{fontSize:10.5,color:C.muted,fontWeight:400}}>Elige uno guardado en {uploadFor.kind==="photo"?"el celular/PC":"tu dispositivo"}</div>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mapa placeholder modal (Vender step 2) */}
+      {mapModal && (
+        <div onClick={()=>setMapModal(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{maxWidth:380,background:C.surface,borderRadius:18,padding:"24px 22px",textAlign:"center",animation:"slideUp 0.25s ease"}}>
+            <div style={{margin:"0 auto 12px",width:56,height:56,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="pin" size={26} color={C.brand} stroke={1.5}/></div>
+            <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Marca tu propiedad</h3>
+            <p style={{margin:"0 0 18px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Pronto vas a poder arrastrar el pin sobre el mapa real (Google Maps) para ubicar exacto tu propiedad. Por ahora usamos la comuna que ingresaste.</p>
+            <button onClick={()=>setMapModal(false)} style={{padding:"11px 20px",borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Entendido</button>
+          </div>
         </div>
       )}
     </div>
@@ -1422,6 +2041,31 @@ export default function App() {
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
+
+  // ─── Back-button navigation: handle Android back button gracefully ───
+  // Each time we open Detail or Chat, push a history entry. When popstate fires (back pressed),
+  // close the topmost open view instead of letting the browser close the app.
+  const pushedRef = useRef(0);
+  useEffect(() => {
+    const isOpen = (view || selectedChat) ? 1 : 0;
+    if (isOpen && pushedRef.current === 0) {
+      window.history.pushState({appModal: true}, "");
+      pushedRef.current = 1;
+    } else if (!isOpen && pushedRef.current > 0) {
+      pushedRef.current = 0;
+      // Don't call history.back here — that triggers popstate which would re-fire
+    }
+  }, [view, selectedChat]);
+  useEffect(() => {
+    const onPop = () => {
+      // Close in priority order: chat first, then detail
+      if (selectedChat) { setSelectedChat(null); pushedRef.current = 0; return; }
+      if (view) { setView(null); pushedRef.current = 0; return; }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [view, selectedChat]);
+
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2000); };
   const like=id=>{
     setProps(ps=>ps.map(p=>p.id===id?{...p,liked:!p.liked}:p));
