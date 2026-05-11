@@ -690,6 +690,14 @@ function Feed({props,onTap,onOpenReel}) {
 
   return (
     <div style={{paddingBottom:82}}>
+      <style>{`
+        .quick-filters-grid { display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:10px; }
+        @media (min-width: 900px) {
+          .quick-filters-grid { grid-template-columns: 1fr !important; gap:8px !important; }
+        }
+      `}</style>
+      <div className="pc-explore-layout">
+      <aside className="pc-filters-side">
       {/* Quick start — 4 main buttons */}
       <div style={{padding:"4px 14px 8px"}}>
         {/* Row 1 — Operación toggle (¿Qué buscas?) */}
@@ -703,8 +711,8 @@ function Feed({props,onTap,onOpenReel}) {
           </div>
         </div>
 
-        {/* Row 2 — 4 quick buttons in 2x2 grid */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+        {/* Row 2 — 4 quick buttons in 2x2 grid (mobile) / 1col stack (PC sidebar) */}
+        <div className="quick-filters-grid">
           {/* Tipo */}
           <button onClick={()=>setTypeMenu(true)} style={{padding:"12px 14px",borderRadius:12,background:fType?C.brandWash:C.surface,border:`1px solid ${fType?C.brand:C.line}`,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:3,fontFamily:Fb,textAlign:"left"}}>
             <span style={{fontSize:9,color:C.muted,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Tipo de propiedad</span>
@@ -794,6 +802,9 @@ function Feed({props,onTap,onOpenReel}) {
           </div>
         )}
       </div>
+      </aside>
+
+      <section className="pc-results-side">
 
       {/* Tipo picker modal */}
       {typeMenu && (
@@ -972,6 +983,8 @@ function Feed({props,onTap,onOpenReel}) {
           </div>
         </div>
       )}
+      </section>
+      </div>
     </div>
   );
 }
@@ -1990,7 +2003,10 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel}) {
 
 // ═══ MAIN ═══
 // ─── Desktop sidebar nav ───
-function SidebarNav({active,go}) {
+// ─── Desktop TopBar — horizontal nav, replaces the sidebar on PC ───
+function TopBarDesktop({active,go,onNotif}) {
+  const [notifOpen,setNotifOpen]=useState(false);
+  const unreadCount = NOTIFS.filter(n=>n.unread).length;
   const items=[
     {id:"feed",l:"Explorar",icon:"grid"},
     {id:"reels",l:"Reels",icon:"reels"},
@@ -1999,35 +2015,73 @@ function SidebarNav({active,go}) {
     {id:"profile",l:"Perfil",icon:"user"},
   ];
   return (
-    <aside className="pc-sidebar" style={{position:"fixed",left:0,top:0,bottom:0,width:240,background:C.surface,borderRight:`1px solid ${C.line}`,padding:"28px 18px",display:"none",flexDirection:"column",zIndex:50}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 8px 28px",borderBottom:`1px solid ${C.lineSoft}`,marginBottom:18}}>
+    <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:50,background:"rgba(252,251,248,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
+      {/* Logo (clickable → Explorar) */}
+      <button onClick={()=>go("feed")} style={{display:"flex",alignItems:"center",gap:10,background:"transparent",border:"none",cursor:"pointer",padding:0}}>
         <Logo size={32}/>
-        <span style={{fontSize:24,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em"}}>properties<span style={{color:C.brand}}>.</span></span>
-      </div>
-      <nav style={{display:"flex",flexDirection:"column",gap:4}}>
+        <div style={{textAlign:"left"}}>
+          <div style={{fontSize:24,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em",lineHeight:1}}>properties<span style={{color:C.brand}}>.</span></div>
+          <div style={{fontSize:8.5,color:C.muted,fontFamily:Fb,letterSpacing:"0.14em",textTransform:"uppercase",fontWeight:500,marginTop:3}}>Sector inmobiliario</div>
+        </div>
+      </button>
+
+      {/* Horizontal nav */}
+      <nav style={{display:"flex",alignItems:"center",gap:4}}>
         {items.map(i => {
           const on = active===i.id;
           return (
             <button key={i.id} onClick={()=>go(i.id)} style={{
-              display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderRadius:12,border:"none",cursor:"pointer",
+              display:"flex",alignItems:"center",gap:8,padding:"9px 14px",borderRadius:10,border:"none",cursor:"pointer",
               background:on?C.brandWash:i.accent?C.ink:"transparent",
               color:on?C.brand:i.accent?C.surface:C.text,
-              fontSize:14,fontWeight:on?600:500,fontFamily:Fb,letterSpacing:"0.01em",textAlign:"left",transition:"all 0.15s",
+              fontSize:13.5,fontWeight:on?600:500,fontFamily:Fb,letterSpacing:"0.01em",transition:"all 0.15s",
             }}>
-              <Icon name={i.icon} size={20} color={on?C.brand:i.accent?C.surface:C.text} stroke={1.6}/>
+              <Icon name={i.icon} size={17} color={on?C.brand:i.accent?C.surface:C.text} stroke={1.6}/>
               {i.l}
             </button>
           );
         })}
       </nav>
-      <div style={{marginTop:"auto",paddingTop:18,borderTop:`1px solid ${C.lineSoft}`,display:"flex",alignItems:"center",gap:10}}>
-        <Avatar initials={SELLER.avatar} size={36} verified/>
-        <div style={{flex:1,minWidth:0}}>
-          <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{SELLER.name}</p>
-          <p style={{margin:"2px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>Cuenta verificada</p>
+
+      {/* Right: bell + avatar */}
+      <div style={{display:"flex",alignItems:"center",gap:14,position:"relative"}}>
+        <button onClick={()=>setNotifOpen(!notifOpen)} style={{width:38,height:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+          <Icon name="bell" size={17} color={C.text} stroke={1.5}/>
+          {unreadCount>0 && <div style={{position:"absolute",top:7,right:7,width:8,height:8,borderRadius:"50%",background:C.terracotta,border:`2px solid ${C.surface}`}}/>}
+        </button>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <Avatar initials={SELLER.avatar} size={34} verified/>
+          <div style={{minWidth:0}}>
+            <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,whiteSpace:"nowrap"}}>{SELLER.name.split(" ")[0]}</p>
+            <p style={{margin:"1px 0 0",fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:400,letterSpacing:"0.04em"}}>Verificada</p>
+          </div>
         </div>
+
+        {notifOpen && <>
+          <div onClick={()=>setNotifOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
+          <div style={{position:"absolute",top:50,right:0,width:320,maxWidth:"calc(100vw - 28px)",background:C.surface,borderRadius:14,border:`1px solid ${C.line}`,boxShadow:`0 12px 32px ${C.ink}18`,overflow:"hidden",zIndex:201}}>
+            <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.lineSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>Notificaciones</span>
+              {unreadCount>0 && <span style={{fontSize:9.5,color:C.brand,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>{unreadCount} nuevas</span>}
+            </div>
+            <div style={{maxHeight:360,overflowY:"auto"}}>
+              {NOTIFS.map(n=>(
+                <div key={n.id} onClick={()=>{setNotifOpen(false); onNotif&&onNotif(n);}} style={{padding:"11px 16px",display:"flex",gap:10,borderBottom:`1px solid ${C.lineSoft}`,background:n.unread?C.brandWash+"40":"transparent",cursor:"pointer"}}>
+                  <div style={{width:30,height:30,borderRadius:"50%",background:n.unread?C.brandWash:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <Icon name={n.icon} size={14} color={n.unread?C.brand:C.muted} stroke={1.5}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{margin:0,fontSize:12,fontWeight:n.unread?500:400,color:C.ink,fontFamily:Fb,lineHeight:1.35}}>{n.t}</p>
+                    <p style={{margin:"2px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{n.d} · {n.time}</p>
+                  </div>
+                  {n.unread && <div style={{width:6,height:6,borderRadius:"50%",background:C.terracotta,marginTop:6,flexShrink:0}}/>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>}
       </div>
-    </aside>
+    </header>
   );
 }
 
@@ -2116,21 +2170,29 @@ export default function App() {
         @keyframes toastIn { 0%{opacity:0;transform:translate(-50%, 20px)} 100%{opacity:1;transform:translate(-50%, 0)} }
         @keyframes slideRight { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
         .mob-nav { display:flex; }
+        .mob-header { display: block; position: sticky; top: 0; z-index: 50; }
         .pc-only { display:none; }
         @media (min-width: 900px) {
-          .mob-nav { display:none; }
-          .pc-only, .pc-sidebar { display:flex !important; }
-          .main-app { max-width: none !important; margin-left: 240px !important; min-height: 100vh; }
-          .feed-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; padding: 0 18px !important; }
-          .reels-frame { max-width: 480px !important; margin: 0 auto !important; height: calc(100vh - 32px) !important; margin-top: 16px !important; border-radius: 24px !important; overflow: hidden; }
-          .pc-content { padding: 16px 24px 32px; max-width: 1100px; margin: 0 auto; }
+          .mob-nav { display:none !important; }
+          .mob-header { display:none !important; }
+          .pc-only, .pc-topbar { display:flex !important; }
+          .main-app { max-width: none !important; margin: 0 !important; }
+          .pc-content { padding: 24px 28px 40px; max-width: 1280px; margin: 0 auto; }
+          .feed-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; padding: 0 !important; }
+          .reels-frame { max-width: 460px !important; margin: 0 auto !important; height: calc(100vh - 88px) !important; margin-top: 12px !important; border-radius: 24px !important; overflow: hidden; }
+          /* Explore in PC: filters sidebar left + results right */
+          .pc-explore-layout { display: grid !important; grid-template-columns: 300px 1fr; gap: 28px; align-items: start; }
+          .pc-filters-side { position: sticky; top: 96px; background: ${C.surface}; border: 1px solid ${C.line}; border-radius: 16px; padding: 8px 0; }
+          .pc-results-side { min-width: 0; }
         }
       `}</style>
 
-      <SidebarNav active={tab} go={go}/>
+      <TopBarDesktop active={tab} go={go} onNotif={onNotifAction}/>
 
       <div className="main-app" style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,position:"relative"}}>
-        {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} />}
+        <div className="mob-header">
+          {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} />}
+        </div>
         <div className="pc-content">
         {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} />:(
           <>
