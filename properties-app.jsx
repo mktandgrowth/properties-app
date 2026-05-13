@@ -35,8 +35,8 @@ const SELLER = { name:"Valentina Sanchez", avatar:"VS", wa:"+56986420055" };
 const waUrl = (num, msg) => `https://wa.me/${String(num||"").replace(/\D/g,"")}${msg?`?text=${encodeURIComponent(msg)}`:""}`;
 
 const PROPS = [
-  { id:1,type:"Casa",operacion:"venta",price:8500,cur:"UF",loc:"La Reina, Santiago",comuna:"La Reina",beds:4,baths:3,parks:2,area:180,areaTerreno:280,nuevo:false,amenities:["piscina","quincho","jardin","terraza","condominio","dorm_servicio","calefaccion","cerco_electrico","orientacion_norte"],title:"Casa mediterránea con piscina y quincho",desc:"Amplia casa familiar. Living comedor con salida a terraza, jardín con piscina, quincho y bodega. Barrio residencial consolidado.",img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Piscina","Jardín","Quincho"],photos:12,hasVideo:true },
-  { id:2,type:"Departamento",operacion:"venta",price:4900,cur:"UF",loc:"Ñuñoa, Santiago",comuna:"Ñuñoa",beds:3,baths:2,parks:2,area:78,areaTotal:92,nuevo:true,amenities:["terraza","gimnasio","bodega","calefaccion","conserje_24","piscina_edif","orientacion_norte"],title:"Depto esquina con doble terraza panorámica",desc:"Último piso, vista despejada a la cordillera. Cocina equipada Bosch, 2 estacionamientos. Entrega inmediata.",img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Último piso","Entrega inmediata","Cordillera"],photos:10,hasVideo:true },
+  { id:1,type:"Casa",operacion:"venta",price:8500,cur:"UF",loc:"La Reina, Santiago",comuna:"La Reina",beds:4,baths:3,parks:2,area:180,areaTerreno:280,nuevo:false,amenities:["piscina","quincho","jardin","terraza","condominio","dorm_servicio","calefaccion","cerco_electrico","orient_norte"],title:"Casa mediterránea con piscina y quincho",desc:"Amplia casa familiar. Living comedor con salida a terraza, jardín con piscina, quincho y bodega. Barrio residencial consolidado.",img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Piscina","Jardín","Quincho"],photos:12,hasVideo:true },
+  { id:2,type:"Departamento",operacion:"venta",price:4900,cur:"UF",loc:"Ñuñoa, Santiago",comuna:"Ñuñoa",beds:3,baths:2,parks:2,area:78,areaTotal:92,nuevo:true,amenities:["terraza","gimnasio","bodega","calefaccion","conserje_24","piscina_edif","orient_norte"],title:"Depto esquina con doble terraza panorámica",desc:"Último piso, vista despejada a la cordillera. Cocina equipada Bosch, 2 estacionamientos. Entrega inmediata.",img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Último piso","Entrega inmediata","Cordillera"],photos:10,hasVideo:true },
   { id:3,type:"Parcela",operacion:"venta",price:1500,cur:"UF",loc:"Melipilla, RM",comuna:"Melipilla",beds:0,baths:0,parks:0,area:5000,hectareas:0.5,nuevo:false,amenities:["jardin","derechos_agua","frutal"],usoSitio:"agricola",title:"Parcela 5.000m² — camino a la costa",desc:"Parcela con árboles frutales, pozo profundo y electricidad trifásica. A 30 min de Santiago por autopista.",img:"https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["5.000m²","Pozo","Frutales"],photos:9,hasVideo:true },
 ];
 
@@ -129,30 +129,39 @@ const FILTER_CATALOGS = {
       { k:"piscina",          l:"Piscina",            icon:"pool" },
       { k:"quincho",          l:"Quincho",            icon:"grill" },
       { k:"jardin",           l:"Jardín",             icon:"tree" },
+      { k:"sala_estar",       l:"Sala de estar",      icon:"house" },
       { k:"condominio",       l:"En condominio",      icon:"house" },
       { k:"dorm_servicio",    l:"Dorm. servicio",     icon:"bed" },
-      { k:"calefaccion",      l:"Calefacción",        icon:"sparkle" },
-      { k:"orientacion_norte",l:"Orientación norte",  icon:"sparkle" },
+      { k:"calefaccion",      l:"Calefacción central",icon:"sparkle" },
       { k:"cerco_electrico",  l:"Cerco eléctrico",    icon:"sparkle" },
       { k:"guardia",          l:"Guardia",            icon:"user" },
       { k:"amoblada",         l:"Amoblada",           icon:"sparkle" },
+      // Orientación
+      { k:"orient_norte",     l:"Orientación Norte",  icon:"sparkle", group:"orientacion" },
+      { k:"orient_sur",       l:"Orientación Sur",    icon:"sparkle", group:"orientacion" },
+      { k:"orient_este",      l:"Orientación Este",   icon:"sparkle", group:"orientacion" },
+      { k:"orient_oeste",     l:"Orientación Oeste",  icon:"sparkle", group:"orientacion" },
     ],
-    showBeds: true, showBaths: true, showParks: true, showArea: true, showTerreno: true,
+    showBeds: true, showBaths: true, showParks: false, showArea: true, showTerreno: true,
   },
   Departamento: {
     amenities: [
       { k:"terraza",          l:"Terraza",            icon:"terrace" },
       { k:"jardin",           l:"Jardín",             icon:"tree" },
       { k:"dorm_servicio",    l:"Dorm. servicio",     icon:"bed" },
-      { k:"calefaccion",      l:"Calefacción",        icon:"sparkle" },
+      { k:"calefaccion",      l:"Calefacción central",icon:"sparkle" },
       { k:"bodega",           l:"Bodega",             icon:"storage" },
-      { k:"orientacion_norte",l:"Orientación norte",  icon:"sparkle" },
       { k:"conserje_24",      l:"Conserje 24h",       icon:"user" },
       { k:"piscina_edif",     l:"Piscina edificio",   icon:"pool" },
       { k:"quincho_edif",     l:"Quincho edificio",   icon:"grill" },
       { k:"gimnasio",         l:"Gimnasio",           icon:"gym" },
       { k:"salon_eventos",    l:"Salón de eventos",   icon:"sparkle" },
       { k:"amoblado",         l:"Amoblado",           icon:"sparkle" },
+      // Orientación
+      { k:"orient_norte",     l:"Orientación Norte",  icon:"sparkle", group:"orientacion" },
+      { k:"orient_sur",       l:"Orientación Sur",    icon:"sparkle", group:"orientacion" },
+      { k:"orient_este",      l:"Orientación Este",   icon:"sparkle", group:"orientacion" },
+      { k:"orient_oeste",     l:"Orientación Oeste",  icon:"sparkle", group:"orientacion" },
     ],
     showBeds: true, showBaths: true, showParks: true, showArea: true, showTotal: true,
   },
@@ -1214,13 +1223,31 @@ function Sell() {
     currency:"UF", price:"",
     loc:"", beds:"", baths:"", parks:"",
     area:"", areaTerreno:"", areaTotal:"", hectareas:"", privados:"",
-    photos:[], videoUp:false, amenities:[],
+    photos:[], videoUp:false, videoTakes:[false,false,false,false], amenities:[],
   });
   const [aiDone,setAiDone]=useState(false);
   const [uploadFor,setUploadFor]=useState(null);
   const [mapModal,setMapModal]=useState(false);
   const [locFocus,setLocFocus]=useState(false);
+  const [published,setPublished]=useState(false);
   const total=6;
+
+  const handlePublish = () => {
+    // Simulate publishing — in production, POST to backend
+    setPublished(true);
+  };
+  const resetForm = () => {
+    setForm({
+      type:"", operacion:"venta", title:"", desc:"",
+      currency:"UF", price:"",
+      loc:"", beds:"", baths:"", parks:"",
+      area:"", areaTerreno:"", areaTotal:"", hectareas:"", privados:"",
+      photos:[], videoUp:false, videoTakes:[false,false,false,false], amenities:[],
+    });
+    setAiDone(false);
+    setStep(1);
+    setPublished(false);
+  };
   // Filter catalog for the current type
   const sellCatalog = form.type ? FILTER_CATALOGS[form.type] : null;
   const sellAmenities = sellCatalog?.amenities || AMENITIES;
@@ -1241,8 +1268,16 @@ function Sell() {
       const existing = form.photoFiles || {};
       const newPhotos = form.photos.includes(slot) ? form.photos : [...form.photos, slot];
       setForm({...form, photos: newPhotos, photoFiles: {...existing, [slot]: url}});
+    } else if (uploadFor.kind === "video-take") {
+      // Individual video take
+      const takes = [...(form.videoTakes || [false,false,false,false])];
+      takes[uploadFor.slot - 1] = true;
+      const allDone = takes.every(Boolean);
+      const takeFiles = {...(form.videoTakeFiles||{}), [uploadFor.slot]: url};
+      setForm({...form, videoTakes: takes, videoTakeFiles: takeFiles, videoUp: allDone});
     } else if (uploadFor.kind === "video") {
-      setForm({...form, videoUp: true, videoFile: url});
+      // Single video covering everything
+      setForm({...form, videoUp: true, videoFile: url, videoTakes:[true,true,true,true]});
     }
     setUploadFor(null);
     e.target.value = ""; // reset so the same file can be picked again
@@ -1442,26 +1477,47 @@ function Sell() {
       {step===4&&<div>
         <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Graba tu video</h3>
         <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 14px"}}>4 tomas — la IA lo edita por ti</p>
-        {VID_GUIDE.map(g=>(
-          <div key={g.n} style={{padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,display:"flex",gap:12,marginBottom:8}}>
-            <div style={{width:42,height:42,borderRadius:10,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <Icon name={g.icon} size={20} color={C.brand} stroke={1.5}/>
-            </div>
-            <div style={{flex:1}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>Toma {g.n} · {g.t}</span>
-                <span style={{fontSize:10,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>{g.dur}</span>
+        {VID_GUIDE.map(g=>{
+          const isUp = (form.videoTakes||[])[g.n-1];
+          return (
+            <div key={g.n} style={{padding:14,borderRadius:12,background:isUp?C.brandWash:C.surface,border:`1px solid ${isUp?C.brand:C.line}`,display:"flex",gap:12,marginBottom:8,alignItems:"center"}}>
+              <div style={{width:42,height:42,borderRadius:10,background:isUp?C.brand:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <Icon name={isUp?"check":g.icon} size={20} color={isUp?C.surface:C.brand} stroke={isUp?2:1.5}/>
               </div>
-              <p style={{margin:0,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{g.d}</p>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,gap:8}}>
+                  <span style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>Toma {g.n} · {g.t}</span>
+                  <span style={{fontSize:10,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{g.dur}</span>
+                </div>
+                <p style={{margin:0,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{isUp?"Grabada ✓ — toca para reemplazar":g.d}</p>
+              </div>
+              <button onClick={()=>setUploadFor({kind:"video-take",slot:g.n,label:`Toma ${g.n}: ${g.t}`})} style={{padding:"8px 12px",borderRadius:8,background:isUp?C.surface:C.brand,border:isUp?`1px solid ${C.brand}`:"none",color:isUp?C.brand:C.surface,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,whiteSpace:"nowrap",letterSpacing:"0.02em",flexShrink:0}}>
+                {isUp?"Cambiar":"Subir"}
+              </button>
             </div>
+          );
+        })}
+
+        {/* Progress indicator */}
+        <div style={{margin:"10px 0 12px",padding:"10px 12px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",gap:3,flex:1}}>
+            {(form.videoTakes||[false,false,false,false]).map((up,i)=>(
+              <div key={i} style={{flex:1,height:4,borderRadius:2,background:up?C.forest:C.line,transition:"all 0.25s"}}/>
+            ))}
           </div>
-        ))}
-        <button onClick={()=>setUploadFor({kind:"video",slot:null,label:"video"})} style={{width:"100%",padding:14,borderRadius:12,marginTop:8,background:form.videoUp?C.brandWash:C.surface,border:`1.5px ${form.videoUp?"solid":"dashed"} ${C.brand}${form.videoUp?"":"60"}`,cursor:"pointer",color:C.brand,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <Icon name={form.videoUp?"checkCircle":"video"} size={18} color={C.brand} stroke={1.5}/>{form.videoUp?"Video listo (4 tomas)":"Subir video (4 tomas)"}
+          <span style={{fontSize:11.5,color:(form.videoTakes||[]).every(Boolean)?C.forest:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em"}}>
+            {(form.videoTakes||[]).filter(Boolean).length}/4 tomas
+          </span>
+        </div>
+
+        {/* Alternative: single full video */}
+        <button onClick={()=>setUploadFor({kind:"video",slot:null,label:"video completo"})} style={{width:"100%",padding:12,borderRadius:10,marginTop:4,background:"transparent",border:`1px dashed ${C.line}`,cursor:"pointer",color:C.muted,fontSize:11.5,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <Icon name="video" size={14} color={C.muted} stroke={1.5}/>O subir un video completo (sustituye las 4 tomas)
         </button>
-        <div style={{marginTop:10,padding:12,borderRadius:10,background:C.brandWash,border:`1px solid ${C.line}`,display:"flex",alignItems:"center",gap:10}}>
-          <Icon name="sparkle" size={16} color={C.brand} stroke={1.5}/>
-          <p style={{margin:0,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.4}}>La IA edita tus tomas con transiciones y música</p>
+
+        <div style={{marginTop:10,padding:12,borderRadius:10,background:C.mintWash,border:`1px solid #CDDBCE`,display:"flex",alignItems:"center",gap:10}}>
+          <Icon name="sparkle" size={16} color={C.forest} stroke={1.5}/>
+          <p style={{margin:0,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.4}}>La IA edita tus 4 tomas con transiciones y música automáticas</p>
         </div>
       </div>}
 
@@ -1514,7 +1570,7 @@ function Sell() {
                 </div>
               ))}
             </div>
-            <button style={{width:"100%",padding:15,borderRadius:12,background:C.forest,border:"none",cursor:"pointer",color:C.surface,fontSize:13.5,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:`0 4px 14px ${C.forest}30`}}>
+            <button onClick={handlePublish} style={{width:"100%",padding:15,borderRadius:12,background:C.forest,border:"none",cursor:"pointer",color:C.surface,fontSize:13.5,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:`0 4px 14px ${C.forest}30`}}>
               Publicar propiedad<Icon name="send" size={16} color={C.surface} stroke={1.6}/>
             </button>
           </div>
@@ -1538,7 +1594,7 @@ function Sell() {
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,background:C.bg,borderRadius:"20px 20px 0 0",padding:"18px 16px env(safe-area-inset-bottom,20px)",animation:"slideUp 0.25s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <h3 style={{margin:0,fontSize:16,fontWeight:400,color:C.ink,fontFamily:Fs}}>
-                {uploadFor.kind==="photo"?`Foto: ${uploadFor.label}`:"Subir video"}
+                {uploadFor.kind==="photo"?`Foto: ${uploadFor.label}`:uploadFor.kind==="video-take"?uploadFor.label:"Subir video"}
               </h3>
               <button onClick={()=>setUploadFor(null)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
             </div>
@@ -1582,6 +1638,35 @@ function Sell() {
             <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Marca tu propiedad</h3>
             <p style={{margin:"0 0 18px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Pronto vas a poder arrastrar el pin sobre el mapa real (Google Maps) para ubicar exacto tu propiedad. Por ahora usamos la comuna que ingresaste.</p>
             <button onClick={()=>setMapModal(false)} style={{padding:"11px 20px",borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Entendido</button>
+          </div>
+        </div>
+      )}
+
+      {/* Published success overlay */}
+      {published && (
+        <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(28,26,23,0.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <style>{`
+            @keyframes successIn { 0%{opacity:0;transform:scale(0.85) translateY(10px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
+            @keyframes pulseRing { 0%{transform:scale(0.6);opacity:0.6} 100%{transform:scale(1.6);opacity:0} }
+            @keyframes checkPop { 0%{transform:scale(0)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }
+          `}</style>
+          <div style={{maxWidth:400,width:"100%",background:C.surface,borderRadius:22,padding:"32px 26px 26px",textAlign:"center",animation:"successIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)"}}>
+            <div style={{margin:"0 auto 18px",width:84,height:84,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <div style={{position:"absolute",inset:0,borderRadius:"50%",background:C.forest,opacity:0.15,animation:"pulseRing 1.2s ease-out infinite"}}/>
+              <div style={{width:84,height:84,borderRadius:"50%",background:C.forest,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:2,animation:"checkPop 0.5s ease-out 0.1s both"}}>
+                <Icon name="check" size={44} color={C.surface} stroke={2.5}/>
+              </div>
+            </div>
+            <h3 style={{margin:"0 0 8px",fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>¡Tu propiedad está publicada!</h3>
+            <p style={{margin:"0 0 22px",fontSize:13.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>{form.type||"Tu propiedad"} en {form.loc||"tu zona"} ya está visible para los interesados. Te notificaremos cuando alguien te escriba.</p>
+            <div style={{padding:"12px 14px",background:C.brandWash,borderRadius:12,marginBottom:18,textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
+              <Icon name="sparkle" size={16} color={C.brand} stroke={1.5}/>
+              <p style={{margin:0,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>La IA va a optimizar tu publicación durante las próximas horas para subirla en los rankings.</p>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={resetForm} style={{flex:1,padding:13,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Publicar otra</button>
+              <button onClick={()=>{resetForm();}} style={{flex:1,padding:13,borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Ver mis publicaciones</button>
+            </div>
           </div>
         </div>
       )}
