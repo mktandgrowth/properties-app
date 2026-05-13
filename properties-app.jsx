@@ -60,21 +60,57 @@ const NOTIFS = [
 ];
 
 const PHOTO_GUIDE = [
-  { s:1,l:"Fachada / Entrada",r:true,t:"Foto frontal con buena luz" },
-  { s:2,l:"Living / Estar",r:true,t:"Desde la esquina, muestra amplitud" },
-  { s:3,l:"Cocina",r:true,t:"Luces encendidas, mesones despejados" },
-  { s:4,l:"Dormitorio principal",r:true,t:"Cama hecha, cortinas abiertas" },
-  { s:5,l:"Baño principal",r:false,t:"Limpio y ordenado" },
-  { s:6,l:"Vista / Terraza",r:false,t:"Desde adentro hacia afuera" },
-  { s:7,l:"Segundo dormitorio",r:false,t:"Mismo estilo que el principal" },
-  { s:8,l:"Estacionamiento",r:false,t:"Muestra el espacio disponible" },
+  { s:1,l:"Fachada / Entrada",r:true,t:"Foto frontal con buena luz",
+    tips:["Párate frente a la entrada","Celular VERTICAL — formato reels","Estabiliza con las dos manos","Toma con luz de día — evita contraluz","Incluye toda la fachada si es posible"],
+    avoid:["No tomar contra el sol","No torcer la cámara"]
+  },
+  { s:2,l:"Living / Estar",r:true,t:"Desde la esquina, muestra amplitud",
+    tips:["Párate en una esquina del living","Celular VERTICAL a la altura del pecho","Estabiliza con las dos manos","Enciende todas las luces","Despeja objetos personales antes"],
+    avoid:["No tomar muy cerca","Evita reflejos en ventanas"]
+  },
+  { s:3,l:"Cocina",r:true,t:"Luces encendidas, mesones despejados",
+    tips:["Despeja todos los mesones","Celular VERTICAL — estabiliza con las dos manos","Enciende las luces sobre la encimera","Si hay isla, fotografíala como protagonista"],
+    avoid:["No mostrar platos sucios","Evita objetos personales visibles"]
+  },
+  { s:4,l:"Dormitorio principal",r:true,t:"Cama hecha, cortinas abiertas",
+    tips:["Haz la cama prolijamente","Abre las cortinas — luz natural","Celular VERTICAL desde la puerta — estabiliza","Quita ropa o cargadores de la mesa de noche"],
+    avoid:["No tomar la cama deshecha","Evita ropa colgada"]
+  },
+  { s:5,l:"Baño principal",r:false,t:"Limpio y ordenado",
+    tips:["Limpia espejo y grifería","Saca toallas y artículos personales","Celular VERTICAL desde la puerta — estabiliza","Cierra la tapa del WC"],
+    avoid:["No mostrar productos personales","Sin toallas colgadas"]
+  },
+  { s:6,l:"Vista / Terraza",r:false,t:"Desde adentro hacia afuera",
+    tips:["Párate dentro y apunta hacia la vista","Celular VERTICAL — estabiliza firme","Mejor con luz de día","Si hay terraza, muéstrala con mobiliario"],
+    avoid:["No tomar en horario nocturno","Evita reflejos"]
+  },
+  { s:7,l:"Segundo dormitorio",r:false,t:"Mismo estilo que el principal",
+    tips:["Mismo encuadre que dormitorio principal","Celular VERTICAL — estabiliza con las dos manos","Cama hecha, cortinas abiertas","Toma desde la puerta"],
+    avoid:["Evita inconsistencia con el principal"]
+  },
+  { s:8,l:"Estacionamiento / Bodega",r:false,t:"Muestra el espacio disponible",
+    tips:["Celular VERTICAL — estabiliza firme","Si es subterráneo, asegura buena luz","Si es exterior, evita contraluz"],
+    avoid:["No tomar con autos al medio"]
+  },
 ];
 
 const VID_GUIDE = [
-  { n:1,t:"Gran angular — Entrada",d:"Paneo lento mostrando fachada y entrada.",icon:"aperture",dur:"8-12s" },
-  { n:2,t:"Interior principal",d:"Camina por el living. Mantén estable.",icon:"house",dur:"10-15s" },
-  { n:3,t:"Espacio secundario",d:"Dormitorio, cocina o segundo piso.",icon:"door",dur:"8-12s" },
-  { n:4,t:"Exterior y entorno",d:"Jardín, calle. Plano abierto final.",icon:"tree",dur:"10-15s" },
+  { n:1,t:"Gran angular — Entrada",d:"Paneo lento mostrando fachada y entrada.",icon:"aperture",dur:"8-12s",
+    tips:["Celular VERTICAL — formato reels","Estabiliza firme con las dos manos","Empieza apuntando a la calle, gira lento hacia la entrada (de izquierda a derecha)","Camina hacia adelante muy despacio","Buena luz de día"],
+    avoid:["No moverse rápido","Evita zoom digital","No tomar de noche","No grabar horizontal"]
+  },
+  { n:2,t:"Interior principal",d:"Camina por el living. Mantén estable.",icon:"house",dur:"10-15s",
+    tips:["Celular VERTICAL, sostenlo con las dos manos firme","Camina lento — usa los pies, no las manos","Estabiliza el celular pegado al cuerpo","Empieza desde la entrada y avanza al fondo","Todas las luces encendidas"],
+    avoid:["No correr","No agitar el celular","No grabar horizontal"]
+  },
+  { n:3,t:"Espacio secundario",d:"Dormitorio, cocina o segundo piso.",icon:"door",dur:"8-12s",
+    tips:["Elige el espacio que más destaque","Celular VERTICAL — estabiliza con las dos manos","Camina desde la puerta hacia adentro","Foco en lo más atractivo"],
+    avoid:["No grabar áreas desordenadas","No grabar horizontal"]
+  },
+  { n:4,t:"Exterior y entorno",d:"Jardín, calle. Plano abierto final.",icon:"tree",dur:"10-15s",
+    tips:["Sal al jardín o terraza","Celular VERTICAL — estabiliza firme","Paneo lento de izquierda a derecha","Cierre con vista panorámica del entorno"],
+    avoid:["No grabar contra el sol","Evita ruido fuerte de tráfico","No grabar horizontal"]
+  },
 ];
 
 // UF rate for CLP conversion (mock — production should pull from API)
@@ -1258,29 +1294,39 @@ function Sell() {
   const inp={display:"block",width:"100%",padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",marginTop:6,boxSizing:"border-box"};
   const lbl={fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.1em"};
 
-  // When the user picks a file via <input type="file">, save its objectURL and mark slot as filled
+  // When the user picks a file, save url to uploadFor.tempUrl and move to phase="preview"
   const onFileChosen = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file || !uploadFor) { setUploadFor(null); return; }
     const url = URL.createObjectURL(file);
+    // For video completo (sustituye 4 tomas), apply immediately — no preview phase
+    if (uploadFor.kind === "video") {
+      setForm({...form, videoUp: true, videoFile: url, videoTakes:[true,true,true,true]});
+      setUploadFor(null);
+      e.target.value = "";
+      return;
+    }
+    // For photo + video-take, move to preview phase
+    setUploadFor({...uploadFor, phase:"preview", tempUrl:url, tempIsVideo: uploadFor.kind==="video-take"});
+    e.target.value = "";
+  };
+
+  // User confirms the captured file
+  const confirmCapture = () => {
+    if (!uploadFor || !uploadFor.tempUrl) return;
     if (uploadFor.kind === "photo") {
       const slot = uploadFor.slot;
       const existing = form.photoFiles || {};
       const newPhotos = form.photos.includes(slot) ? form.photos : [...form.photos, slot];
-      setForm({...form, photos: newPhotos, photoFiles: {...existing, [slot]: url}});
+      setForm({...form, photos: newPhotos, photoFiles: {...existing, [slot]: uploadFor.tempUrl}});
     } else if (uploadFor.kind === "video-take") {
-      // Individual video take
       const takes = [...(form.videoTakes || [false,false,false,false])];
       takes[uploadFor.slot - 1] = true;
       const allDone = takes.every(Boolean);
-      const takeFiles = {...(form.videoTakeFiles||{}), [uploadFor.slot]: url};
+      const takeFiles = {...(form.videoTakeFiles||{}), [uploadFor.slot]: uploadFor.tempUrl};
       setForm({...form, videoTakes: takes, videoTakeFiles: takeFiles, videoUp: allDone});
-    } else if (uploadFor.kind === "video") {
-      // Single video covering everything
-      setForm({...form, videoUp: true, videoFile: url, videoTakes:[true,true,true,true]});
     }
     setUploadFor(null);
-    e.target.value = ""; // reset so the same file can be picked again
   };
 
   return (
@@ -1446,7 +1492,7 @@ function Sell() {
           {PHOTO_GUIDE.map(g=>{
             const up=form.photos.includes(g.s);
             const previewUrl = (form.photoFiles||{})[g.s];
-            return <div key={g.s} onClick={()=>setUploadFor({kind:"photo",slot:g.s,label:g.l})} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,background:up?C.brandWash:C.surface,border:`1px solid ${up?C.brand:C.line}`,cursor:"pointer"}}>
+            return <div key={g.s} onClick={()=>setUploadFor({kind:"photo",slot:g.s,label:g.l,phase:"guide",guideData:g})} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,background:up?C.brandWash:C.surface,border:`1px solid ${up?C.brand:C.line}`,cursor:"pointer"}}>
               {previewUrl ? (
                 <div style={{width:42,height:42,borderRadius:10,overflow:"hidden",flexShrink:0,position:"relative"}}>
                   <img src={previewUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
@@ -1491,7 +1537,7 @@ function Sell() {
                 </div>
                 <p style={{margin:0,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{isUp?"Grabada ✓ — toca para reemplazar":g.d}</p>
               </div>
-              <button onClick={()=>setUploadFor({kind:"video-take",slot:g.n,label:`Toma ${g.n}: ${g.t}`})} style={{padding:"8px 12px",borderRadius:8,background:isUp?C.surface:C.brand,border:isUp?`1px solid ${C.brand}`:"none",color:isUp?C.brand:C.surface,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,whiteSpace:"nowrap",letterSpacing:"0.02em",flexShrink:0}}>
+              <button onClick={()=>setUploadFor({kind:"video-take",slot:g.n,label:`Toma ${g.n}: ${g.t}`,phase:"guide",guideData:g})} style={{padding:"8px 12px",borderRadius:8,background:isUp?C.surface:C.brand,border:isUp?`1px solid ${C.brand}`:"none",color:isUp?C.brand:C.surface,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,whiteSpace:"nowrap",letterSpacing:"0.02em",flexShrink:0}}>
                 {isUp?"Cambiar":"Subir"}
               </button>
             </div>
@@ -1588,44 +1634,141 @@ function Sell() {
         </div>
       )}
 
-      {/* Upload source modal — Cámara o Galería */}
+      {/* Upload modal — 3 phases: guide → source → preview */}
       {uploadFor && (
-        <div onClick={()=>setUploadFor(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,background:C.bg,borderRadius:"20px 20px 0 0",padding:"18px 16px env(safe-area-inset-bottom,20px)",animation:"slideUp 0.25s ease"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <h3 style={{margin:0,fontSize:16,fontWeight:400,color:C.ink,fontFamily:Fs}}>
-                {uploadFor.kind==="photo"?`Foto: ${uploadFor.label}`:uploadFor.kind==="video-take"?uploadFor.label:"Subir video"}
-              </h3>
-              <button onClick={()=>setUploadFor(null)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
-            </div>
-            <p style={{margin:"0 0 16px",fontSize:12.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>¿Cómo quieres {uploadFor.kind==="photo"?"subir la foto":"subir el video"}?</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {/* Cámara — capture="environment" abre la cámara trasera en mobile */}
-              <label style={{padding:"18px 12px",borderRadius:14,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",fontFamily:Fb,textAlign:"center",display:"block"}}>
-                <input
-                  type="file"
-                  accept={uploadFor.kind==="photo"?"image/*":"video/*"}
-                  capture="environment"
-                  onChange={onFileChosen}
-                  style={{position:"absolute",width:1,height:1,opacity:0,pointerEvents:"none"}}
-                />
-                <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icon name={uploadFor.kind==="photo"?"camera":"video"} size={28} color={C.brand} stroke={1.5}/></div>
-                <div style={{fontSize:13.5,fontWeight:500,color:C.ink,marginBottom:2}}>Usar cámara</div>
-                <div style={{fontSize:10.5,color:C.muted,fontWeight:400}}>{uploadFor.kind==="photo"?"Toma una foto ahora":"Graba ahora"}</div>
-              </label>
-              {/* Galería — sin capture, abre el selector estándar (camera roll/files) */}
-              <label style={{padding:"18px 12px",borderRadius:14,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",fontFamily:Fb,textAlign:"center",display:"block"}}>
-                <input
-                  type="file"
-                  accept={uploadFor.kind==="photo"?"image/*":"video/*"}
-                  onChange={onFileChosen}
-                  style={{position:"absolute",width:1,height:1,opacity:0,pointerEvents:"none"}}
-                />
-                <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icon name="grid" size={28} color={C.brand} stroke={1.5}/></div>
-                <div style={{fontSize:13.5,fontWeight:500,color:C.ink,marginBottom:2}}>Desde galería</div>
-                <div style={{fontSize:10.5,color:C.muted,fontWeight:400}}>Elige uno guardado en {uploadFor.kind==="photo"?"el celular/PC":"tu dispositivo"}</div>
-              </label>
-            </div>
+        <div onClick={()=>setUploadFor(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,background:C.bg,borderRadius:"20px 20px 0 0",maxHeight:"92vh",overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+
+            {/* PHASE 1: GUIDE — instructions before opening camera */}
+            {uploadFor.phase==="guide" && uploadFor.guideData && (
+              <div style={{padding:"18px 18px env(safe-area-inset-bottom,20px)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                  <span style={{fontSize:10,color:C.brand,fontFamily:Fb,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase"}}>Guía MKT</span>
+                  <button onClick={()=>setUploadFor(null)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+                </div>
+
+                {/* Hero icon + title */}
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"14px 16px",borderRadius:14,background:C.brandWash,border:`1px solid ${C.brand}30`}}>
+                  <div style={{width:50,height:50,borderRadius:12,background:C.brand,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <Icon name={uploadFor.kind==="photo"?"camera":(uploadFor.guideData.icon||"video")} size={26} color={C.surface} stroke={1.6}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{margin:0,fontSize:9.5,color:C.brand,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>{uploadFor.kind==="photo"?`Foto ${uploadFor.guideData.s}`:`Toma ${uploadFor.guideData.n}`}{uploadFor.guideData.dur?` · ${uploadFor.guideData.dur}`:""}</p>
+                    <h3 style={{margin:"2px 0 0",fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{uploadFor.guideData.l || uploadFor.guideData.t}</h3>
+                  </div>
+                </div>
+
+                {/* Tips */}
+                {uploadFor.guideData.tips && uploadFor.guideData.tips.length>0 && (
+                  <div style={{marginBottom:14}}>
+                    <p style={{margin:"0 0 10px",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Para que quede pro</p>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {uploadFor.guideData.tips.map((tip,i)=>(
+                        <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                          <div style={{width:18,height:18,borderRadius:"50%",background:C.mintWash,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                            <Icon name="check" size={10} color={C.forest} stroke={2.5}/>
+                          </div>
+                          <span style={{fontSize:12.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{tip}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Avoid */}
+                {uploadFor.guideData.avoid && uploadFor.guideData.avoid.length>0 && (
+                  <div style={{marginBottom:18,padding:"10px 12px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`}}>
+                    <p style={{margin:"0 0 6px",fontSize:10.5,color:C.terracotta,fontFamily:Fb,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase"}}>Evita</p>
+                    {uploadFor.guideData.avoid.map((a,i)=>(
+                      <div key={i} style={{display:"flex",gap:6,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>
+                        <span style={{color:C.terracotta}}>×</span>{a}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* CTA */}
+                <button onClick={()=>setUploadFor({...uploadFor,phase:"source"})} style={{width:"100%",padding:14,borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em"}}>
+                  <Icon name="checkCircle" size={17} color={C.surface} stroke={1.7}/>
+                  Entendido, continuar
+                </button>
+              </div>
+            )}
+
+            {/* PHASE 2: SOURCE — choose camera or gallery */}
+            {(uploadFor.phase==="source" || (!uploadFor.phase && uploadFor.kind==="video")) && (
+              <div style={{padding:"18px 16px env(safe-area-inset-bottom,20px)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                  <h3 style={{margin:0,fontSize:16,fontWeight:400,color:C.ink,fontFamily:Fs}}>
+                    {uploadFor.kind==="photo"?`Foto: ${uploadFor.label}`:uploadFor.kind==="video-take"?uploadFor.label:"Subir video"}
+                  </h3>
+                  <button onClick={()=>setUploadFor(null)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+                </div>
+                <p style={{margin:"0 0 16px",fontSize:12.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>¿Cómo quieres {uploadFor.kind==="photo"?"subir la foto":"subir el video"}?</p>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <label style={{padding:"18px 12px",borderRadius:14,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",fontFamily:Fb,textAlign:"center",display:"block",position:"relative"}}>
+                    <input type="file" accept={uploadFor.kind==="photo"?"image/*":"video/*"} capture="environment" onChange={onFileChosen} style={{position:"absolute",width:1,height:1,opacity:0,pointerEvents:"none"}}/>
+                    <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icon name={uploadFor.kind==="photo"?"camera":"video"} size={28} color={C.brand} stroke={1.5}/></div>
+                    <div style={{fontSize:13.5,fontWeight:500,color:C.ink,marginBottom:2}}>Usar cámara</div>
+                    <div style={{fontSize:10.5,color:C.muted,fontWeight:400}}>{uploadFor.kind==="photo"?"Toma una foto ahora":"Graba ahora"}</div>
+                  </label>
+                  <label style={{padding:"18px 12px",borderRadius:14,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",fontFamily:Fb,textAlign:"center",display:"block",position:"relative"}}>
+                    <input type="file" accept={uploadFor.kind==="photo"?"image/*":"video/*"} onChange={onFileChosen} style={{position:"absolute",width:1,height:1,opacity:0,pointerEvents:"none"}}/>
+                    <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Icon name="grid" size={28} color={C.brand} stroke={1.5}/></div>
+                    <div style={{fontSize:13.5,fontWeight:500,color:C.ink,marginBottom:2}}>Desde galería</div>
+                    <div style={{fontSize:10.5,color:C.muted,fontWeight:400}}>Elige uno guardado</div>
+                  </label>
+                </div>
+                {uploadFor.guideData && (
+                  <button onClick={()=>setUploadFor({...uploadFor,phase:"guide"})} style={{marginTop:12,padding:"8px 12px",borderRadius:8,background:"transparent",border:"none",color:C.muted,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                    <Icon name="chevronLeft" size={12} color={C.muted} stroke={1.6}/>Volver a la guía
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* PHASE 3: PREVIEW — show captured file with feedback */}
+            {uploadFor.phase==="preview" && uploadFor.tempUrl && (
+              <div style={{padding:"18px 16px env(safe-area-inset-bottom,20px)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <span style={{fontSize:10,color:C.forest,fontFamily:Fb,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase"}}>Vista previa</span>
+                  <button onClick={()=>setUploadFor(null)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+                </div>
+
+                {/* Media preview */}
+                <div style={{position:"relative",marginBottom:14,borderRadius:14,overflow:"hidden",background:"#000",aspectRatio:uploadFor.tempIsVideo?"9/16":"4/3",maxHeight:"50vh"}}>
+                  {uploadFor.tempIsVideo
+                    ? <video src={uploadFor.tempUrl} controls style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+                    : <img src={uploadFor.tempUrl} alt="preview" style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+                  }
+                  <div style={{position:"absolute",top:10,left:10,padding:"4px 10px",borderRadius:999,background:"rgba(47,74,55,0.92)",backdropFilter:"blur(8px)",display:"inline-flex",alignItems:"center",gap:5}}>
+                    <Icon name="check" size={11} color={C.surface} stroke={2.5}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:600,letterSpacing:"0.06em"}}>{uploadFor.tempIsVideo?"Grabado":"Capturada"}</span>
+                  </div>
+                </div>
+
+                {/* Checklist visual */}
+                {uploadFor.guideData?.tips && (
+                  <div style={{marginBottom:16,padding:"12px 14px",borderRadius:12,background:C.mintWash,border:`1px solid #CDDBCE`}}>
+                    <p style={{margin:"0 0 8px",fontSize:11.5,color:C.forest,fontFamily:Fb,fontWeight:600,letterSpacing:"0.04em"}}>Revisa rápido antes de continuar:</p>
+                    {uploadFor.guideData.tips.slice(0,3).map((tip,i)=>(
+                      <div key={i} style={{display:"flex",gap:8,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>
+                        <Icon name="check" size={12} color={C.forest} stroke={2.2}/>{tip}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setUploadFor({...uploadFor,phase:"source",tempUrl:null})} style={{flex:1,padding:13,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                    <Icon name={uploadFor.tempIsVideo?"video":"camera"} size={14} color={C.text} stroke={1.6}/>Tomar otra
+                  </button>
+                  <button onClick={confirmCapture} style={{flex:1.4,padding:13,borderRadius:12,background:C.forest,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:`0 4px 14px ${C.forest}30`}}>
+                    <Icon name="check" size={14} color={C.surface} stroke={2}/>Usar esta {uploadFor.tempIsVideo?"toma":"foto"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
