@@ -1697,7 +1697,7 @@ function ReelEditor({form, setForm}){
   );
 }
 
-function Sell() {
+function Sell({onPublish, goTo}) {
   const [step,setStep]=useState(1);
   const [form,setForm]=useState({
     type:"", operacion:"venta", title:"", desc:"",
@@ -1744,8 +1744,70 @@ function Sell() {
     }
   }, [form.videoTakes, form.type, form.loc, form.beds, form.baths, form.area, form.hectareas, form.privados]);
 
-  const handlePublish = () => {
-    // Simulate publishing — in production, POST to backend
+  const handlePublish = async () => {
+    // If user typed an address but never selected from Google's dropdown,
+    // try to geocode the text so the property still gets coords for the map.
+    let finalLat = form.lat, finalLng = form.lng, finalLoc = form.loc, finalComuna = form.comuna;
+    if ((!finalLat || !finalLng) && form.loc && window.google?.maps?.Geocoder) {
+      try {
+        const g = new window.google.maps.Geocoder();
+        const res = await new Promise((resolve) => {
+          g.geocode({ address: form.loc + ", Chile", componentRestrictions:{country:"CL"} }, (results, status) => {
+            if (status === "OK" && results && results[0]) resolve(results[0]); else resolve(null);
+          });
+        });
+        if (res) {
+          finalLat = res.geometry.location.lat();
+          finalLng = res.geometry.location.lng();
+          finalLoc = res.formatted_address || finalLoc;
+          (res.address_components || []).forEach(c => {
+            if (!finalComuna && (c.types.includes("administrative_area_level_3") || c.types.includes("locality"))) {
+              finalComuna = c.long_name;
+            }
+          });
+        }
+      } catch(e) { console.warn("Geocode failed", e); }
+    }
+    // Build the prop object that goes into the feed/profile
+    const firstPhotoUrl = (form.photoFiles && form.photoFiles[Object.keys(form.photoFiles)[0]])
+      || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop";
+    const newProp = {
+      id: Date.now(),
+      type: form.type || "Casa",
+      operacion: form.operacion || "venta",
+      price: Number(form.price) || 0,
+      cur: form.currency || "UF",
+      loc: finalLoc || "Mi propiedad",
+      comuna: finalComuna || "",
+      lat: typeof finalLat === "number" ? finalLat : null,
+      lng: typeof finalLng === "number" ? finalLng : null,
+      beds: Number(form.beds) || 0,
+      baths: Number(form.baths) || 0,
+      parks: Number(form.parks) || 0,
+      area: Number(form.area) || 0,
+      areaTerreno: Number(form.areaTerreno) || 0,
+      areaTotal: Number(form.areaTotal) || 0,
+      hectareas: Number(form.hectareas) || 0,
+      nuevo: true,
+      amenities: form.amenities || [],
+      title: form.title || `${form.type||"Propiedad"} en ${finalComuna || finalLoc || "Santiago"}`,
+      desc: form.desc || "",
+      img: firstPhotoUrl,
+      user: SELLER.name,
+      avatar: SELLER.avatar,
+      liked: false,
+      saved: false,
+      wa: SELLER.wa,
+      tags: (form.amenities||[]).slice(0,3),
+      photos: form.photos?.length || 0,
+      hasVideo: !!form.videoUp,
+      videoFile: form.videoFile || null,
+      videoTakeFiles: form.videoTakeFiles || null,
+      reelTitle: form.reelTitle || "",
+      reelSubtitle: form.reelSubtitle || "",
+    };
+    // Push to global props state via callback
+    onPublish && onPublish(newProp);
     setPublished(true);
   };
   const resetForm = () => {
@@ -2324,7 +2386,7 @@ function Sell() {
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={resetForm} style={{flex:1,padding:13,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Publicar otra</button>
-              <button onClick={()=>{resetForm();}} style={{flex:1,padding:13,borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Ver mis publicaciones</button>
+              <button onClick={()=>{resetForm(); goTo && goTo("profile");}} style={{flex:1,padding:13,borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Ver mis publicaciones</button>
             </div>
           </div>
         </div>
@@ -2665,10 +2727,10 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel}) {
       </div>
       <div style={{textAlign:"center",marginBottom:22}}>
         <div style={{display:"inline-block",position:"relative",marginBottom:10}}>
-          <Avatar initials="JC" size={72} verified/>
+          <Avatar initials={SELLER.avatar} size={72} verified/>
         </div>
-        <h3 style={{fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 3px",letterSpacing:"-0.01em"}}>Juan Carlos</h3>
-        <p style={{fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 8px",letterSpacing:"0.02em"}}>juan@email.com · Santiago</p>
+        <h3 style={{fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 3px",letterSpacing:"-0.01em"}}>{SELLER.name}</h3>
+        <p style={{fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 8px",letterSpacing:"0.02em"}}>valentina@mktandgrowth.com · Santiago</p>
         <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 11px",borderRadius:999,background:C.mintWash,border:`1px solid #CDDBCE`}}>
           <Icon name="check" size={10} color={C.forest} stroke={2.5}/>
           <span style={{fontSize:10,fontWeight:500,color:C.forest,fontFamily:Fb,letterSpacing:"0.08em",textTransform:"uppercase"}}>Cuenta verificada</span>
@@ -2692,7 +2754,7 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel}) {
       </div>
       {tab==="pub"?
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {props.slice(0,2).map(p=>(
+          {props.map(p=>(
             <div key={p.id} style={{display:"flex",gap:12,padding:12,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`}}>
               <img src={p.img} alt="" style={{width:66,height:66,borderRadius:10,objectFit:"cover"}} />
               <div style={{flex:1}}>
@@ -2913,6 +2975,12 @@ export default function App() {
         @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         @keyframes toastIn { 0%{opacity:0;transform:translate(-50%, 20px)} 100%{opacity:1;transform:translate(-50%, 0)} }
         @keyframes slideRight { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+        /* Google Places Autocomplete dropdown — force above modals */
+        .pac-container { z-index: 999999 !important; border-radius: 12px !important; margin-top: 4px !important; box-shadow: 0 12px 28px rgba(28,26,23,0.18) !important; border: 1px solid ${C.line} !important; font-family: ${Fb} !important; }
+        .pac-item { padding: 10px 14px !important; font-size: 13px !important; cursor: pointer !important; border-top: 1px solid ${C.lineSoft} !important; }
+        .pac-item:first-child { border-top: none !important; }
+        .pac-item-query { font-size: 13px !important; color: ${C.ink} !important; font-weight: 500 !important; }
+        .pac-matched { font-weight: 600 !important; color: ${C.brand} !important; }
         .mob-nav { display:flex; }
         .mob-header { display: block; position: sticky; top: 0; z-index: 50; }
         .pc-only { display:none; }
@@ -2942,7 +3010,7 @@ export default function App() {
           <>
             {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
             {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
-            {tab==="sell"&&<Sell />}
+            {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps]); showToast("Propiedad publicada ✓");}} goTo={go} />}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile props={props} subTab={profileSubTab} setSubTab={setProfileSubTab} onGoTo={goTo} initialPanel={openProfilePanel} clearPanel={()=>setOpenProfilePanel(null)} />}
           </>
