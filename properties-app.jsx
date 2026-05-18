@@ -116,6 +116,32 @@ const VID_GUIDE = [
 // UF rate for CLP conversion (mock — production should pull from API)
 const UF_TO_CLP = 40000;
 
+// ─── Music library for reel editor (royalty-free, would be Pixabay tracks in production) ───
+// In production these URLs point to actual MP3s in /public/audio/ or a CDN.
+// For demo, we use the audio attribute null so the player plays without sound (silent fallback).
+const MUSIC_LIBRARY = [
+  { k:"sunset_drive",     l:"Sunset Drive",     vibe:"Cálido / Acústico",       bpm:92,  defaultFor:["Casa"] },
+  { k:"urban_dawn",       l:"Urban Dawn",       vibe:"Minimal Electrónico",     bpm:110, defaultFor:["Departamento"] },
+  { k:"mediterranean",    l:"Mediterranean",    vibe:"Cinematográfico",         bpm:80,  defaultFor:["Casa Premium"] },
+  { k:"country_road",     l:"Country Road",     vibe:"Folk Relajado",           bpm:88,  defaultFor:["Parcela","Sitio"] },
+  { k:"corporate_smooth", l:"Corporate Smooth", vibe:"Corporativo Suave",       bpm:105, defaultFor:["Oficina","Industrial"] },
+  { k:"bright_young",     l:"Bright Young",     vibe:"Brillante / Joven",       bpm:120, defaultFor:[] },
+];
+
+// Auto-suggest music based on property type
+const suggestMusic = (type) => {
+  const match = MUSIC_LIBRARY.find(m => m.defaultFor.includes(type));
+  return match ? match.k : "sunset_drive";
+};
+
+// ─── Reel title overlay styles ───
+const TITLE_STYLES = [
+  { k:"editorial",   l:"Editorial",    desc:"Serif blanco sobre fondo translúcido" },
+  { k:"luxury",      l:"Lujo",         desc:"Letra dorada, sombra fuerte" },
+  { k:"young",       l:"Joven / TikTok",desc:"Bold sans, fondo cobre sólido" },
+  { k:"minimal",     l:"Minimalista",  desc:"Solo texto blanco, sin fondo" },
+];
+
 // Comunas de Chile (principales + Región Metropolitana completa)
 const COMUNAS = [
   // RM
@@ -1252,6 +1278,288 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
 }
 
 // ═══ SELL ═══
+// ─── Reel Player — plays takes in sequence with playbackRate, music, and title overlay ───
+function ReelPlayer({takeFiles={}, takeOrder=[0,1,2,3], takeSpeeds=[1,2,2,1], title="", subtitle="", titleStyle="editorial", musicTrack="", autoplay=false, height="auto", showOverlay=true, onPlayStateChange}){
+  const [idx,setIdx]=useState(0);
+  const [playing,setPlaying]=useState(autoplay);
+  const [cycleKey,setCycleKey]=useState(0); // re-trigger overlay animation on loop
+  const videoRefs = useRef([null,null,null,null]);
+
+  // Ordered list of file URLs (takeFiles is keyed by original slot 1..4)
+  const orderedFiles = takeOrder.map(o => takeFiles[o+1]);
+  const orderedSpeeds = takeOrder.map(o => takeSpeeds[o] || 1);
+  const validCount = orderedFiles.filter(Boolean).length;
+
+  // Apply playbackRate and play/pause when idx changes
+  useEffect(()=>{
+    const v = videoRefs.current[idx];
+    if (!v) return;
+    v.playbackRate = orderedSpeeds[idx] || 1;
+    if (playing) v.play().catch(()=>{});
+    else v.pause();
+  }, [idx, playing]);
+
+  // Inform parent of play state changes
+  useEffect(()=>{ onPlayStateChange && onPlayStateChange(playing); }, [playing]);
+
+  // Pause others when idx changes
+  useEffect(()=>{
+    videoRefs.current.forEach((v,i)=>{
+      if (v && i!==idx) { v.pause(); v.currentTime = 0; }
+    });
+  }, [idx]);
+
+  const onEnded = () => {
+    if (idx < validCount - 1) setIdx(idx+1);
+    else { setIdx(0); setCycleKey(k=>k+1); /* loop & retrigger overlay */ }
+  };
+
+  const togglePlay = () => setPlaying(p => !p);
+  const restart = () => { setIdx(0); setCycleKey(k=>k+1); setPlaying(true); };
+
+  // Overlay styling per titleStyle
+  const styleConfig = {
+    editorial: {
+      titleFont:Fs, titleColor:C.surface, titleBg:"rgba(28,26,23,0.45)", titleSize:26,
+      subFont:Fb, subColor:"rgba(255,255,255,0.85)", subSize:13,
+      position:"top", padding:"22px 18px", borderRadius:14, blur:true,
+    },
+    luxury: {
+      titleFont:Fs, titleColor:"#E8C97A", titleBg:"transparent", titleSize:30,
+      subFont:Fb, subColor:"rgba(255,255,255,0.95)", subSize:13,
+      position:"center", padding:"22px", textShadow:"0 4px 20px rgba(0,0,0,0.85)", italic:true,
+    },
+    young: {
+      titleFont:Fb, titleColor:C.surface, titleBg:C.brand, titleSize:22, titleWeight:700,
+      subFont:Fb, subColor:"rgba(255,255,255,0.92)", subSize:12, subWeight:500,
+      position:"top-left", padding:"10px 14px", borderRadius:8, inline:true,
+    },
+    minimal: {
+      titleFont:Fb, titleColor:C.surface, titleBg:"transparent", titleSize:20, titleWeight:600,
+      subFont:Fb, subColor:"rgba(255,255,255,0.75)", subSize:12,
+      position:"bottom-left", padding:"0 18px", textShadow:"0 2px 12px rgba(0,0,0,0.85)",
+    },
+  };
+  const s = styleConfig[titleStyle] || styleConfig.editorial;
+
+  // Position layout
+  const posStyle = (() => {
+    if (s.position==="top") return {top:0,left:0,right:0,padding:s.padding};
+    if (s.position==="center") return {top:"40%",left:0,right:0,padding:s.padding,textAlign:"center"};
+    if (s.position==="top-left") return {top:14,left:14,padding:s.padding,background:s.titleBg,borderRadius:s.borderRadius};
+    if (s.position==="bottom-left") return {bottom:80,left:0,right:0,padding:s.padding};
+    return {top:0,left:0,right:0,padding:s.padding};
+  })();
+
+  return (
+    <div style={{position:"relative",width:"100%",aspectRatio:"9/16",background:"#000",overflow:"hidden",borderRadius:14,height}}>
+      <style>{`
+        @keyframes overlayIn { 0%{opacity:0;transform:translateY(-12px)} 30%{opacity:1;transform:translateY(0)} 75%{opacity:1} 100%{opacity:0;transform:translateY(-4px)} }
+      `}</style>
+      {/* Video stack — only active is visible, others have opacity 0 */}
+      {orderedFiles.map((url,i) => url ? (
+        <video key={i} ref={el=>videoRefs.current[i]=el} src={url}
+          style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:i===idx?1:0,transition:"opacity 0.25s"}}
+          muted playsInline onEnded={onEnded}
+        />
+      ) : null)}
+
+      {/* Placeholder when no videos */}
+      {validCount===0 && (
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:C.surface,opacity:0.6}}>
+          <Icon name="video" size={36} color={C.surface} stroke={1.4}/>
+          <p style={{margin:"10px 0 0",fontSize:12,fontFamily:Fb}}>Sube tus 4 tomas para ver el preview</p>
+        </div>
+      )}
+
+      {/* Title overlay — appears for first 4s of each cycle */}
+      {showOverlay && (title || subtitle) && validCount>0 && (
+        <div key={cycleKey} style={{position:"absolute",zIndex:5,animation:"overlayIn 5s ease-out forwards",pointerEvents:"none",...posStyle,background:s.position==="top-left"?s.titleBg:undefined,borderRadius:s.position==="top-left"?s.borderRadius:undefined}}>
+          {!s.inline && s.position==="top" && (
+            <div style={{position:"absolute",inset:0,background:s.titleBg,backdropFilter:s.blur?"blur(8px)":"none",borderRadius:0,zIndex:-1}}/>
+          )}
+          {title && <div style={{fontFamily:s.titleFont,color:s.titleColor,fontSize:s.titleSize,fontWeight:s.titleWeight||400,letterSpacing:"-0.01em",lineHeight:1.15,fontStyle:s.italic?"italic":"normal",textShadow:s.textShadow,marginBottom:subtitle?4:0}}>{title}</div>}
+          {subtitle && <div style={{fontFamily:s.subFont,color:s.subColor,fontSize:s.subSize,fontWeight:s.subWeight||400,letterSpacing:"0.02em",textShadow:s.textShadow}}>{subtitle}</div>}
+        </div>
+      )}
+
+      {/* Progress dots */}
+      {validCount>0 && (
+        <div style={{position:"absolute",top:10,left:14,right:14,display:"flex",gap:3,zIndex:6}}>
+          {Array.from({length:validCount}).map((_,i)=>(
+            <div key={i} style={{flex:1,height:2,borderRadius:1,background:i<idx?"rgba(255,255,255,0.85)":i===idx?"rgba(255,255,255,0.85)":"rgba(255,255,255,0.3)",transition:"all 0.25s"}}/>
+          ))}
+        </div>
+      )}
+
+      {/* Center play/pause button (visible when paused) */}
+      {validCount>0 && !playing && (
+        <button onClick={togglePlay} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:60,height:60,borderRadius:"50%",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:7}}>
+          <Icon name="play" size={26} color={C.surface}/>
+        </button>
+      )}
+      {validCount>0 && playing && (
+        <button onClick={togglePlay} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:60,height:60,borderRadius:"50%",background:"rgba(0,0,0,0)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:7,opacity:0}} aria-label="pausa">
+          <Icon name="play" size={26} color={C.surface}/>
+        </button>
+      )}
+
+      {/* Music indicator (bottom-right) */}
+      {musicTrack && validCount>0 && (() => {
+        const m = MUSIC_LIBRARY.find(x=>x.k===musicTrack);
+        return m ? (
+          <div style={{position:"absolute",bottom:14,right:14,zIndex:6,padding:"5px 10px",borderRadius:999,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",display:"inline-flex",alignItems:"center",gap:6}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:C.surface,animation:"pulseRing 1.4s ease-in-out infinite"}}/>
+            <span style={{fontSize:10.5,color:C.surface,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>♪ {m.l}</span>
+          </div>
+        ) : null;
+      })()}
+    </div>
+  );
+}
+
+// ─── Reel Editor — UI to customize reel before publishing ───
+function ReelEditor({form, setForm}){
+  const [tab,setTab]=useState("text");
+  const [draggedIdx,setDraggedIdx]=useState(null);
+
+  const setTakeSpeed = (slotIdx, speed) => {
+    const next = [...form.takeSpeeds];
+    next[slotIdx] = speed;
+    setForm({...form, takeSpeeds: next});
+  };
+
+  const reorderTakes = (fromOrderIdx, toOrderIdx) => {
+    if (fromOrderIdx === toOrderIdx) return;
+    const next = [...form.takeOrder];
+    const [moved] = next.splice(fromOrderIdx, 1);
+    next.splice(toOrderIdx, 0, moved);
+    setForm({...form, takeOrder: next});
+  };
+
+  return (
+    <div style={{marginTop:18,padding:16,borderRadius:14,background:C.surface,border:`1px solid ${C.line}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+        <Icon name="sparkle" size={16} color={C.brand} stroke={1.6}/>
+        <div>
+          <h4 style={{margin:0,fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Edita tu reel</h4>
+          <p style={{margin:"2px 0 0",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,letterSpacing:"0.02em"}}>Personaliza música, velocidades y texto antes de publicar</p>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div style={{maxWidth:280,margin:"0 auto 14px"}}>
+        <ReelPlayer
+          takeFiles={form.videoTakeFiles||{}}
+          takeOrder={form.takeOrder}
+          takeSpeeds={form.takeSpeeds}
+          title={form.reelTitle}
+          subtitle={form.reelSubtitle}
+          titleStyle={form.titleStyle}
+          musicTrack={form.musicTrack}
+          autoplay={false}
+        />
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,padding:3,background:C.bg,borderRadius:999,border:`1px solid ${C.line}`,marginBottom:14}}>
+        {[{id:"text",l:"Texto",icon:"sparkle"},{id:"takes",l:"Tomas",icon:"video"},{id:"music",l:"Música",icon:"sparkle"}].map(t=>{
+          const on = tab===t.id;
+          return <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"8px 6px",borderRadius:999,border:"none",background:on?C.ink:"transparent",color:on?C.surface:C.muted,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.02em"}}>{t.l}</button>;
+        })}
+      </div>
+
+      {/* TAB: TEXT */}
+      {tab==="text" && (
+        <div>
+          <div style={{marginBottom:12}}>
+            <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Título del reel</label>
+            <input value={form.reelTitle} onChange={e=>setForm({...form,reelTitle:e.target.value})} placeholder="Ej: Depto Vitacura" style={{display:"block",width:"100%",padding:"11px 13px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13.5,fontFamily:Fs,fontWeight:400,outline:"none",marginTop:6,boxSizing:"border-box"}}/>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Subtítulo</label>
+            <input value={form.reelSubtitle} onChange={e=>setForm({...form,reelSubtitle:e.target.value})} placeholder="Ej: 3D · 2B · 60 m²" style={{display:"block",width:"100%",padding:"11px 13px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",marginTop:6,boxSizing:"border-box"}}/>
+          </div>
+          <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Estilo</label>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:8}}>
+            {TITLE_STYLES.map(s=>{
+              const on = form.titleStyle===s.k;
+              return <button key={s.k} onClick={()=>setForm({...form,titleStyle:s.k})} style={{padding:"10px 11px",borderRadius:10,background:on?C.brandWash:C.bg,border:`1px solid ${on?C.brand:C.line}`,cursor:"pointer",textAlign:"left",fontFamily:Fb}}>
+                <div style={{fontSize:12,fontWeight:500,color:on?C.brand:C.ink}}>{s.l}</div>
+                <div style={{fontSize:10,color:C.muted,fontWeight:400,marginTop:1,lineHeight:1.3}}>{s.desc}</div>
+              </button>;
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: TAKES (reorder + speed) */}
+      {tab==="takes" && (
+        <div>
+          <p style={{margin:"0 0 12px",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Arrastra para reordenar. Ajusta la velocidad de cada toma.</p>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {form.takeOrder.map((origSlot, orderIdx) => {
+              const speed = form.takeSpeeds[origSlot] || 1;
+              const guide = VID_GUIDE.find(g => g.n === origSlot+1);
+              return (
+                <div key={origSlot} draggable
+                  onDragStart={()=>setDraggedIdx(orderIdx)}
+                  onDragOver={e=>{e.preventDefault();}}
+                  onDrop={()=>{if(draggedIdx!==null){reorderTakes(draggedIdx, orderIdx);setDraggedIdx(null);}}}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,cursor:"grab"}}
+                >
+                  <div style={{width:30,height:30,borderRadius:8,background:C.brand,color:C.surface,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,fontFamily:Fb,flexShrink:0}}>
+                    {orderIdx+1}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{guide?.t || `Toma ${origSlot+1}`}</div>
+                    <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>Original: Toma {origSlot+1}</div>
+                  </div>
+                  <div style={{display:"flex",gap:3,padding:2,background:C.surface,border:`1px solid ${C.line}`,borderRadius:999}}>
+                    {[1, 1.5, 2].map(sp => {
+                      const on = speed===sp;
+                      return <button key={sp} onClick={()=>setTakeSpeed(origSlot, sp)} style={{padding:"4px 8px",borderRadius:999,border:"none",background:on?C.brand:"transparent",color:on?C.surface:C.muted,fontSize:10.5,fontWeight:600,cursor:"pointer",fontFamily:Fb}}>{sp}×</button>;
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p style={{margin:"10px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic",lineHeight:1.5}}>💡 Tip: interior a 2× se siente dinámico. Exterior y entrada en 1× se sienten estables.</p>
+        </div>
+      )}
+
+      {/* TAB: MUSIC */}
+      {tab==="music" && (
+        <div>
+          <p style={{margin:"0 0 12px",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Elige el vibe que más calce con tu {form.type?.toLowerCase()||"propiedad"}.</p>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {MUSIC_LIBRARY.map(m=>{
+              const on = form.musicTrack===m.k;
+              const isSuggested = m.defaultFor.includes(form.type);
+              return (
+                <button key={m.k} onClick={()=>setForm({...form,musicTrack:m.k})} style={{padding:"11px 13px",borderRadius:10,background:on?C.brandWash:C.bg,border:`1px solid ${on?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left",fontFamily:Fb}}>
+                  <div style={{width:34,height:34,borderRadius:"50%",background:on?C.brand:C.surface,border:on?"none":`1px solid ${C.line}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <Icon name={on?"play":"play"} size={14} color={on?C.surface:C.muted}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:12.5,fontWeight:500,color:on?C.brand:C.ink}}>{m.l}</span>
+                      {isSuggested && <span style={{fontSize:9,color:C.forest,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",background:C.mintWash,padding:"2px 6px",borderRadius:999}}>Sugerida</span>}
+                    </div>
+                    <div style={{fontSize:10.5,color:C.muted,fontWeight:400,marginTop:1}}>{m.vibe} · {m.bpm} BPM</div>
+                  </div>
+                  {on && <Icon name="check" size={14} color={C.brand} stroke={2.5}/>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Sell() {
   const [step,setStep]=useState(1);
   const [form,setForm]=useState({
@@ -1260,6 +1568,11 @@ function Sell() {
     loc:"", beds:"", baths:"", parks:"",
     area:"", areaTerreno:"", areaTotal:"", hectareas:"", privados:"",
     photos:[], videoUp:false, videoTakes:[false,false,false,false], amenities:[],
+    // Reel editor state
+    reelTitle:"", reelSubtitle:"", titleStyle:"editorial",
+    musicTrack:"", // auto-suggested when entering editor
+    takeSpeeds:[1, 2, 2, 1],
+    takeOrder:[0, 1, 2, 3],
   });
   const [aiDone,setAiDone]=useState(false);
   const [uploadFor,setUploadFor]=useState(null);
@@ -1267,6 +1580,31 @@ function Sell() {
   const [locFocus,setLocFocus]=useState(false);
   const [published,setPublished]=useState(false);
   const total=6;
+
+  // Auto-fill reel meta when all 4 takes are uploaded
+  useEffect(()=>{
+    const allDone = (form.videoTakes||[]).every(Boolean);
+    if (allDone && (!form.reelTitle || !form.musicTrack)) {
+      const comuna = (form.loc||"").split(",")[0].trim();
+      const autoTitle = form.type && comuna ? `${form.type} ${comuna}` : form.type || "Mi propiedad";
+      let autoSub = "";
+      if (form.type==="Casa" || form.type==="Departamento") {
+        autoSub = [form.beds&&`${form.beds}D`, form.baths&&`${form.baths}B`, form.area&&`${form.area} m²`].filter(Boolean).join(" · ");
+      } else if (form.type==="Parcela") {
+        autoSub = [form.hectareas&&`${form.hectareas} ha`, comuna].filter(Boolean).join(" · ");
+      } else if (form.type==="Sitio") {
+        autoSub = form.area?`${form.area} m²`:"";
+      } else if (form.type==="Oficina" || form.type==="Industrial") {
+        autoSub = [form.area&&`${form.area} m² útiles`, form.privados&&`${form.privados} priv.`].filter(Boolean).join(" · ");
+      }
+      setForm(f => ({
+        ...f,
+        reelTitle: f.reelTitle || autoTitle,
+        reelSubtitle: f.reelSubtitle || autoSub,
+        musicTrack: f.musicTrack || suggestMusic(form.type),
+      }));
+    }
+  }, [form.videoTakes, form.type, form.loc, form.beds, form.baths, form.area, form.hectareas, form.privados]);
 
   const handlePublish = () => {
     // Simulate publishing — in production, POST to backend
@@ -1565,6 +1903,11 @@ function Sell() {
           <Icon name="sparkle" size={16} color={C.forest} stroke={1.5}/>
           <p style={{margin:0,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.4}}>La IA edita tus 4 tomas con transiciones y música automáticas</p>
         </div>
+
+        {/* ─── Reel Editor: appears automatically when all 4 takes are uploaded ─── */}
+        {(form.videoTakes||[]).every(Boolean) && (form.videoTakeFiles||{})[1] && (
+          <ReelEditor form={form} setForm={setForm}/>
+        )}
       </div>}
 
       {step===5&&<div>
