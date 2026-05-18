@@ -358,26 +358,31 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
 const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
 function useGoogleMaps() {
-  const [loaded, setLoaded] = useState(typeof window !== "undefined" && !!window.google?.maps);
+  const isReady = () => typeof window !== "undefined" && !!window.google?.maps?.Map && !!window.google?.maps?.places?.Autocomplete;
+  const [loaded, setLoaded] = useState(isReady());
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.google?.maps?.places) { setLoaded(true); return; }
+    if (isReady()) { setLoaded(true); return; }
     if (!GMAPS_KEY) { console.warn("VITE_GOOGLE_MAPS_API_KEY not set"); return; }
-    // If script already being loaded, just wait
-    if (document.getElementById("google-maps-script")) {
+    // Poll until both Map class and Places library are fully ready (works with async loading)
+    const startPolling = () => {
       const wait = setInterval(() => {
-        if (window.google?.maps?.places) { setLoaded(true); clearInterval(wait); }
+        if (isReady()) { setLoaded(true); clearInterval(wait); }
       }, 100);
+      // Safety timeout 15s
+      setTimeout(() => clearInterval(wait), 15000);
       return () => clearInterval(wait);
-    }
+    };
+    if (document.getElementById("google-maps-script")) return startPolling();
     const script = document.createElement("script");
     script.id = "google-maps-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places&v=weekly&loading=async`;
+    // No loading=async here — we want Map constructor available on script load
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places&v=weekly`;
     script.async = true;
     script.defer = true;
-    script.onload = () => setLoaded(true);
     script.onerror = () => console.error("Failed to load Google Maps");
     document.head.appendChild(script);
+    return startPolling();
   }, []);
   return loaded;
 }
