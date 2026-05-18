@@ -1281,17 +1281,87 @@ function Detail({p,back,onLike,onSave}) {
 }
 
 // ═══ REELS ═══
+// ─── CommentsSheet — Instagram-style public comments bottom sheet ───
+const MOCK_COMMENTS = {
+  1: [
+    {id:1, user:"Camila R.", av:"CR", t:"Hermosa! ¿Tiene calefacción central?", time:"2h", likes:12, mine:false},
+    {id:2, user:"Diego M.", av:"DM", t:"¿Acepta créditos hipotecarios?", time:"4h", likes:3, mine:false},
+    {id:3, user:"Pablo S.", av:"PS", t:"La piscina se ve genial 🌊", time:"1d", likes:8, mine:false},
+  ],
+  2: [
+    {id:1, user:"Sofía L.", av:"SL", t:"¡Qué vista! ¿Es entrega inmediata?", time:"5h", likes:6, mine:false},
+    {id:2, user:"Tomás G.", av:"TG", t:"¿Cuánto son los gastos comunes?", time:"1d", likes:2, mine:false},
+  ],
+  3: [
+    {id:1, user:"Andrés S.", av:"AS", t:"¿Tiene derechos de agua activos?", time:"3h", likes:5, mine:false},
+    {id:2, user:"Marta V.", av:"MV", t:"Me encanta la vista a la montaña", time:"6h", likes:9, mine:false},
+  ],
+};
+function CommentsSheet({propId, prop, onClose}) {
+  const [comments,setComments] = useState(MOCK_COMMENTS[propId] || []);
+  const [draft,setDraft] = useState("");
+  const add = () => {
+    if (!draft.trim()) return;
+    setComments(c => [...c, {id:Date.now(), user:"Valentina S.", av:"VS", t:draft.trim(), time:"ahora", likes:0, mine:true}]);
+    setDraft("");
+  };
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,maxHeight:"75vh",background:C.bg,borderRadius:"22px 22px 0 0",animation:"slideUp 0.28s ease",display:"flex",flexDirection:"column"}}>
+        <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+        <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.lineSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:C.bg,borderRadius:"22px 22px 0 0"}}>
+          <div>
+            <h3 style={{margin:0,fontSize:15,fontWeight:500,color:C.ink,fontFamily:Fb}}>Comentarios</h3>
+            <p style={{margin:"1px 0 0",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400}}>{comments.length} público{comments.length===1?"":"s"} en {prop?.title}</p>
+          </div>
+          <button onClick={onClose} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"6px 0 8px"}}>
+          {comments.length===0 ? (
+            <div style={{padding:"40px 24px",textAlign:"center"}}>
+              <Icon name="chat" size={28} color={C.subtle} stroke={1.3}/>
+              <p style={{margin:"10px 0 0",fontSize:13,color:C.muted,fontFamily:Fb,fontWeight:400}}>Sé el primero en comentar</p>
+            </div>
+          ) : comments.map(c=>(
+            <div key={c.id} style={{padding:"11px 18px",display:"flex",gap:11,borderBottom:`1px solid ${C.lineSoft}`}}>
+              <Avatar initials={c.av} size={32}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c.user}</span>
+                  <span style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,letterSpacing:"0.04em"}}>{c.time}</span>
+                </div>
+                <p style={{margin:"3px 0 0",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{c.t}</p>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginTop:6}}>
+                  <button style={{display:"flex",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",padding:0,fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:500}}>
+                    <Icon name="heart" size={11} color={C.muted} stroke={1.5}/> {c.likes}
+                  </button>
+                  <button style={{background:"none",border:"none",cursor:"pointer",padding:0,fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:500}}>Responder</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Composer */}
+        <div style={{padding:"10px 14px env(safe-area-inset-bottom,12px)",borderTop:`1px solid ${C.lineSoft}`,background:C.bg,display:"flex",alignItems:"center",gap:9}}>
+          <Avatar initials="VS" size={32}/>
+          <input value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")add();}} placeholder="Agrega un comentario..." style={{flex:1,padding:"10px 13px",borderRadius:999,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none"}}/>
+          <button onClick={add} disabled={!draft.trim()} style={{padding:"8px 14px",borderRadius:999,background:draft.trim()?C.ink:C.line,border:"none",color:C.surface,fontSize:12,fontWeight:500,cursor:draft.trim()?"pointer":"default",fontFamily:Fb}}>Publicar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   // If startPropId is provided, jump to that reel
   const startIdx = startPropId ? Math.max(0, REELS.findIndex(r=>r.propId===startPropId)) : 0;
   const [idx,setIdx]=useState(startIdx);
-  const r=REELS[idx]; const p=props.find(x=>x.id===r.propId);
-  const [lk,setLk]=useState(false);const [sv,setSv]=useState(false);
+  const [commentsOpenFor,setCommentsOpenFor]=useState(null); // propId of property whose comments are open
   // Touch tracking — startY anchors first touch; deltaY tracks live finger movement for real-time slide
   const [startY,setStartY]=useState(null);
   const [deltaY,setDeltaY]=useState(0);
   const wheelLockRef = useRef(0);
-  useEffect(()=>{if(p){setLk(p.liked);setSv(p.saved);}},[idx,p?.liked,p?.saved]);
+  const dragging = startY !== null;
 
   // Navigation helpers
   const goNext = () => setIdx(i => Math.min(REELS.length-1, i+1));
@@ -1302,16 +1372,13 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   const onTM = e => {
     if (startY===null) return;
     const dy = e.touches[0].clientY - startY; // positive = swipe down (prev), negative = swipe up (next)
-    // Clamp to avoid overscrolling past edges
-    if ((idx===0 && dy>0) || (idx===REELS.length-1 && dy<0)) {
-      setDeltaY(dy * 0.25); // rubber-band effect at edges
-    } else {
-      setDeltaY(dy);
-    }
+    // Rubber-band effect at edges
+    if ((idx===0 && dy>0) || (idx===REELS.length-1 && dy<0)) setDeltaY(dy * 0.25);
+    else setDeltaY(dy);
   };
-  const onTE = e => {
+  const onTE = () => {
     if (startY===null) return;
-    const threshold = 80;
+    const threshold = 70;
     if (deltaY < -threshold && idx < REELS.length-1) goNext();
     else if (deltaY > threshold && idx > 0) goPrev();
     setStartY(null);
@@ -1321,7 +1388,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   const onWheel = e => {
     e.preventDefault();
     const now = Date.now();
-    if (now - wheelLockRef.current < 450) return;
+    if (now - wheelLockRef.current < 500) return;
     if (Math.abs(e.deltaY) < 20) return;
     wheelLockRef.current = now;
     (e.deltaY > 0 ? goNext : goPrev)();
@@ -1342,114 +1409,89 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
     </div>
   );
 
-  // Preview neighbors (next/prev) for smooth slide
-  const prevR = idx>0 ? REELS[idx-1] : null;
-  const nextR = idx<REELS.length-1 ? REELS[idx+1] : null;
-  const prevP = prevR ? props.find(x=>x.id===prevR.propId) : null;
-  const nextP = nextR ? props.find(x=>x.id===nextR.propId) : null;
-  const dragging = startY !== null;
-
   return (
     <div onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onWheel={onWheel} className="reels-frame" style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000",touchAction:"none"}}>
       <style>{`
-        @keyframes reelIn { 0%{opacity:0;transform:scale(1.04)} 100%{opacity:1;transform:scale(1)} }
         @keyframes reelInfoIn { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
       `}</style>
 
-      {/* ─── Slide track: 3 reels stacked vertically (prev / current / next) ─── */}
+      {/* ─── Slide track: ALL reels stacked vertically as a single block ─── */}
       <div style={{
         position:"absolute",
         top:0, left:0, right:0,
-        height:"300vh",  // 3 reels tall (prev + current + next)
-        transform:`translateY(calc(-100vh + ${deltaY}px))`,
-        transition: dragging ? "none" : "transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)",
+        transform:`translateY(calc(${-idx*100}vh + ${deltaY}px))`,
+        transition: dragging ? "none" : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
         willChange:"transform"
       }}>
-        {/* PREV reel preview (slot 0, height 100vh) */}
-        <div style={{position:"absolute",top:0,left:0,right:0,height:"100vh",overflow:"hidden"}}>
-          {prevP && <img src={prevP.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>}
-          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
-        </div>
+        {REELS.map((rl, i) => {
+          const prop = props.find(x=>x.id===rl.propId);
+          if (!prop) return null;
+          const isActive = i === idx;
+          return (
+            <div key={rl.id} style={{position:"absolute",top:`${i*100}vh`,left:0,right:0,height:"100vh",overflow:"hidden"}}>
+              {/* Background image */}
+              <img src={prop.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
 
-        {/* CURRENT reel (slot 1, full UI) */}
-        <div style={{position:"absolute",top:"100vh",left:0,right:0,height:"100vh",overflow:"hidden"}}>
-      {/* Background image with smooth fade transition between reels */}
-      {p&&<img key={"img-"+idx} src={p.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)",animation:"reelIn 0.4s ease"}} />}
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}} />
+              {/* Action column — right side */}
+              <div style={{position:"absolute",right:12,bottom:250,display:"flex",flexDirection:"column",gap:22,alignItems:"center",zIndex:10}}>
+                <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <Icon name="heart" size={27} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
+                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{rl.likes}</span>
+                </button>
+                <button onClick={()=>setCommentsOpenFor(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <Icon name="chat" size={27} color={C.surface} stroke={1.6}/>
+                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Comentar</span>
+                </button>
+                <button onClick={()=>onSave(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <Icon name="bookmark" size={27} color={prop.saved?C.brandSoft:C.surface} stroke={1.6} fill={prop.saved?C.brandSoft:"none"}/>
+                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Guardar</span>
+                </button>
+                <button onClick={()=>window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank")} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
+                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
+                </button>
+              </div>
 
-      <div style={{position:"absolute",top:18,left:18,zIndex:10,display:"flex",alignItems:"center",gap:8}}>
+              {/* Bottom info panel */}
+              <div key={isActive?`info-${idx}`:`info-static-${i}`} style={{position:"absolute",bottom:80,left:0,right:0,zIndex:10,padding:"0 16px",animation:isActive?"reelInfoIn 0.45s ease 0.1s both":"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                  <Avatar initials={prop.avatar} size={28} bg="rgba(255,255,255,0.22)"/>
+                  <span style={{fontSize:12,fontWeight:500,color:C.surface,fontFamily:Fb,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.user}</span>
+                  <span style={{width:3,height:3,borderRadius:"50%",background:"rgba(255,255,255,0.4)"}}/>
+                  <span style={{fontSize:10.5,color:"rgba(255,255,255,0.7)",fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{rl.views} vistas</span>
+                </div>
+                <div style={{display:"inline-flex",alignItems:"center",padding:"4px 10px",borderRadius:999,background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.2)`,marginBottom:7}}>
+                  <span style={{fontSize:9,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>{prop.type}</span>
+                </div>
+                <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>{prop.cur} {fmt(prop.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {prop.comuna}</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:16,marginTop:10}}>
+                  {prop.beds>0&&<Stat icon="bed" val={prop.beds}/>}
+                  {prop.baths>0&&<Stat icon="bath" val={prop.baths}/>}
+                  <Stat icon="ruler" val={`${prop.area} m²`}/>
+                  {prop.parks>0&&<Stat icon="car" val={prop.parks}/>}
+                </div>
+                <p style={{fontSize:12.5,color:"rgba(255,255,255,0.9)",fontFamily:Fb,fontWeight:400,margin:"10px 0 0",lineHeight:1.45,textShadow:"0 1px 6px rgba(0,0,0,0.6)"}}>{rl.caption}</p>
+                <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:12,padding:"13px 18px",borderRadius:12,background:C.surface,border:"none",cursor:"pointer",color:C.ink,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:"0 6px 20px rgba(0,0,0,0.35)"}}>
+                  Ver ficha completa
+                  <Icon name="arrowRight" size={15} color={C.ink} stroke={1.8}/>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* ─── End slide track ─── */}
+
+      {/* Logo header — fixed, on top of slide track */}
+      <div style={{position:"absolute",top:18,left:18,zIndex:20,display:"flex",alignItems:"center",gap:8,pointerEvents:"none"}}>
         <Logo size={22} color={C.surface} />
         <span style={{fontSize:17,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em"}}>properties<span style={{color:C.brandSoft}}>.</span> <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
       </div>
 
-      {/* Right actions — moved higher to clear the new info panel */}
-      <div style={{position:"absolute",right:12,bottom:250,display:"flex",flexDirection:"column",gap:22,alignItems:"center",zIndex:10}}>
-        <button onClick={()=>{if(p)onLike(p.id);setLk(!lk);}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-          <Icon name="heart" size={27} color={lk?C.terracotta:C.surface} stroke={1.6} fill={lk?C.terracotta:"none"}/>
-          <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{r.likes}</span>
-        </button>
-        <button onClick={()=>onChat&&onChat(p)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-          <Icon name="chat" size={27} color={C.surface} stroke={1.6}/>
-          <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Chat</span>
-        </button>
-        <button onClick={()=>{if(p)onSave(p.id);setSv(!sv);}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-          <Icon name="bookmark" size={27} color={sv?C.brandSoft:C.surface} stroke={1.6} fill={sv?C.brandSoft:"none"}/>
-          <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Guardar</span>
-        </button>
-        <button onClick={()=>{if(p)window.open(waUrl(p.wa,`Hola ${p.user}, vi tu reel sobre "${p.title}" en properties. Me interesa.`),"_blank");}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-          <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
-          <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
-        </button>
-      </div>
-
-      {/* Bottom info panel — animates in when reel changes */}
-      <div key={"info-"+idx} style={{position:"absolute",bottom:80,left:0,right:0,zIndex:10,padding:"0 16px",animation:"reelInfoIn 0.35s ease 0.05s both"}}>
-        {/* User row */}
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-          <Avatar initials={p?.avatar} size={28} bg="rgba(255,255,255,0.22)"/>
-          <span style={{fontSize:12,fontWeight:500,color:C.surface,fontFamily:Fb,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{p?.user}</span>
-          <span style={{width:3,height:3,borderRadius:"50%",background:"rgba(255,255,255,0.4)"}}/>
-          <span style={{fontSize:10.5,color:"rgba(255,255,255,0.7)",fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{r.views} vistas</span>
-        </div>
-
-        {/* Type chip + price + location (editorial) */}
-        {p&&<>
-          <div style={{display:"inline-flex",alignItems:"center",padding:"4px 10px",borderRadius:999,background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.2)`,marginBottom:7}}>
-            <span style={{fontSize:9,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>{p.type}</span>
-          </div>
-          <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>{p.cur} {fmt(p.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {p.comuna}</span></div>
-
-          {/* Icon stats row */}
-          <div style={{display:"flex",alignItems:"center",gap:16,marginTop:10}}>
-            {p.beds>0&&<Stat icon="bed" val={p.beds}/>}
-            {p.baths>0&&<Stat icon="bath" val={p.baths}/>}
-            <Stat icon="ruler" val={`${p.area} m²`}/>
-            {p.parks>0&&<Stat icon="car" val={p.parks}/>}
-          </div>
-
-          {/* Caption */}
-          <p style={{fontSize:12.5,color:"rgba(255,255,255,0.9)",fontFamily:Fb,fontWeight:400,margin:"10px 0 0",lineHeight:1.45,textShadow:"0 1px 6px rgba(0,0,0,0.6)"}}>{r.caption}</p>
-
-          {/* Ver ficha CTA — prominent */}
-          <button onClick={()=>onOpen&&onOpen(p)} style={{width:"100%",marginTop:12,padding:"13px 18px",borderRadius:12,background:C.surface,border:"none",cursor:"pointer",color:C.ink,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:"0 6px 20px rgba(0,0,0,0.35)"}}>
-            Ver ficha completa
-            <Icon name="arrowRight" size={15} color={C.ink} stroke={1.8}/>
-          </button>
-        </>}
-      </div>
-
-        </div>
-        {/* NEXT reel preview (slot 2) */}
-        <div style={{position:"absolute",top:"200vh",left:0,right:0,height:"100vh",overflow:"hidden"}}>
-          {nextP && <img src={nextP.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>}
-          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
-        </div>
-      </div>
-      {/* ─── End slide track ─── */}
-
-      {/* Pager indicator + arrows on the LEFT side, vertically centered (fixed, not affected by slide) */}
+      {/* Pager indicator + arrows on the LEFT side, vertically centered (fixed) */}
       <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:20}}>
-        <button onClick={()=>setIdx(Math.max(0,idx-1))} disabled={idx===0} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.3:1}}>
+        <button onClick={()=>goPrev()} disabled={idx===0} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.3:1}}>
           <Icon name="chevronUp" size={16} color={C.surface} stroke={1.8}/>
         </button>
         <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
@@ -1457,10 +1499,13 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
             <div key={i} style={{width:3,height:i===idx?16:6,borderRadius:2,background:i===idx?C.surface:"rgba(255,255,255,0.4)",transition:"all 0.2s"}}/>
           ))}
         </div>
-        <button onClick={()=>setIdx(Math.min(REELS.length-1,idx+1))} disabled={idx===REELS.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===REELS.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===REELS.length-1?0.3:1}}>
+        <button onClick={()=>goNext()} disabled={idx===REELS.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===REELS.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===REELS.length-1?0.3:1}}>
           <Icon name="chevronDown" size={16} color={C.surface} stroke={1.8}/>
         </button>
       </div>
+
+      {/* Comments sheet — Instagram-style public comments */}
+      {commentsOpenFor && <CommentsSheet propId={commentsOpenFor} prop={props.find(x=>x.id===commentsOpenFor)} onClose={()=>setCommentsOpenFor(null)}/>}
     </div>
   );
 }
@@ -2555,7 +2600,7 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
 
   // Priority config: chats=1 (forest), guardados=2 (brand copper), likes=3 (muted warm)
   const TABS = [
-    { id:"chats",    rank:1, label:"Chats",     count:CONVOS.length, color:C.forest,   wash:C.mintWash,  desc:"Conversaciones activas" },
+    { id:"chats",    rank:1, label:"WhatsApp",  count:CONVOS.length, color:C.forest,   wash:C.mintWash,  desc:"Historial de chats con interesados" },
     { id:"saved",    rank:2, label:"Guardados", count:saved.length,  color:C.brand,    wash:C.brandWash, desc:"Propiedades para revisitar" },
     { id:"likes",    rank:3, label:"Likes",     count:liked.length,  color:C.muted,    wash:"#F1EBE1",   desc:"Primera impresión" },
   ];
@@ -2607,7 +2652,13 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
             <div key={c.id} onClick={()=>setSelectedChat&&setSelectedChat(c)} style={{padding:14,borderRadius:12,display:"flex",gap:12,alignItems:"center",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",position:"relative"}}>
               {/* Left rank stripe */}
               <div style={{position:"absolute",left:0,top:14,bottom:14,width:3,borderRadius:"0 3px 3px 0",background:C.forest}}/>
-              <Avatar initials={c.av} size={42} verified/>
+              <div style={{position:"relative",flexShrink:0}}>
+                <Avatar initials={c.av} size={42} verified/>
+                {/* WhatsApp green badge on avatar */}
+                <div style={{position:"absolute",bottom:-2,right:-2,width:18,height:18,borderRadius:"50%",background:"#25D366",border:`2.5px solid ${C.surface}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <Icon name="whatsapp" size={9} color={C.surface} stroke={2}/>
+                </div>
+              </div>
               <div style={{flex:1,overflow:"hidden"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c.name}</span>
@@ -2623,9 +2674,9 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
             </div>
           ))}
           <div style={{marginTop:6,padding:14,borderRadius:12,background:C.mintWash,border:`1px solid #CDDBCE`,display:"flex",gap:10}}>
-            <Icon name="sparkle" size={18} color={C.forest} stroke={1.5}/>
+            <Icon name="whatsapp" size={18} color={C.forest} stroke={1.5}/>
             <p style={{margin:0,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>
-              <strong style={{color:C.forest,fontWeight:500}}>Coordinación inteligente.</strong> Te preguntamos tus días y horarios disponibles. Esta info se envía automáticamente al corredor para agilizar la visita.
+              <strong style={{color:C.forest,fontWeight:500}}>Chats por WhatsApp.</strong> Cuando alguien te contacta desde una propiedad, la conversación queda registrada acá para que tengas todo en un solo lugar.
             </p>
           </div>
         </div>
