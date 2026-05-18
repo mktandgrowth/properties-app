@@ -35,9 +35,9 @@ const SELLER = { name:"Valentina Sanchez", avatar:"VS", wa:"+56986420055" };
 const waUrl = (num, msg) => `https://wa.me/${String(num||"").replace(/\D/g,"")}${msg?`?text=${encodeURIComponent(msg)}`:""}`;
 
 const PROPS = [
-  { id:1,type:"Casa",operacion:"venta",price:8500,cur:"UF",loc:"La Reina, Santiago",comuna:"La Reina",beds:4,baths:3,parks:2,area:180,areaTerreno:280,nuevo:false,amenities:["piscina","quincho","jardin","terraza","condominio","dorm_servicio","calefaccion","cerco_electrico","orient_norte"],title:"Casa mediterránea con piscina y quincho",desc:"Amplia casa familiar. Living comedor con salida a terraza, jardín con piscina, quincho y bodega. Barrio residencial consolidado.",img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Piscina","Jardín","Quincho"],photos:12,hasVideo:true },
-  { id:2,type:"Departamento",operacion:"venta",price:4900,cur:"UF",loc:"Ñuñoa, Santiago",comuna:"Ñuñoa",beds:3,baths:2,parks:2,area:78,areaTotal:92,nuevo:true,amenities:["terraza","gimnasio","bodega","calefaccion","conserje_24","piscina_edif","orient_norte"],title:"Depto esquina con doble terraza panorámica",desc:"Último piso, vista despejada a la cordillera. Cocina equipada Bosch, 2 estacionamientos. Entrega inmediata.",img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Último piso","Entrega inmediata","Cordillera"],photos:10,hasVideo:true },
-  { id:3,type:"Parcela",operacion:"venta",price:1500,cur:"UF",loc:"Melipilla, RM",comuna:"Melipilla",beds:0,baths:0,parks:0,area:5000,hectareas:0.5,nuevo:false,amenities:["jardin","derechos_agua","frutal"],usoSitio:"agricola",title:"Parcela 5.000m² — camino a la costa",desc:"Parcela con árboles frutales, pozo profundo y electricidad trifásica. A 30 min de Santiago por autopista.",img:"https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["5.000m²","Pozo","Frutales"],photos:9,hasVideo:true },
+  { id:1,type:"Casa",operacion:"venta",price:8500,cur:"UF",loc:"La Reina, Santiago",comuna:"La Reina",lat:-33.4506,lng:-70.5345,beds:4,baths:3,parks:2,area:180,areaTerreno:280,nuevo:false,amenities:["piscina","quincho","jardin","terraza","condominio","dorm_servicio","calefaccion","cerco_electrico","orient_norte"],title:"Casa mediterránea con piscina y quincho",desc:"Amplia casa familiar. Living comedor con salida a terraza, jardín con piscina, quincho y bodega. Barrio residencial consolidado.",img:"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Piscina","Jardín","Quincho"],photos:12,hasVideo:true },
+  { id:2,type:"Departamento",operacion:"venta",price:4900,cur:"UF",loc:"Ñuñoa, Santiago",comuna:"Ñuñoa",lat:-33.4570,lng:-70.5970,beds:3,baths:2,parks:2,area:78,areaTotal:92,nuevo:true,amenities:["terraza","gimnasio","bodega","calefaccion","conserje_24","piscina_edif","orient_norte"],title:"Depto esquina con doble terraza panorámica",desc:"Último piso, vista despejada a la cordillera. Cocina equipada Bosch, 2 estacionamientos. Entrega inmediata.",img:"https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["Último piso","Entrega inmediata","Cordillera"],photos:10,hasVideo:true },
+  { id:3,type:"Parcela",operacion:"venta",price:1500,cur:"UF",loc:"Melipilla, RM",comuna:"Melipilla",lat:-33.6864,lng:-71.2147,beds:0,baths:0,parks:0,area:5000,hectareas:0.5,nuevo:false,amenities:["jardin","derechos_agua","frutal"],usoSitio:"agricola",title:"Parcela 5.000m² — camino a la costa",desc:"Parcela con árboles frutales, pozo profundo y electricidad trifásica. A 30 min de Santiago por autopista.",img:"https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=600&fit=crop",user:SELLER.name,avatar:SELLER.avatar,liked:false,saved:false,wa:SELLER.wa,tags:["5.000m²","Pozo","Frutales"],photos:9,hasVideo:true },
 ];
 
 const REELS = [
@@ -353,6 +353,141 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
   };
   return <svg {...s} style={{display:"block",flexShrink:0}}>{paths[name]}</svg>;
 };
+
+// ── Google Maps loader hook + components ──
+const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+function useGoogleMaps() {
+  const [loaded, setLoaded] = useState(typeof window !== "undefined" && !!window.google?.maps);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.google?.maps?.places) { setLoaded(true); return; }
+    if (!GMAPS_KEY) { console.warn("VITE_GOOGLE_MAPS_API_KEY not set"); return; }
+    // If script already being loaded, just wait
+    if (document.getElementById("google-maps-script")) {
+      const wait = setInterval(() => {
+        if (window.google?.maps?.places) { setLoaded(true); clearInterval(wait); }
+      }, 100);
+      return () => clearInterval(wait);
+    }
+    const script = document.createElement("script");
+    script.id = "google-maps-script";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places&v=weekly&loading=async`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setLoaded(true);
+    script.onerror = () => console.error("Failed to load Google Maps");
+    document.head.appendChild(script);
+  }, []);
+  return loaded;
+}
+
+// Custom map styling that matches our editorial brand palette
+const MAP_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#F7F3EC" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#837A70" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#F7F3EC" }] },
+  { featureType: "administrative.land_parcel", elementType: "labels.text.fill", stylers: [{ color: "#A8A096" }] },
+  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#837A70" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#E5EDE6" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#FFFFFF" }] },
+  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#F1EBE1" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#ECE5D8" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#C4D9E0" }] },
+];
+
+function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
+  const ref = useRef(null);
+  const loaded = useGoogleMaps();
+  useEffect(() => {
+    if (!loaded || !ref.current || typeof lat !== "number" || typeof lng !== "number") return;
+    const map = new window.google.maps.Map(ref.current, {
+      center: { lat, lng },
+      zoom,
+      disableDefaultUI: true,
+      zoomControl: true,
+      styles: MAP_STYLE,
+      gestureHandling: "cooperative",
+    });
+    // Custom branded pin
+    new window.google.maps.Marker({
+      position: { lat, lng },
+      map,
+      icon: {
+        path: "M12 21s-7-7.5-7-12a7 7 0 1114 0c0 4.5-7 12-7 12z",
+        fillColor: "#4A3122",
+        fillOpacity: 1,
+        strokeColor: "#FFFFFF",
+        strokeWeight: 1.5,
+        scale: 1.8,
+        anchor: new window.google.maps.Point(12, 21),
+      },
+      title: address,
+    });
+  }, [loaded, lat, lng, zoom, address]);
+
+  if (!GMAPS_KEY) {
+    return (
+      <div style={{height,borderRadius:12,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6}}>
+        <Logo size={28}/>
+        <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500}}>Mapa — {address}</span>
+      </div>
+    );
+  }
+  if (!loaded) {
+    return (
+      <div style={{height,borderRadius:12,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Cargando mapa…</span>
+      </div>
+    );
+  }
+  return <div ref={ref} style={{width:"100%",height,borderRadius:12,overflow:"hidden"}}/>;
+}
+
+function AddressAutocomplete({ value, onChange, onSelect, placeholder, style }) {
+  const inputRef = useRef(null);
+  const loaded = useGoogleMaps();
+  useEffect(() => {
+    if (!loaded || !inputRef.current || !window.google?.maps?.places) return;
+    const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
+      componentRestrictions: { country: "cl" },
+      fields: ["address_components", "formatted_address", "geometry", "name"],
+    });
+    const listener = ac.addListener("place_changed", () => {
+      const p = ac.getPlace();
+      if (!p.geometry || !p.geometry.location) return;
+      // Find comuna (administrative_area_level_3 or locality)
+      let comuna = "";
+      let region = "";
+      (p.address_components || []).forEach(c => {
+        if (c.types.includes("administrative_area_level_3") || c.types.includes("locality")) {
+          if (!comuna) comuna = c.long_name;
+        }
+        if (c.types.includes("administrative_area_level_1")) region = c.long_name;
+      });
+      onSelect && onSelect({
+        address: p.formatted_address || p.name,
+        comuna,
+        region,
+        lat: p.geometry.location.lat(),
+        lng: p.geometry.location.lng(),
+      });
+    });
+    return () => { if (window.google?.maps?.event && listener) window.google.maps.event.removeListener(listener); };
+  }, [loaded]);
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value || ""}
+      onChange={e => onChange && onChange(e.target.value)}
+      placeholder={placeholder || "Empieza a escribir tu dirección..."}
+      style={style}
+    />
+  );
+}
 
 // ── Nav ──
 function Nav({active,go}) {
@@ -1107,10 +1242,7 @@ function Detail({p,back,onLike,onSave}) {
           {p.tags.map(t=><span key={t} style={{fontSize:10.5,padding:"5px 12px",borderRadius:999,background:"transparent",border:`1px solid ${C.line}`,color:C.text,fontFamily:Fb,fontWeight:400}}>{t}</span>)}
         </div>
         <div style={{borderRadius:12,overflow:"hidden",marginBottom:18,border:`1px solid ${C.line}`}}>
-          <div style={{height:120,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6}}>
-            <Logo size={30} />
-            <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,letterSpacing:"0.06em"}}>Mapa — {p.loc}</span>
-          </div>
+          <MapView lat={p.lat} lng={p.lng} address={p.loc} height={180} zoom={15}/>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`}}>
           <Avatar initials={p.avatar} size={42} verified/>
@@ -1565,7 +1697,8 @@ function Sell() {
   const [form,setForm]=useState({
     type:"", operacion:"venta", title:"", desc:"",
     currency:"UF", price:"",
-    loc:"", beds:"", baths:"", parks:"",
+    loc:"", comuna:"", lat:null, lng:null,
+    beds:"", baths:"", parks:"",
     area:"", areaTerreno:"", areaTotal:"", hectareas:"", privados:"",
     photos:[], videoUp:false, videoTakes:[false,false,false,false], amenities:[],
     // Reel editor state
@@ -1708,30 +1841,45 @@ function Sell() {
           <p style={{margin:"5px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Si lo dejas en blanco, lo armamos automáticamente con la IA según los datos.</p>
         </div>
 
-        {/* Ubicación (comuna) con autocomplete */}
-        <div style={{marginBottom:14,position:"relative"}}>
-          <label style={lbl}>Ubicación (comuna) *</label>
-          <input
-            type="text"
-            placeholder="Empieza a escribir tu comuna..."
-            value={form.loc}
-            onChange={e=>{setForm({...form,loc:e.target.value});setLocFocus(true);}}
-            onFocus={()=>setLocFocus(true)}
-            onBlur={()=>setTimeout(()=>setLocFocus(false),200)}
-            style={inp}
-          />
-          {locFocus && locSugs.length>0 && (
-            <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:100,background:C.surface,border:`1px solid ${C.line}`,borderRadius:12,boxShadow:`0 8px 24px ${C.ink}15`,maxHeight:240,overflowY:"auto"}}>
-              {locSugs.map(([c,r],i)=>(
-                <button key={c} onMouseDown={(e)=>{e.preventDefault();setForm({...form,loc:c});setLocFocus(false);}} style={{width:"100%",padding:"10px 13px",border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left",borderBottom:i<locSugs.length-1?`1px solid ${C.lineSoft}`:"none"}}>
-                  <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>
-                  <div>
-                    <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c}</div>
-                    <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{r}</div>
-                  </div>
-                </button>
-              ))}
+        {/* Ubicación con Places Autocomplete (Google Maps) */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Ubicación *</label>
+          {GMAPS_KEY ? (
+            <AddressAutocomplete
+              value={form.loc}
+              onChange={(v)=>setForm({...form,loc:v})}
+              onSelect={({address,comuna,region,lat,lng})=>{
+                setForm({...form,loc:address,comuna:comuna||form.comuna,lat,lng});
+              }}
+              placeholder="Av. Manquehue 1234, Las Condes..."
+              style={inp}
+            />
+          ) : (
+            /* Fallback: local comunas autocomplete if Maps not configured */
+            <div style={{position:"relative"}}>
+              <input type="text" placeholder="Empieza a escribir tu comuna..." value={form.loc}
+                onChange={e=>{setForm({...form,loc:e.target.value});setLocFocus(true);}}
+                onFocus={()=>setLocFocus(true)} onBlur={()=>setTimeout(()=>setLocFocus(false),200)}
+                style={inp}/>
+              {locFocus && locSugs.length>0 && (
+                <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:100,background:C.surface,border:`1px solid ${C.line}`,borderRadius:12,boxShadow:`0 8px 24px ${C.ink}15`,maxHeight:240,overflowY:"auto"}}>
+                  {locSugs.map(([c,r],i)=>(
+                    <button key={c} onMouseDown={(e)=>{e.preventDefault();setForm({...form,loc:c});setLocFocus(false);}} style={{width:"100%",padding:"10px 13px",border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left",borderBottom:i<locSugs.length-1?`1px solid ${C.lineSoft}`:"none"}}>
+                      <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>
+                      <div>
+                        <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c}</div>
+                        <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{r}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
+          {form.lat && form.lng && (
+            <p style={{margin:"5px 0 0",fontSize:10,color:C.forest,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em",display:"flex",alignItems:"center",gap:4}}>
+              <Icon name="check" size={11} color={C.forest} stroke={2.2}/>Pin ubicado en el mapa
+            </p>
           )}
         </div>
 
@@ -2116,14 +2264,34 @@ function Sell() {
         </div>
       )}
 
-      {/* Mapa placeholder modal (Vender step 2) */}
+      {/* Mapa modal (Vender step 2) */}
       {mapModal && (
         <div onClick={()=>setMapModal(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{maxWidth:380,background:C.surface,borderRadius:18,padding:"24px 22px",textAlign:"center",animation:"slideUp 0.25s ease"}}>
-            <div style={{margin:"0 auto 12px",width:56,height:56,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="pin" size={26} color={C.brand} stroke={1.5}/></div>
-            <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Marca tu propiedad</h3>
-            <p style={{margin:"0 0 18px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Pronto vas a poder arrastrar el pin sobre el mapa real (Google Maps) para ubicar exacto tu propiedad. Por ahora usamos la comuna que ingresaste.</p>
-            <button onClick={()=>setMapModal(false)} style={{padding:"11px 20px",borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Entendido</button>
+          <div onClick={e=>e.stopPropagation()} style={{maxWidth:420,width:"100%",background:C.surface,borderRadius:18,padding:"20px 18px",animation:"slideUp 0.25s ease"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:34,height:34,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="pin" size={17} color={C.brand} stroke={1.6}/></div>
+                <h3 style={{margin:0,fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Ubicación en el mapa</h3>
+              </div>
+              <button onClick={()=>setMapModal(false)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+            </div>
+
+            {form.lat && form.lng ? (
+              <>
+                <MapView lat={form.lat} lng={form.lng} address={form.loc} height={260} zoom={16}/>
+                <p style={{margin:"10px 0 0",fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5,fontStyle:"italic"}}>📍 {form.loc}</p>
+              </>
+            ) : (
+              <>
+                <div style={{height:160,borderRadius:12,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,marginBottom:14}}>
+                  <Logo size={32}/>
+                  <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Sin ubicación marcada</span>
+                </div>
+                <p style={{margin:"0 0 14px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Para que tu propiedad aparezca en el mapa, completa el campo "Ubicación" arriba con una dirección real (Google Maps lo geocodifica automáticamente).</p>
+              </>
+            )}
+
+            <button onClick={()=>setMapModal(false)} style={{width:"100%",padding:"11px 18px",borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,marginTop:14}}>Listo</button>
           </div>
         </div>
       )}
