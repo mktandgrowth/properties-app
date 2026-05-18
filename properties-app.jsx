@@ -120,12 +120,12 @@ const UF_TO_CLP = 40000;
 // In production these URLs point to actual MP3s in /public/audio/ or a CDN.
 // For demo, we use the audio attribute null so the player plays without sound (silent fallback).
 const MUSIC_LIBRARY = [
-  { k:"sunset_drive",     l:"Sunset Drive",     vibe:"Cálido / Acústico",       bpm:92,  defaultFor:["Casa"] },
-  { k:"urban_dawn",       l:"Urban Dawn",       vibe:"Minimal Electrónico",     bpm:110, defaultFor:["Departamento"] },
-  { k:"mediterranean",    l:"Mediterranean",    vibe:"Cinematográfico",         bpm:80,  defaultFor:["Casa Premium"] },
-  { k:"country_road",     l:"Country Road",     vibe:"Folk Relajado",           bpm:88,  defaultFor:["Parcela","Sitio"] },
-  { k:"corporate_smooth", l:"Corporate Smooth", vibe:"Corporativo Suave",       bpm:105, defaultFor:["Oficina","Industrial"] },
-  { k:"bright_young",     l:"Bright Young",     vibe:"Brillante / Joven",       bpm:120, defaultFor:[] },
+  { k:"sunset_drive",     l:"Sunset Drive",     vibe:"Cálido / Acústico",       bpm:92,  defaultFor:["Casa"],                  url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+  { k:"urban_dawn",       l:"Urban Dawn",       vibe:"Minimal Electrónico",     bpm:110, defaultFor:["Departamento"],          url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+  { k:"mediterranean",    l:"Mediterranean",    vibe:"Cinematográfico",         bpm:80,  defaultFor:["Casa Premium"],          url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
+  { k:"country_road",     l:"Country Road",     vibe:"Folk Relajado",           bpm:88,  defaultFor:["Parcela","Sitio"],       url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" },
+  { k:"corporate_smooth", l:"Corporate Smooth", vibe:"Corporativo Suave",       bpm:105, defaultFor:["Oficina","Industrial"],  url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
+  { k:"bright_young",     l:"Bright Young",     vibe:"Brillante / Joven",       bpm:120, defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
 ];
 
 // Auto-suggest music based on property type
@@ -350,6 +350,9 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
     storage: <><rect x="4" y="6" width="16" height="14" rx="1.5"/><path d="M4 11h16M9 6V3h6v3M9 16h6"/></>,
     gym: <><path d="M6 5v14M3 9v6M18 5v14M21 9v6M6 12h12"/></>,
     new: <><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/><circle cx="18" cy="18" r="3"/><path d="M16.8 18l1 1 2-2.5"/></>,
+    pencil: <><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z"/></>,
+    trash: <><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>,
+    dots: <><circle cx="12" cy="6" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="12" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="18" r="1.4" fill={color} stroke="none"/></>,
   };
   return <svg {...s} style={{display:"block",flexShrink:0}}>{paths[name]}</svg>;
 };
@@ -1284,7 +1287,9 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   const [idx,setIdx]=useState(startIdx);
   const r=REELS[idx]; const p=props.find(x=>x.id===r.propId);
   const [lk,setLk]=useState(false);const [sv,setSv]=useState(false);
-  const [touchY,setTouchY]=useState(null);
+  // Touch tracking — startY anchors first touch; deltaY tracks live finger movement for real-time slide
+  const [startY,setStartY]=useState(null);
+  const [deltaY,setDeltaY]=useState(0);
   const wheelLockRef = useRef(0);
   useEffect(()=>{if(p){setLk(p.liked);setSv(p.saved);}},[idx,p?.liked,p?.saved]);
 
@@ -1292,19 +1297,31 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   const goNext = () => setIdx(i => Math.min(REELS.length-1, i+1));
   const goPrev = () => setIdx(i => Math.max(0, i-1));
 
-  // Swipe (mobile)
-  const onTS = e => setTouchY(e.touches[0].clientY);
+  // Swipe (mobile) — real-time finger tracking
+  const onTS = e => { setStartY(e.touches[0].clientY); setDeltaY(0); };
+  const onTM = e => {
+    if (startY===null) return;
+    const dy = e.touches[0].clientY - startY; // positive = swipe down (prev), negative = swipe up (next)
+    // Clamp to avoid overscrolling past edges
+    if ((idx===0 && dy>0) || (idx===REELS.length-1 && dy<0)) {
+      setDeltaY(dy * 0.25); // rubber-band effect at edges
+    } else {
+      setDeltaY(dy);
+    }
+  };
   const onTE = e => {
-    if (touchY===null) return;
-    const dy = touchY - e.changedTouches[0].clientY;
-    if (Math.abs(dy) > 50) (dy > 0 ? goNext : goPrev)();
-    setTouchY(null);
+    if (startY===null) return;
+    const threshold = 80;
+    if (deltaY < -threshold && idx < REELS.length-1) goNext();
+    else if (deltaY > threshold && idx > 0) goPrev();
+    setStartY(null);
+    setDeltaY(0);
   };
   // Wheel (desktop) — throttled
   const onWheel = e => {
     e.preventDefault();
     const now = Date.now();
-    if (now - wheelLockRef.current < 600) return;
+    if (now - wheelLockRef.current < 450) return;
     if (Math.abs(e.deltaY) < 20) return;
     wheelLockRef.current = now;
     (e.deltaY > 0 ? goNext : goPrev)();
@@ -1325,14 +1342,39 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
     </div>
   );
 
+  // Preview neighbors (next/prev) for smooth slide
+  const prevR = idx>0 ? REELS[idx-1] : null;
+  const nextR = idx<REELS.length-1 ? REELS[idx+1] : null;
+  const prevP = prevR ? props.find(x=>x.id===prevR.propId) : null;
+  const nextP = nextR ? props.find(x=>x.id===nextR.propId) : null;
+  const dragging = startY !== null;
+
   return (
-    <div onTouchStart={onTS} onTouchEnd={onTE} onWheel={onWheel} style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000",touchAction:"none"}}>
+    <div onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onWheel={onWheel} className="reels-frame" style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000",touchAction:"none"}}>
       <style>{`
-        @keyframes reelIn { 0%{opacity:0;transform:scale(1.06) translateY(8px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
-        @keyframes reelInfoIn { 0%{opacity:0;transform:translateY(16px)} 100%{opacity:1;transform:translateY(0)} }
+        @keyframes reelIn { 0%{opacity:0;transform:scale(1.04)} 100%{opacity:1;transform:scale(1)} }
+        @keyframes reelInfoIn { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
       `}</style>
+
+      {/* ─── Slide track: 3 reels stacked vertically (prev / current / next) ─── */}
+      <div style={{
+        position:"absolute",
+        top:0, left:0, right:0,
+        height:"300vh",  // 3 reels tall (prev + current + next)
+        transform:`translateY(calc(-100vh + ${deltaY}px))`,
+        transition: dragging ? "none" : "transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)",
+        willChange:"transform"
+      }}>
+        {/* PREV reel preview (slot 0, height 100vh) */}
+        <div style={{position:"absolute",top:0,left:0,right:0,height:"100vh",overflow:"hidden"}}>
+          {prevP && <img src={prevP.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>}
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
+        </div>
+
+        {/* CURRENT reel (slot 1, full UI) */}
+        <div style={{position:"absolute",top:"100vh",left:0,right:0,height:"100vh",overflow:"hidden"}}>
       {/* Background image with smooth fade transition between reels */}
-      {p&&<img key={"img-"+idx} src={p.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)",animation:"reelIn 0.45s ease"}} />}
+      {p&&<img key={"img-"+idx} src={p.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)",animation:"reelIn 0.4s ease"}} />}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}} />
 
       <div style={{position:"absolute",top:18,left:18,zIndex:10,display:"flex",alignItems:"center",gap:8}}>
@@ -1396,8 +1438,17 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         </>}
       </div>
 
-      {/* Pager indicator + arrows on the LEFT side, vertically centered */}
-      <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:10}}>
+        </div>
+        {/* NEXT reel preview (slot 2) */}
+        <div style={{position:"absolute",top:"200vh",left:0,right:0,height:"100vh",overflow:"hidden"}}>
+          {nextP && <img src={nextP.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>}
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
+        </div>
+      </div>
+      {/* ─── End slide track ─── */}
+
+      {/* Pager indicator + arrows on the LEFT side, vertically centered (fixed, not affected by slide) */}
+      <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:20}}>
         <button onClick={()=>setIdx(Math.max(0,idx-1))} disabled={idx===0} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.3:1}}>
           <Icon name="chevronUp" size={16} color={C.surface} stroke={1.8}/>
         </button>
@@ -1416,11 +1467,35 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
 
 // ═══ SELL ═══
 // ─── Reel Player — plays takes in sequence with playbackRate, music, and title overlay ───
-function ReelPlayer({takeFiles={}, takeOrder=[0,1,2,3], takeSpeeds=[1,2,2,1], title="", subtitle="", titleStyle="editorial", musicTrack="", autoplay=false, height="auto", showOverlay=true, onPlayStateChange}){
+function ReelPlayer({takeFiles={}, takeOrder=[0,1,2,3], takeSpeeds=[1,2,2,1], title="", subtitle="", titleStyle="editorial", musicTrack="", autoplay=false, height="auto", showOverlay=true, onPlayStateChange, muted=false}){
   const [idx,setIdx]=useState(0);
   const [playing,setPlaying]=useState(autoplay);
   const [cycleKey,setCycleKey]=useState(0); // re-trigger overlay animation on loop
+  const [musicMuted,setMusicMuted]=useState(muted);
   const videoRefs = useRef([null,null,null,null]);
+  const audioRef = useRef(null);
+
+  // Lookup music URL from library
+  const musicMeta = MUSIC_LIBRARY.find(m => m.k === musicTrack);
+  const musicUrl = musicMeta?.url || "";
+
+  // Play/pause audio in sync with video state
+  useEffect(()=>{
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing && !musicMuted) {
+      a.volume = 0.55;
+      a.play().catch(()=>{ /* autoplay block — user gesture required */ });
+    } else {
+      a.pause();
+    }
+  }, [playing, musicMuted, musicUrl]);
+
+  // Reset music when track changes
+  useEffect(()=>{
+    const a = audioRef.current;
+    if (a) { a.currentTime = 0; }
+  }, [musicUrl]);
 
   // Ordered list of file URLs (takeFiles is keyed by original slot 1..4)
   const orderedFiles = takeOrder.map(o => takeFiles[o+1]);
@@ -1541,16 +1616,16 @@ function ReelPlayer({takeFiles={}, takeOrder=[0,1,2,3], takeSpeeds=[1,2,2,1], ti
         </button>
       )}
 
-      {/* Music indicator (bottom-right) */}
-      {musicTrack && validCount>0 && (() => {
-        const m = MUSIC_LIBRARY.find(x=>x.k===musicTrack);
-        return m ? (
-          <div style={{position:"absolute",bottom:14,right:14,zIndex:6,padding:"5px 10px",borderRadius:999,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",display:"inline-flex",alignItems:"center",gap:6}}>
-            <div style={{width:6,height:6,borderRadius:"50%",background:C.surface,animation:"pulseRing 1.4s ease-in-out infinite"}}/>
-            <span style={{fontSize:10.5,color:C.surface,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>♪ {m.l}</span>
-          </div>
-        ) : null;
-      })()}
+      {/* Audio element — plays selected music track */}
+      {musicUrl && <audio ref={audioRef} src={musicUrl} loop preload="auto"/>}
+
+      {/* Music indicator + mute toggle (bottom-right) */}
+      {musicTrack && validCount>0 && musicMeta && (
+        <button onClick={(e)=>{e.stopPropagation(); setMusicMuted(m=>!m);}} style={{position:"absolute",bottom:14,right:14,zIndex:6,padding:"5px 10px",borderRadius:999,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",display:"inline-flex",alignItems:"center",gap:6,border:"none",cursor:"pointer"}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:musicMuted?"rgba(255,255,255,0.4)":C.surface,animation:musicMuted?"none":"pulseRing 1.4s ease-in-out infinite"}}/>
+          <span style={{fontSize:10.5,color:C.surface,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>{musicMuted?"♪ Activar":`♪ ${musicMeta.l}`}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -2613,14 +2688,35 @@ function Sheet({title,onClose,children}){
 }
 
 // ═══ PROFILE ═══
-function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel}) {
+function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe,onOpenProp,onEditProp,onDeleteProp}) {
   const [gear,setGear]=useState(false);
+  const [editProfile,setEditProfile]=useState(false);
+  const [propMenu,setPropMenu]=useState(null); // prop being shown 3-dot menu
+  const [editingProp,setEditingProp]=useState(null); // prop being edited
+  const photoInputRef = useRef(null);
   const tab = subTab || "pub";
   const setTab = setSubTab || (()=>{});
   const [panel,setPanel]=useState(initialPanel||null);
   useEffect(()=>{
     if (initialPanel) { setPanel(initialPanel); clearPanel&&clearPanel(); }
   },[initialPanel]);
+  // Local form state for the edit-profile modal
+  const [pf,setPf]=useState({name:me?.name||"", email:me?.email||"", wa:me?.wa||"", city:me?.city||"Santiago"});
+  useEffect(()=>{
+    if (editProfile) setPf({name:me?.name||"", email:me?.email||"", wa:me?.wa||"", city:me?.city||"Santiago"});
+  },[editProfile, me]);
+  // Local form state for editing a published property
+  const [epf,setEpf]=useState({title:"",price:"",cur:"UF",desc:"",loc:""});
+  useEffect(()=>{
+    if (editingProp) setEpf({title:editingProp.title||"",price:String(editingProp.price||""),cur:editingProp.cur||"UF",desc:editingProp.desc||"",loc:editingProp.loc||""});
+  },[editingProp]);
+  const onPhotoPick = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setMe && setMe(m => ({...m, photo: url}));
+    e.target.value = "";
+  };
   const menuItems=[
     {id:"stats", icon:"chart",l:"Estadísticas"},
     {id:"pagos", icon:"card", l:"Pagos y plan"},
@@ -2725,12 +2821,20 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel}) {
           <Icon name="gear" size={16} color={C.text} stroke={1.5}/>
         </button>
       </div>
+      <input ref={photoInputRef} type="file" accept="image/*" onChange={onPhotoPick} style={{display:"none"}}/>
       <div style={{textAlign:"center",marginBottom:22}}>
-        <div style={{display:"inline-block",position:"relative",marginBottom:10}}>
-          <Avatar initials={SELLER.avatar} size={72} verified/>
-        </div>
-        <h3 style={{fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 3px",letterSpacing:"-0.01em"}}>{SELLER.name}</h3>
-        <p style={{fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 8px",letterSpacing:"0.02em"}}>valentina@mktandgrowth.com · Santiago</p>
+        <button onClick={()=>setEditProfile(true)} style={{display:"inline-block",position:"relative",marginBottom:10,background:"none",border:"none",padding:0,cursor:"pointer"}}>
+          {me?.photo
+            ? <img src={me.photo} alt="" style={{width:72,height:72,borderRadius:"50%",objectFit:"cover",border:`2px solid ${C.surface}`,boxShadow:`0 0 0 1.5px ${C.forest}`}}/>
+            : <Avatar initials={me?.avatar||SELLER.avatar} size={72} verified/>
+          }
+          {/* Edit pencil overlay */}
+          <span style={{position:"absolute",bottom:-2,right:-2,width:26,height:26,borderRadius:"50%",background:C.ink,border:`2.5px solid ${C.bg}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Icon name="pencil" size={11} color={C.surface} stroke={2}/>
+          </span>
+        </button>
+        <h3 onClick={()=>setEditProfile(true)} style={{fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 3px",letterSpacing:"-0.01em",cursor:"pointer"}}>{me?.name||SELLER.name}</h3>
+        <p style={{fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 8px",letterSpacing:"0.02em"}}>{me?.email||"valentina@mktandgrowth.com"} · {me?.city||"Santiago"}</p>
         <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 11px",borderRadius:999,background:C.mintWash,border:`1px solid #CDDBCE`}}>
           <Icon name="check" size={10} color={C.forest} stroke={2.5}/>
           <span style={{fontSize:10,fontWeight:500,color:C.forest,fontFamily:Fb,letterSpacing:"0.08em",textTransform:"uppercase"}}>Cuenta verificada</span>
@@ -2754,17 +2858,46 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel}) {
       </div>
       {tab==="pub"?
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {props.length===0 && (
+            <div style={{padding:30,borderRadius:14,background:C.surface,border:`1px dashed ${C.line}`,textAlign:"center"}}>
+              <Icon name="house" size={32} color={C.subtle} stroke={1.3}/>
+              <p style={{margin:"10px 0 0",fontSize:13,color:C.muted,fontFamily:Fb,fontWeight:400}}>Aún no tienes publicaciones</p>
+              <button onClick={()=>onGoTo&&onGoTo("sell")} style={{marginTop:12,padding:"10px 18px",borderRadius:10,background:C.ink,border:"none",color:C.surface,fontSize:12,fontWeight:500,fontFamily:Fb,cursor:"pointer"}}>Publicar mi primera propiedad</button>
+            </div>
+          )}
           {props.map(p=>(
-            <div key={p.id} style={{display:"flex",gap:12,padding:12,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`}}>
+            <div key={p.id} style={{position:"relative",display:"flex",gap:12,padding:12,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",transition:"all 0.15s"}}
+              onMouseEnter={e=>e.currentTarget.style.borderColor=C.brand} onMouseLeave={e=>e.currentTarget.style.borderColor=C.line}
+              onClick={()=>onOpenProp&&onOpenProp(p)}>
               <img src={p.img} alt="" style={{width:66,height:66,borderRadius:10,objectFit:"cover"}} />
-              <div style={{flex:1}}>
-                <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3}}>{p.title}</p>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.title}</p>
                 <p style={{margin:"3px 0 0",fontSize:13,color:C.ink,fontFamily:Fs,fontWeight:400}}>{p.cur} {fmt(p.price)}</p>
                 <div style={{display:"flex",gap:12,marginTop:6,fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>
-                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="eye" size={11} color={C.muted} stroke={1.5}/>1.2K</span>
-                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="chat" size={11} color={C.muted} stroke={1.5}/>8</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>{p.comuna||p.loc.split(",")[0]}</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="eye" size={11} color={C.muted} stroke={1.5}/>{p.nuevo?"Nueva":"1.2K"}</span>
                 </div>
               </div>
+              {/* 3-dot menu trigger */}
+              <button onClick={(e)=>{e.stopPropagation(); setPropMenu(propMenu===p.id?null:p.id);}} style={{position:"absolute",top:8,right:8,width:30,height:30,borderRadius:8,background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <Icon name="dots" size={16} color={C.muted} stroke={1.5}/>
+              </button>
+              {propMenu===p.id && (
+                <>
+                  <div onClick={(e)=>{e.stopPropagation(); setPropMenu(null);}} style={{position:"fixed",inset:0,zIndex:150}}/>
+                  <div onClick={e=>e.stopPropagation()} style={{position:"absolute",top:38,right:6,zIndex:160,minWidth:170,background:C.surface,borderRadius:10,border:`1px solid ${C.line}`,boxShadow:`0 8px 24px ${C.ink}20`,overflow:"hidden"}}>
+                    <button onClick={()=>{setPropMenu(null); onOpenProp&&onOpenProp(p);}} style={{display:"flex",alignItems:"center",gap:9,width:"100%",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontSize:12.5,color:C.ink,fontFamily:Fb,fontWeight:500,textAlign:"left",borderBottom:`1px solid ${C.lineSoft}`}}>
+                      <Icon name="eye" size={14} color={C.text} stroke={1.5}/>Ver ficha
+                    </button>
+                    <button onClick={()=>{setPropMenu(null); setEditingProp(p);}} style={{display:"flex",alignItems:"center",gap:9,width:"100%",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontSize:12.5,color:C.ink,fontFamily:Fb,fontWeight:500,textAlign:"left",borderBottom:`1px solid ${C.lineSoft}`}}>
+                      <Icon name="pencil" size={14} color={C.text} stroke={1.5}/>Editar
+                    </button>
+                    <button onClick={()=>{setPropMenu(null); if(window.confirm(`¿Eliminar "${p.title}"?`)) onDeleteProp&&onDeleteProp(p.id);}} style={{display:"flex",alignItems:"center",gap:9,width:"100%",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontSize:12.5,color:C.terracotta,fontFamily:Fb,fontWeight:500,textAlign:"left"}}>
+                      <Icon name="trash" size={14} color={C.terracotta} stroke={1.5}/>Eliminar
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -2803,6 +2936,92 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel}) {
           </div>
         </div>
       }
+
+      {/* ── EDIT PROFILE MODAL ── */}
+      {editProfile && (
+        <div onClick={()=>setEditProfile(false)} style={{position:"fixed",inset:0,zIndex:400,background:"rgba(28,26,23,0.55)",display:"flex",alignItems:"center",justifyContent:"center",padding:18}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:420,background:C.bg,borderRadius:18,padding:"22px 22px 18px",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+              <h3 style={{margin:0,fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Editar perfil</h3>
+              <button onClick={()=>setEditProfile(false)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:18}}>
+              <button onClick={()=>photoInputRef.current?.click()} style={{position:"relative",background:"none",border:"none",padding:0,cursor:"pointer",marginBottom:8}}>
+                {me?.photo
+                  ? <img src={me.photo} alt="" style={{width:90,height:90,borderRadius:"50%",objectFit:"cover"}}/>
+                  : <Avatar initials={me?.avatar||SELLER.avatar} size={90} verified/>}
+                <span style={{position:"absolute",bottom:0,right:0,width:30,height:30,borderRadius:"50%",background:C.ink,border:`3px solid ${C.bg}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <Icon name="camera" size={13} color={C.surface} stroke={2}/>
+                </span>
+              </button>
+              <p style={{margin:0,fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Toca para cambiar foto</p>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:13}}>
+              <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Nombre completo</label>
+                <input value={pf.name} onChange={e=>setPf({...pf,name:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Email</label>
+                <input type="email" value={pf.email} onChange={e=>setPf({...pf,email:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>WhatsApp</label>
+                <input value={pf.wa} onChange={e=>setPf({...pf,wa:e.target.value})} placeholder="+569..." style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ciudad</label>
+                <input value={pf.city} onChange={e=>setPf({...pf,city:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:18}}>
+              <button onClick={()=>setEditProfile(false)} style={{flex:1,padding:13,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Cancelar</button>
+              <button onClick={()=>{
+                const newAvatar = (pf.name||"VS").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+                setMe && setMe(m=>({...m, name:pf.name, email:pf.email, wa:pf.wa, city:pf.city, avatar:newAvatar}));
+                setEditProfile(false);
+              }} style={{flex:1.4,padding:13,borderRadius:11,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT PROPERTY MODAL ── */}
+      {editingProp && (
+        <div onClick={()=>setEditingProp(null)} style={{position:"fixed",inset:0,zIndex:400,background:"rgba(28,26,23,0.55)",display:"flex",alignItems:"center",justifyContent:"center",padding:18}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:420,background:C.bg,borderRadius:18,padding:"22px 22px 18px",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <h3 style={{margin:0,fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Editar publicación</h3>
+              <button onClick={()=>setEditingProp(null)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+            </div>
+            <img src={editingProp.img} alt="" style={{width:"100%",height:140,borderRadius:12,objectFit:"cover",marginBottom:14}}/>
+            <div style={{display:"flex",flexDirection:"column",gap:13}}>
+              <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Título</label>
+                <input value={epf.title} onChange={e=>setEpf({...epf,title:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ubicación</label>
+                <input value={epf.loc} onChange={e=>setEpf({...epf,loc:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+                <div style={{flex:0.4}}><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Moneda</label>
+                  <div style={{display:"flex",gap:3,marginTop:6,background:C.surface,padding:3,borderRadius:10,border:`1px solid ${C.line}`}}>
+                    {["UF","CLP"].map(c=>{const on=epf.cur===c; return <button key={c} onClick={()=>setEpf({...epf,cur:c})} style={{flex:1,padding:"7px 0",borderRadius:7,border:"none",background:on?C.ink:"transparent",color:on?C.surface:C.muted,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>{c}</button>;})}
+                  </div>
+                </div>
+                <div style={{flex:1}}><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Precio</label>
+                  <input type="number" value={epf.price} onChange={e=>setEpf({...epf,price:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+                </div>
+              </div>
+              <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Descripción</label>
+                <textarea value={epf.desc} onChange={e=>setEpf({...epf,desc:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",resize:"vertical",minHeight:90,boxSizing:"border-box",lineHeight:1.5}}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:18}}>
+              <button onClick={()=>setEditingProp(null)} style={{flex:1,padding:13,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Cancelar</button>
+              <button onClick={()=>{
+                onEditProp && onEditProp(editingProp.id, {title:epf.title, price:Number(epf.price)||0, cur:epf.cur, desc:epf.desc, loc:epf.loc});
+                setEditingProp(null);
+              }} style={{flex:1.4,padding:13,borderRadius:11,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2901,6 +3120,8 @@ export default function App() {
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
+  // Editable "me" state — persists during session
+  const [me,setMe]=useState({...SELLER, email:"valentina@mktandgrowth.com", city:"Santiago", photo:null});
 
   // ─── Back-button navigation: handle Android back button gracefully ───
   // Each time we open Detail or Chat, push a history entry. When popstate fires (back pressed),
@@ -3012,7 +3233,19 @@ export default function App() {
             {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
             {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps]); showToast("Propiedad publicada ✓");}} goTo={go} />}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
-            {tab==="profile"&&<Profile props={props} subTab={profileSubTab} setSubTab={setProfileSubTab} onGoTo={goTo} initialPanel={openProfilePanel} clearPanel={()=>setOpenProfilePanel(null)} />}
+            {tab==="profile"&&<Profile
+              props={props}
+              subTab={profileSubTab}
+              setSubTab={setProfileSubTab}
+              onGoTo={goTo}
+              initialPanel={openProfilePanel}
+              clearPanel={()=>setOpenProfilePanel(null)}
+              me={me}
+              setMe={setMe}
+              onOpenProp={(p)=>open(p)}
+              onEditProp={(id,patch)=>{setProps(ps=>ps.map(p=>p.id===id?{...p,...patch}:p)); showToast("Publicación actualizada ✓");}}
+              onDeleteProp={(id)=>{setProps(ps=>ps.filter(p=>p.id!==id)); showToast("Publicación eliminada");}}
+            />}
           </>
         )}
         </div>
