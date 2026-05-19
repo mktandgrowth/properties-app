@@ -514,16 +514,15 @@ function InteractiveMap({ lat, lng, height = 320, onPinPlaced, defaultCenter = {
     });
   };
 
-  // Branded SVG pin icon
-  const buildPinIcon = (bounce = false) => ({
-    path: "M12 0C6.48 0 2 4.48 2 10c0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10z",
-    fillColor: "#A65547",
-    fillOpacity: 1,
-    strokeColor: "#FFFFFF",
-    strokeWeight: 2.5,
-    scale: 1.4,
-    anchor: new window.google.maps.Point(12, 28),
-  });
+  // Branded pin — uses a self-contained SVG data URL (guaranteed visible across all maps)
+  const buildPinIcon = () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52"><defs><filter id="s" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.4"/></filter></defs><path d="M20 0C9 0 0 9 0 20c0 14 20 32 20 32s20-18 20-32C40 9 31 0 20 0z" fill="%23A65547" stroke="%23FFFFFF" stroke-width="3" filter="url(%23s)"/><circle cx="20" cy="20" r="7" fill="%23FFFFFF"/></svg>`;
+    return {
+      url: `data:image/svg+xml;utf8,${svg}`,
+      scaledSize: new window.google.maps.Size(40, 52),
+      anchor: new window.google.maps.Point(20, 52),
+    };
+  };
 
   // Drop or move the pin to latLng + notify parent
   const placeOrMovePin = (latLng) => {
@@ -2477,6 +2476,14 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
   const [mapModal,setMapModal]=useState(false);
   const [locFocus,setLocFocus]=useState(false);
   const [comunaFieldFocus,setComunaFieldFocus]=useState(false);
+  // Auto-fill region whenever comuna matches a known entry (robust catch-all)
+  useEffect(() => {
+    if (!form.comuna) return;
+    const match = COMUNAS.find(([c]) => c.toLowerCase() === form.comuna.toLowerCase().trim());
+    if (match && form.region !== match[1]) {
+      setForm(f => ({...f, region: match[1]}));
+    }
+  }, [form.comuna]);
   const [published,setPublished]=useState(false);
   const total=6; // 1 tipo · 2 detalles · 3 video · 4 fotos · 5 descripción · 6 publicar
 
@@ -3006,13 +3013,26 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
           </div>
         )}
 
-        {/* Mapa */}
+        {/* Mapa — placeholder cuando no hay pin / preview del mapa con pin cuando hay */}
         <div style={{marginBottom:18}}>
           <label style={{...lbl,display:"flex",alignItems:"center",gap:5}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>Ubicación en el mapa</label>
-          <div onClick={()=>setMapModal(true)} style={{marginTop:8,borderRadius:12,border:`1px dashed ${C.brand}`,height:100,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6,cursor:"pointer"}}>
-            <Logo size={26} />
-            <span style={{fontSize:11,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Toca para marcar el pin exacto</span>
-          </div>
+          {typeof form.lat === "number" && typeof form.lng === "number" ? (
+            <div style={{marginTop:8,position:"relative",borderRadius:12,overflow:"hidden",border:`1px solid ${C.brand}`}}>
+              <MapView lat={form.lat} lng={form.lng} address={form.loc} height={160} zoom={16}/>
+              <button onClick={()=>setMapModal(true)} style={{position:"absolute",top:10,right:10,padding:"6px 12px",borderRadius:999,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,fontSize:11,fontWeight:500,color:C.brand,fontFamily:Fb,boxShadow:`0 4px 12px ${C.ink}25`}}>
+                <Icon name="pencil" size={11} color={C.brand} stroke={1.8}/>Mover pin
+              </button>
+              <div style={{position:"absolute",bottom:10,left:10,right:10,padding:"7px 11px",borderRadius:8,background:"rgba(45,74,55,0.94)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",gap:8,boxShadow:"0 4px 12px rgba(28,26,23,0.25)"}}>
+                <Icon name="checkCircle" size={13} color={C.surface} stroke={2}/>
+                <span style={{fontSize:11,color:C.surface,fontFamily:Fb,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Pin colocado · {form.lat.toFixed(4)}, {form.lng.toFixed(4)}</span>
+              </div>
+            </div>
+          ) : (
+            <div onClick={()=>setMapModal(true)} style={{marginTop:8,borderRadius:12,border:`1px dashed ${C.brand}`,height:100,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6,cursor:"pointer"}}>
+              <Logo size={26} />
+              <span style={{fontSize:11,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Toca para marcar el pin exacto</span>
+            </div>
+          )}
         </div>
 
         {/* Características dinámicas según tipo */}
