@@ -2217,9 +2217,16 @@ function ReelEditor({form, setForm}){
 // ─── Supabase Storage / DB helpers (Phase 2) ───
 
 // Upload a Blob/File to a bucket under {userId}/{ts}-{rand}.{ext}, return public URL
+// Validates size — Supabase default limits 50MB per file
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB
 async function uploadToStorage(bucket, file, userId, extHint) {
   if (!supabase) throw new Error("Supabase not configured");
   if (!userId) throw new Error("Need authenticated user to upload");
+  // Size check
+  if (file?.size && file.size > MAX_UPLOAD_BYTES) {
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    throw new Error(`Archivo demasiado grande (${mb}MB). El máximo es 50MB. Considera comprimir el video.`);
+  }
   let ext = extHint || "";
   if (!ext && file?.name) ext = (file.name.split(".").pop() || "").toLowerCase();
   if (!ext && file?.type) {
@@ -2228,7 +2235,10 @@ async function uploadToStorage(bucket, file, userId, extHint) {
   }
   const fname = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext||"bin"}`;
   const { error } = await supabase.storage.from(bucket).upload(fname, file, { upsert:false, contentType: file?.type || undefined });
-  if (error) throw error;
+  if (error) {
+    console.error("Upload error:", error);
+    throw new Error("Error subiendo: " + (error.message || "intenta de nuevo"));
+  }
   const { data } = supabase.storage.from(bucket).getPublicUrl(fname);
   return data.publicUrl;
 }
@@ -2570,17 +2580,16 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
         }
       }
 
-      // Upload video (single)
+      // Upload video (single) — surfaces errors to user so they know if it failed
       let videoUrl = null;
       if (form.videoFile) {
-        setPublishStatus("Subiendo video…");
-        try {
-          const blob = await urlToBlob(form.videoFile);
-          videoUrl = await uploadToStorage("videos", blob, userId, "mp4");
-        } catch (e) { console.warn("video upload failed", e); }
+        const blob = await urlToBlob(form.videoFile);
+        const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+        setPublishStatus(`Subiendo video (${sizeMB}MB)…`);
+        videoUrl = await uploadToStorage("videos", blob, userId, "mp4");
       }
 
-      // Upload 4 takes
+      // Upload 4 takes — same: surface errors
       let videoTakeUrls = {};
       if (form.videoTakeFiles && Object.keys(form.videoTakeFiles).length > 0) {
         const keys = Object.keys(form.videoTakeFiles);
@@ -2588,11 +2597,10 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
           const k = keys[i];
           const url = form.videoTakeFiles[k];
           if (!url) continue;
-          setPublishStatus(`Subiendo toma ${i+1} de ${keys.length}…`);
-          try {
-            const blob = await urlToBlob(url);
-            videoTakeUrls[k] = await uploadToStorage("videos", blob, userId, "mp4");
-          } catch (e) { console.warn("take upload failed", e); }
+          const blob = await urlToBlob(url);
+          const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+          setPublishStatus(`Subiendo toma ${i+1} de ${keys.length} (${sizeMB}MB)…`);
+          videoTakeUrls[k] = await uploadToStorage("videos", blob, userId, "mp4");
         }
       }
 
@@ -2913,48 +2921,6 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
           <label style={lbl}>Ubicación a mostrar <span style={{textTransform:"none",fontWeight:400,letterSpacing:"0",color:C.subtle,marginLeft:4}}>(opcional)</span></label>
           <input type="text" placeholder="Ej: Santa María de Manquehue plano · Las Hualtatas con las Tranqueras" value={form.vanityLocation} onChange={e=>setForm({...form,vanityLocation:e.target.value})} style={inp}/>
           <p style={{margin:"5px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Nombre amigable del barrio o referencia conocida. Se muestra en el reel y en la ficha pública.</p>
-        </div>
-
-        {/* Ubicación con Places Autocomplete (Google Maps) — geolocalización exacta */}
-        <div style={{marginBottom:14}}>
-          <label style={lbl}>Geolocalizar en el mapa <span style={{textTransform:"none",fontWeight:400,letterSpacing:"0",color:C.subtle,marginLeft:4}}>(opcional)</span></label>
-          {GMAPS_KEY ? (
-            <AddressAutocomplete
-              value={form.loc}
-              onChange={(v)=>setForm({...form,loc:v})}
-              onSelect={({address,comuna,region,lat,lng})=>{
-                setForm({...form,loc:address,comuna:comuna||form.comuna,region:region||form.region,lat,lng});
-              }}
-              placeholder="Confirma la dirección para ubicar el pin..."
-              style={inp}
-            />
-          ) : (
-            /* Fallback: local comunas autocomplete if Maps not configured */
-            <div style={{position:"relative"}}>
-              <input type="text" placeholder="Empieza a escribir tu comuna..." value={form.loc}
-                onChange={e=>{setForm({...form,loc:e.target.value});setLocFocus(true);}}
-                onFocus={()=>setLocFocus(true)} onBlur={()=>setTimeout(()=>setLocFocus(false),200)}
-                style={inp}/>
-              {locFocus && locSugs.length>0 && (
-                <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:100,background:C.surface,border:`1px solid ${C.line}`,borderRadius:12,boxShadow:`0 8px 24px ${C.ink}15`,maxHeight:240,overflowY:"auto"}}>
-                  {locSugs.map(([c,r],i)=>(
-                    <button key={c} onMouseDown={(e)=>{e.preventDefault();setForm({...form,loc:c});setLocFocus(false);}} style={{width:"100%",padding:"10px 13px",border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left",borderBottom:i<locSugs.length-1?`1px solid ${C.lineSoft}`:"none"}}>
-                      <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>
-                      <div>
-                        <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c}</div>
-                        <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{r}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {form.lat && form.lng && (
-            <p style={{margin:"5px 0 0",fontSize:10,color:C.forest,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em",display:"flex",alignItems:"center",gap:4}}>
-              <Icon name="check" size={11} color={C.forest} stroke={2.2}/>Pin ubicado en el mapa
-            </p>
-          )}
         </div>
 
         {/* Precio con toggle UF/CLP */}
@@ -3292,41 +3258,53 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
             <h3 style={{fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 6px",letterSpacing:"-0.01em"}}>Listo para publicar</h3>
             <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 18px"}}>Revisa el resumen antes de enviar</p>
 
-            {/* ─── Cover picker ─── */}
-            <div style={{textAlign:"left",marginBottom:14}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Foto de portada</span>
-                {(form.videoFile || (form.videoTakeFiles && form.videoTakeFiles[1])) && (
-                  <button onClick={async ()=>{
-                    const src = form.videoFile || form.videoTakeFiles[1];
-                    try {
-                      const frame = await captureVideoFrame(src, 1.0);
-                      setForm(f=>({...f, coverUrl: frame}));
-                    } catch(e){ console.warn(e); }
-                  }} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:999,background:"transparent",border:`1px solid ${C.line}`,color:C.brand,fontSize:10.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>
-                    <Icon name="video" size={11} color={C.brand} stroke={1.6}/>Capturar del video
-                  </button>
-                )}
+            {/* ─── Cover picker — destacado, primero en la lista ─── */}
+            <div style={{textAlign:"left",marginBottom:18,padding:"16px 16px",borderRadius:14,background:C.brandWash,border:`2px solid ${C.brand}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10}}>
+                <div style={{width:32,height:32,borderRadius:10,background:C.brand,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Icon name="camera" size={16} color={C.surface} stroke={1.7}/>
+                </div>
+                <div style={{flex:1}}>
+                  <h4 style={{margin:0,fontSize:15,fontWeight:500,color:C.brand,fontFamily:Fb,letterSpacing:"-0.01em"}}>Elegí la portada</h4>
+                  <p style={{margin:"1px 0 0",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400}}>Es la primera imagen que ven los interesados.</p>
+                </div>
               </div>
               {currentCover ? (
-                <img src={currentCover} alt="Portada" style={{width:"100%",height:160,objectFit:"cover",borderRadius:12,border:`1px solid ${C.line}`,marginBottom:8}}/>
+                <img src={currentCover} alt="Portada" style={{width:"100%",height:200,objectFit:"cover",borderRadius:12,border:`1px solid ${C.line}`,marginBottom:10,display:"block"}}/>
               ) : (
-                <div style={{height:160,borderRadius:12,background:C.bg,border:`1px dashed ${C.line}`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
-                  <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500}}>Sin portada aún — sube fotos o captura del video</span>
+                <div style={{height:200,borderRadius:12,background:C.surface,border:`1px dashed ${C.line}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,marginBottom:10}}>
+                  <Icon name="camera" size={28} color={C.subtle} stroke={1.4}/>
+                  <span style={{fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:500,textAlign:"center",padding:"0 16px"}}>Aún no hay portada — capturá del video o subí fotos</span>
                 </div>
               )}
+              {/* Botón capturar del video */}
+              {(form.videoFile || (form.videoTakeFiles && form.videoTakeFiles[1])) && (
+                <button onClick={async ()=>{
+                  const src = form.videoFile || form.videoTakeFiles[1];
+                  try {
+                    const frame = await captureVideoFrame(src, 1.0);
+                    setForm(f=>({...f, coverUrl: frame}));
+                  } catch(e){ alert("No pudimos capturar el frame del video"); }
+                }} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:7,width:"100%",padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.brand}`,color:C.brand,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,marginBottom:coverOptions.length>0?10:0}}>
+                  <Icon name="video" size={14} color={C.brand} stroke={1.7}/>Capturar frame del video como portada
+                </button>
+              )}
+              {/* Thumbnails de fotos */}
               {coverOptions.length > 0 && (
-                <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:4}}>
-                  {coverOptions.map((o,i)=>{
-                    const isSelected = currentCover === o.url;
-                    return (
-                      <button key={i} onClick={()=>setForm(f=>({...f, coverUrl: o.url}))} style={{flexShrink:0,width:62,height:62,borderRadius:9,overflow:"hidden",border:`2px solid ${isSelected?C.brand:C.line}`,padding:0,background:C.bg,cursor:"pointer",position:"relative"}}>
-                        <img src={o.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                        {isSelected && <div style={{position:"absolute",top:2,right:2,width:16,height:16,borderRadius:"50%",background:C.brand,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="check" size={10} color={C.surface} stroke={2.5}/></div>}
-                      </button>
-                    );
-                  })}
-                </div>
+                <>
+                  <p style={{margin:"0 0 6px",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>O elige una de tus fotos</p>
+                  <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,WebkitOverflowScrolling:"touch"}}>
+                    {coverOptions.map((o,i)=>{
+                      const isSelected = currentCover === o.url;
+                      return (
+                        <button key={i} onClick={()=>setForm(f=>({...f, coverUrl: o.url}))} style={{flexShrink:0,width:76,height:76,borderRadius:10,overflow:"hidden",border:`3px solid ${isSelected?C.brand:"transparent"}`,padding:0,background:C.bg,cursor:"pointer",position:"relative"}}>
+                          <img src={o.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                          {isSelected && <div style={{position:"absolute",inset:0,background:"rgba(166,85,71,0.18)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:22,height:22,borderRadius:"50%",background:C.brand,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="check" size={13} color={C.surface} stroke={2.5}/></div></div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
 
