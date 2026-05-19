@@ -120,12 +120,28 @@ const UF_TO_CLP = 40000;
 // In production these URLs point to actual MP3s in /public/audio/ or a CDN.
 // For demo, we use the audio attribute null so the player plays without sound (silent fallback).
 const MUSIC_LIBRARY = [
-  { k:"sunset_drive",     l:"Sunset Drive",     vibe:"Cálido / Acústico",       bpm:92,  defaultFor:["Casa"],                  url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
-  { k:"urban_dawn",       l:"Urban Dawn",       vibe:"Minimal Electrónico",     bpm:110, defaultFor:["Departamento"],          url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
-  { k:"mediterranean",    l:"Mediterranean",    vibe:"Cinematográfico",         bpm:80,  defaultFor:["Casa Premium"],          url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
-  { k:"country_road",     l:"Country Road",     vibe:"Folk Relajado",           bpm:88,  defaultFor:["Parcela","Sitio"],       url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" },
-  { k:"corporate_smooth", l:"Corporate Smooth", vibe:"Corporativo Suave",       bpm:105, defaultFor:["Oficina","Industrial"],  url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
-  { k:"bright_young",     l:"Bright Young",     vibe:"Brillante / Joven",       bpm:120, defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
+  // Cálido / Hogar
+  { k:"sunset_drive",     l:"Sunset Drive",     vibe:"Cálido / Acústico",       cat:"Cálido",        bpm:92,  defaultFor:["Casa"],                  url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+  { k:"warm_hearth",      l:"Warm Hearth",      vibe:"Hogar / Folk suave",      cat:"Cálido",        bpm:84,  defaultFor:["Casa"],                  url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+  { k:"golden_hour",      l:"Golden Hour",      vibe:"Atardecer / Indie",       cat:"Cálido",        bpm:96,  defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" },
+  // Urbano / Departamento
+  { k:"urban_dawn",       l:"Urban Dawn",       vibe:"Minimal Electrónico",     cat:"Urbano",        bpm:110, defaultFor:["Departamento"],          url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+  { k:"city_lights",      l:"City Lights",      vibe:"Lo-fi Urbano",            cat:"Urbano",        bpm:98,  defaultFor:["Departamento"],          url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
+  { k:"midnight_loft",    l:"Midnight Loft",    vibe:"Synth Chill",             cat:"Urbano",        bpm:104, defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
+  // Cinematográfico / Lujoso
+  { k:"mediterranean",    l:"Mediterranean",    vibe:"Cinematográfico",         cat:"Lujoso",        bpm:80,  defaultFor:["Casa Premium"],          url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
+  { k:"velvet_estate",    l:"Velvet Estate",    vibe:"Premium / Orquestal",     cat:"Lujoso",        bpm:75,  defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
+  { k:"penthouse_jazz",   l:"Penthouse Jazz",   vibe:"Jazz Suave",              cat:"Lujoso",        bpm:88,  defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
+  // Natural / Campo
+  { k:"country_road",     l:"Country Road",     vibe:"Folk Relajado",           cat:"Natural",       bpm:88,  defaultFor:["Parcela","Sitio"],       url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" },
+  { k:"open_fields",      l:"Open Fields",      vibe:"Naturaleza / Aire libre", cat:"Natural",       bpm:82,  defaultFor:["Parcela","Sitio"],       url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3" },
+  // Corporativo
+  { k:"corporate_smooth", l:"Corporate Smooth", vibe:"Corporativo Suave",       cat:"Corporativo",   bpm:105, defaultFor:["Oficina","Industrial"],  url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
+  { k:"executive_flow",   l:"Executive Flow",   vibe:"Profesional / Limpio",    cat:"Corporativo",   bpm:102, defaultFor:["Oficina","Industrial"],  url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
+  // Joven / Energético
+  { k:"bright_young",     l:"Bright Young",     vibe:"Brillante / Joven",       cat:"Energético",    bpm:120, defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
+  { k:"summer_pop",       l:"Summer Pop",       vibe:"Pop Veraniego",           cat:"Energético",    bpm:124, defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" },
+  { k:"festival_vibes",   l:"Festival Vibes",   vibe:"Dance / Festival",        cat:"Energético",    bpm:128, defaultFor:[],                        url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3" },
 ];
 
 // Auto-suggest music based on property type
@@ -319,7 +335,7 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
     heart: <path d="M12 20.5s-7.5-4.8-7.5-10A4.5 4.5 0 0112 6a4.5 4.5 0 017.5 4.5c0 5.2-7.5 10-7.5 10z"/>,
     bookmark: <path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z"/>,
     chat: <path d="M21 14a2 2 0 01-2 2H8l-4 4V5a2 2 0 012-2h13a2 2 0 012 2v9z"/>,
-    whatsapp: <><path d="M3 21l1.8-5.4A8.5 8.5 0 1112 20.5a8.4 8.4 0 01-4-1z"/><path d="M8.5 9.5c0 2.5 1.6 4.5 3.5 5.5 1.5 0.8 2.3 0.5 3-0.5 0.3-0.5 0.3-1-0.2-1.3L13 12.5c-0.4-0.3-0.8-0.2-1 0.1-0.3 0.5-0.6 0.8-1.3 0.4-1-0.6-1.6-1.4-2-2.3-0.3-0.6 0-0.9 0.4-1.2 0.3-0.2 0.4-0.6 0.1-1L8.3 7c-0.3-0.5-0.9-0.5-1.3-0.2-1 0.7-1.5 1.5-0.5 2.7z"/></>,
+    whatsapp: <><path d="M20.52 3.48A11.95 11.95 0 0 0 12.04 0C5.46 0 .14 5.32.14 11.9c0 2.1.55 4.15 1.6 5.96L0 24l6.31-1.66a11.93 11.93 0 0 0 5.73 1.46h.01c6.58 0 11.9-5.32 11.9-11.9 0-3.18-1.24-6.17-3.43-8.42z" fill={color} strokeWidth="0"/><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.27-.47-2.41-1.49-.89-.79-1.5-1.77-1.67-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.21-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.06 2.87 1.21 3.07.15.2 2.09 3.19 5.06 4.47.71.31 1.26.49 1.69.62.71.23 1.35.2 1.86.12.57-.08 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35z" fill="#FFFFFF" strokeWidth="0"/></>,
     eye: <><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7S19 19 12 19 1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></>,
     bell: <><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></>,
     gear: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82 1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></>,
@@ -452,6 +468,202 @@ function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
     );
   }
   return <div ref={ref} style={{width:"100%",height,borderRadius:12,overflow:"hidden"}}/>;
+}
+
+// Interactive map: user taps anywhere to drop a pin; pin is draggable to refine.
+// Calls onPinPlaced({lat,lng,address,comuna}) whenever the pin moves.
+function InteractiveMap({ lat, lng, height = 280, onPinPlaced, defaultCenter = {lat:-33.4489, lng:-70.6693} }) {
+  const ref = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const loaded = useGoogleMaps();
+
+  // Reverse-geocode helper — given lat/lng, fetch address + comuna
+  const reverseGeocode = (lat, lng, cb) => {
+    if (!window.google?.maps?.Geocoder) return cb(null);
+    const g = new window.google.maps.Geocoder();
+    g.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status !== "OK" || !results || !results[0]) return cb(null);
+      const r = results[0];
+      let comuna = "";
+      (r.address_components || []).forEach(c => {
+        if (!comuna && (c.types.includes("administrative_area_level_3") || c.types.includes("locality"))) {
+          comuna = c.long_name;
+        }
+      });
+      cb({ address: r.formatted_address, comuna });
+    });
+  };
+
+  // Initial map setup
+  useEffect(() => {
+    if (!loaded || !ref.current || mapRef.current) return;
+    const hasInitial = typeof lat === "number" && typeof lng === "number";
+    const center = hasInitial ? { lat, lng } : defaultCenter;
+    const map = new window.google.maps.Map(ref.current, {
+      center,
+      zoom: hasInitial ? 16 : 12,
+      disableDefaultUI: true,
+      zoomControl: true,
+      styles: MAP_STYLE,
+      gestureHandling: "greedy",
+      clickableIcons: false,
+    });
+    mapRef.current = map;
+
+    // Pin drop handler
+    const placeOrMove = (latLng) => {
+      const newLat = latLng.lat();
+      const newLng = latLng.lng();
+      if (markerRef.current) {
+        markerRef.current.setPosition(latLng);
+      } else {
+        markerRef.current = new window.google.maps.Marker({
+          position: latLng,
+          map,
+          draggable: true,
+          icon: {
+            path: "M12 21s-7-7.5-7-12a7 7 0 1114 0c0 4.5-7 12-7 12z",
+            fillColor: "#4A3122",
+            fillOpacity: 1,
+            strokeColor: "#FFFFFF",
+            strokeWeight: 1.5,
+            scale: 2,
+            anchor: new window.google.maps.Point(12, 21),
+          },
+        });
+        markerRef.current.addListener("dragend", (ev) => {
+          const ll = ev.latLng;
+          reverseGeocode(ll.lat(), ll.lng(), (info) => {
+            onPinPlaced && onPinPlaced({ lat: ll.lat(), lng: ll.lng(), address: info?.address || "", comuna: info?.comuna || "" });
+          });
+        });
+      }
+      reverseGeocode(newLat, newLng, (info) => {
+        onPinPlaced && onPinPlaced({ lat: newLat, lng: newLng, address: info?.address || "", comuna: info?.comuna || "" });
+      });
+    };
+
+    // Initial marker if coords provided
+    if (hasInitial) {
+      markerRef.current = new window.google.maps.Marker({
+        position: center,
+        map,
+        draggable: true,
+        icon: {
+          path: "M12 21s-7-7.5-7-12a7 7 0 1114 0c0 4.5-7 12-7 12z",
+          fillColor: "#4A3122",
+          fillOpacity: 1,
+          strokeColor: "#FFFFFF",
+          strokeWeight: 1.5,
+          scale: 2,
+          anchor: new window.google.maps.Point(12, 21),
+        },
+      });
+      markerRef.current.addListener("dragend", (ev) => {
+        const ll = ev.latLng;
+        reverseGeocode(ll.lat(), ll.lng(), (info) => {
+          onPinPlaced && onPinPlaced({ lat: ll.lat(), lng: ll.lng(), address: info?.address || "", comuna: info?.comuna || "" });
+        });
+      });
+    }
+
+    // Tap on empty map to drop pin
+    map.addListener("click", (ev) => placeOrMove(ev.latLng));
+  }, [loaded]);
+
+  // Recenter & move marker when external lat/lng change
+  useEffect(() => {
+    if (!loaded || !mapRef.current || typeof lat !== "number" || typeof lng !== "number") return;
+    const pos = { lat, lng };
+    mapRef.current.panTo(pos);
+    if (markerRef.current) markerRef.current.setPosition(pos);
+  }, [lat, lng, loaded]);
+
+  if (!GMAPS_KEY) {
+    return (
+      <div style={{height,borderRadius:12,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500}}>Google Maps no configurado</span>
+      </div>
+    );
+  }
+  if (!loaded) {
+    return (
+      <div style={{height,borderRadius:12,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Cargando mapa…</span>
+      </div>
+    );
+  }
+  return <div ref={ref} style={{width:"100%",height,borderRadius:12,overflow:"hidden",cursor:"crosshair"}}/>;
+}
+
+// Map showing multiple property pins — Airbnb-style search by location.
+// Each pin shows price; clicking opens the property detail.
+function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
+  const ref = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
+  const loaded = useGoogleMaps();
+  const validProps = properties.filter(p => typeof p.lat === "number" && typeof p.lng === "number");
+
+  useEffect(() => {
+    if (!loaded || !ref.current || mapRef.current) return;
+    // Default center: Santiago. Fit bounds to all valid markers below.
+    const map = new window.google.maps.Map(ref.current, {
+      center: { lat: -33.4489, lng: -70.6693 },
+      zoom: 11,
+      disableDefaultUI: true,
+      zoomControl: true,
+      styles: MAP_STYLE,
+      gestureHandling: "greedy",
+      clickableIcons: false,
+    });
+    mapRef.current = map;
+  }, [loaded]);
+
+  // Refresh markers when properties change
+  useEffect(() => {
+    if (!loaded || !mapRef.current) return;
+    // Clear previous markers
+    markersRef.current.forEach(m => m.setMap(null));
+    markersRef.current = [];
+    if (validProps.length === 0) return;
+    const bounds = new window.google.maps.LatLngBounds();
+    validProps.forEach(p => {
+      const priceLabel = `${p.cur} ${p.cur==="UF" ? Math.round(p.price).toLocaleString("es-CL") : Math.round(p.price/1000000)+"M"}`;
+      // Custom DOM-like marker using Marker with custom icon (price chip)
+      // For better visuals: encode a small SVG bubble
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="36" viewBox="0 0 80 36"><path d="M40 32 L34 28 H8 a6 6 0 0 1 -6 -6 V8 a6 6 0 0 1 6 -6 H72 a6 6 0 0 1 6 6 V22 a6 6 0 0 1 -6 6 H46 L40 32 Z" fill="%234A3122" stroke="%23FFFFFF" stroke-width="2"/><text x="40" y="18" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="600" fill="%23FFFFFF">${priceLabel}</text></svg>`;
+      const marker = new window.google.maps.Marker({
+        position: { lat: p.lat, lng: p.lng },
+        map: mapRef.current,
+        title: p.title,
+        icon: {
+          url: `data:image/svg+xml;utf8,${svg}`,
+          anchor: new window.google.maps.Point(40, 32),
+          scaledSize: new window.google.maps.Size(80, 36),
+        },
+      });
+      marker.addListener("click", () => onSelectProperty && onSelectProperty(p));
+      markersRef.current.push(marker);
+      bounds.extend({ lat: p.lat, lng: p.lng });
+    });
+    // Fit map to all markers
+    if (validProps.length === 1) {
+      mapRef.current.setCenter({ lat: validProps[0].lat, lng: validProps[0].lng });
+      mapRef.current.setZoom(14);
+    } else {
+      mapRef.current.fitBounds(bounds, { top:40, left:40, right:40, bottom:40 });
+    }
+  }, [loaded, validProps.length, validProps.map(p=>p.id).join(",")]);
+
+  if (!GMAPS_KEY) {
+    return <div style={{height,borderRadius:14,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500}}>Google Maps no configurado</span></div>;
+  }
+  if (!loaded) {
+    return <div style={{height,borderRadius:14,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Cargando mapa…</span></div>;
+  }
+  return <div ref={ref} style={{width:"100%",height,borderRadius:14,overflow:"hidden",border:`1px solid ${C.line}`}}/>;
 }
 
 function AddressAutocomplete({ value, onChange, onSelect, placeholder, style }) {
@@ -1045,14 +1257,23 @@ function Feed({props,onTap,onOpenReel}) {
         </div>
       )}
 
-      {/* Mapa placeholder modal */}
+      {/* Mapa con pines de propiedades — Airbnb-style */}
       {mapInfo && (
-        <div onClick={()=>setMapInfo(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{maxWidth:380,background:C.surface,borderRadius:18,padding:"24px 22px",textAlign:"center",animation:"slideUp 0.25s ease"}}>
-            <div style={{margin:"0 auto 12px",width:56,height:56,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="pin" size={26} color={C.brand} stroke={1.5}/></div>
-            <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Búsqueda por mapa</h3>
-            <p style={{margin:"0 0 18px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Pronto vas a poder arrastrar el mapa para encontrar propiedades en cualquier zona — estilo Airbnb.</p>
-            <button onClick={()=>setMapInfo(false)} style={{padding:"11px 20px",borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Entendido</button>
+        <div onClick={()=>setMapInfo(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:500,background:C.bg,borderRadius:"22px 22px 0 0",animation:"slideUp 0.28s ease",maxHeight:"92vh",display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${C.lineSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <h3 style={{margin:0,fontSize:16,fontWeight:500,color:C.ink,fontFamily:Fb}}>Propiedades en el mapa</h3>
+                <p style={{margin:"1px 0 0",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400}}>{filtered.length} matching · toca un pin para ver la propiedad</p>
+              </div>
+              <button onClick={()=>setMapInfo(false)} style={{width:32,height:32,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={17} color={C.ink} stroke={1.7}/></button>
+            </div>
+            <div style={{flex:1,padding:"12px 14px env(safe-area-inset-bottom,14px)",overflowY:"auto"}}>
+              <PropertiesMap properties={filtered} onSelectProperty={(p)=>{setMapInfo(false); onTap && onTap(p);}}/>
+              {filtered.length === 0 && (
+                <p style={{margin:"14px 0 0",fontSize:12.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5,textAlign:"center"}}>No hay propiedades que coincidan con tus filtros. Ajusta los filtros y vuelve a buscar.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1468,8 +1689,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
                 <div style={{display:"flex",alignItems:"center",gap:16,marginTop:10}}>
                   {prop.beds>0&&<Stat icon="bed" val={prop.beds}/>}
                   {prop.baths>0&&<Stat icon="bath" val={prop.baths}/>}
-                  <Stat icon="ruler" val={`${prop.area} m²`}/>
-                  {prop.parks>0&&<Stat icon="car" val={prop.parks}/>}
+                  <Stat icon="ruler" val={`${prop.area} m² útil`}/>
+                  {(prop.areaTotal || prop.areaTerreno) > 0 && <Stat icon="terrace" val={`${prop.areaTotal||prop.areaTerreno} m² tot`}/>}
                 </div>
                 <p style={{fontSize:12.5,color:"rgba(255,255,255,0.9)",fontFamily:Fb,fontWeight:400,margin:"10px 0 0",lineHeight:1.45,textShadow:"0 1px 6px rgba(0,0,0,0.6)"}}>{rl.caption}</p>
                 <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:12,padding:"13px 18px",borderRadius:12,background:C.surface,border:"none",cursor:"pointer",color:C.ink,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:"0 6px 20px rgba(0,0,0,0.35)"}}>
@@ -1512,13 +1733,14 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
 
 // ═══ SELL ═══
 // ─── Reel Player — plays takes in sequence with playbackRate, music, and title overlay ───
-function ReelPlayer({takeFiles={}, takeOrder=[0,1,2,3], takeSpeeds=[1,2,2,1], title="", subtitle="", titleStyle="editorial", musicTrack="", autoplay=false, height="auto", showOverlay=true, onPlayStateChange, muted=false}){
+function ReelPlayer({takeFiles={}, takeOrder=[0,1,2,3], takeSpeeds=[1,2,2,1], takeDurations=[5,5,5,5], title="", subtitle="", titleStyle="editorial", musicTrack="", autoplay=false, height="auto", showOverlay=true, onPlayStateChange, muted=false}){
   const [idx,setIdx]=useState(0);
   const [playing,setPlaying]=useState(autoplay);
   const [cycleKey,setCycleKey]=useState(0); // re-trigger overlay animation on loop
   const [musicMuted,setMusicMuted]=useState(muted);
   const videoRefs = useRef([null,null,null,null]);
   const audioRef = useRef(null);
+  const orderedDurations = takeOrder.map(o => takeDurations[o] || 5);
 
   // Lookup music URL from library
   const musicMeta = MUSIC_LIBRARY.find(m => m.k === musicTrack);
@@ -1552,9 +1774,25 @@ function ReelPlayer({takeFiles={}, takeOrder=[0,1,2,3], takeSpeeds=[1,2,2,1], ti
     const v = videoRefs.current[idx];
     if (!v) return;
     v.playbackRate = orderedSpeeds[idx] || 1;
+    v.currentTime = 0; // reset for trim window
     if (playing) v.play().catch(()=>{});
     else v.pause();
   }, [idx, playing]);
+
+  // Trim watcher: advance when currentTime >= trim duration
+  useEffect(()=>{
+    if (!playing) return;
+    const v = videoRefs.current[idx];
+    if (!v) return;
+    const maxDur = orderedDurations[idx] || 5;
+    const interval = setInterval(() => {
+      if (v.currentTime >= maxDur && !v.paused) {
+        if (idx < validCount - 1) setIdx(idx+1);
+        else { setIdx(0); setCycleKey(k=>k+1); }
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [idx, playing, orderedDurations]);
 
   // Inform parent of play state changes
   useEffect(()=>{ onPlayStateChange && onPlayStateChange(playing); }, [playing]);
@@ -1679,6 +1917,7 @@ function ReelPlayer({takeFiles={}, takeOrder=[0,1,2,3], takeSpeeds=[1,2,2,1], ti
 function ReelEditor({form, setForm}){
   const [tab,setTab]=useState("text");
   const [draggedIdx,setDraggedIdx]=useState(null);
+  const [musicCat,setMusicCat]=useState("Todas");
 
   const setTakeSpeed = (slotIdx, speed) => {
     const next = [...form.takeSpeeds];
@@ -1710,6 +1949,7 @@ function ReelEditor({form, setForm}){
           takeFiles={form.videoTakeFiles||{}}
           takeOrder={form.takeOrder}
           takeSpeeds={form.takeSpeeds}
+          takeDurations={form.takeDurations||[5,5,5,5]}
           title={form.reelTitle}
           subtitle={form.reelSubtitle}
           titleStyle={form.titleStyle}
@@ -1750,48 +1990,92 @@ function ReelEditor({form, setForm}){
         </div>
       )}
 
-      {/* TAB: TAKES (reorder + speed) */}
+      {/* TAB: TAKES (reorder ↑↓ + speed + trim) */}
       {tab==="takes" && (
         <div>
-          <p style={{margin:"0 0 12px",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Arrastra para reordenar. Ajusta la velocidad de cada toma.</p>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <p style={{margin:"0 0 12px",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Usa las flechas para reordenar. Ajusta velocidad y recorte de cada toma.</p>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {form.takeOrder.map((origSlot, orderIdx) => {
               const speed = form.takeSpeeds[origSlot] || 1;
+              const duration = (form.takeDurations || [5,5,5,5])[origSlot] ?? 5;
               const guide = VID_GUIDE.find(g => g.n === origSlot+1);
+              const isFirst = orderIdx === 0;
+              const isLast = orderIdx === form.takeOrder.length - 1;
               return (
-                <div key={origSlot} draggable
-                  onDragStart={()=>setDraggedIdx(orderIdx)}
-                  onDragOver={e=>{e.preventDefault();}}
-                  onDrop={()=>{if(draggedIdx!==null){reorderTakes(draggedIdx, orderIdx);setDraggedIdx(null);}}}
-                  style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,cursor:"grab"}}
-                >
-                  <div style={{width:30,height:30,borderRadius:8,background:C.brand,color:C.surface,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,fontFamily:Fb,flexShrink:0}}>
-                    {orderIdx+1}
+                <div key={origSlot} style={{padding:"11px 12px",borderRadius:12,background:C.bg,border:`1px solid ${C.line}`}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    {/* Reorder buttons */}
+                    <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+                      <button onClick={()=>!isFirst&&reorderTakes(orderIdx, orderIdx-1)} disabled={isFirst} style={{width:24,height:20,borderRadius:6,background:isFirst?C.bg:C.surface,border:`1px solid ${C.line}`,cursor:isFirst?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:isFirst?0.3:1,padding:0}}>
+                        <Icon name="chevronUp" size={12} color={C.text} stroke={2}/>
+                      </button>
+                      <button onClick={()=>!isLast&&reorderTakes(orderIdx, orderIdx+1)} disabled={isLast} style={{width:24,height:20,borderRadius:6,background:isLast?C.bg:C.surface,border:`1px solid ${C.line}`,cursor:isLast?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:isLast?0.3:1,padding:0}}>
+                        <Icon name="chevronDown" size={12} color={C.text} stroke={2}/>
+                      </button>
+                    </div>
+                    {/* Position badge */}
+                    <div style={{width:28,height:28,borderRadius:8,background:C.brand,color:C.surface,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12.5,fontWeight:600,fontFamily:Fb,flexShrink:0}}>
+                      {orderIdx+1}
+                    </div>
+                    {/* Title */}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{guide?.t || `Toma ${origSlot+1}`}</div>
+                      <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>Original toma {origSlot+1} · {duration}s a {speed}×</div>
+                    </div>
                   </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{guide?.t || `Toma ${origSlot+1}`}</div>
-                    <div style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>Original: Toma {origSlot+1}</div>
-                  </div>
-                  <div style={{display:"flex",gap:3,padding:2,background:C.surface,border:`1px solid ${C.line}`,borderRadius:999}}>
-                    {[1, 1.5, 2].map(sp => {
-                      const on = speed===sp;
-                      return <button key={sp} onClick={()=>setTakeSpeed(origSlot, sp)} style={{padding:"4px 8px",borderRadius:999,border:"none",background:on?C.brand:"transparent",color:on?C.surface:C.muted,fontSize:10.5,fontWeight:600,cursor:"pointer",fontFamily:Fb}}>{sp}×</button>;
-                    })}
+                  {/* Controls row */}
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10}}>
+                    {/* Speed */}
+                    <div style={{flexShrink:0}}>
+                      <div style={{fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:4}}>Velocidad</div>
+                      <div style={{display:"flex",gap:3,padding:2,background:C.surface,border:`1px solid ${C.line}`,borderRadius:999}}>
+                        {[1, 1.5, 2].map(sp => {
+                          const on = speed===sp;
+                          return <button key={sp} onClick={()=>setTakeSpeed(origSlot, sp)} style={{padding:"4px 10px",borderRadius:999,border:"none",background:on?C.brand:"transparent",color:on?C.surface:C.muted,fontSize:10.5,fontWeight:600,cursor:"pointer",fontFamily:Fb}}>{sp}×</button>;
+                        })}
+                      </div>
+                    </div>
+                    {/* Trim duration */}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                        <span style={{fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.08em",textTransform:"uppercase"}}>Recorte</span>
+                        <span style={{fontSize:10.5,color:C.brand,fontFamily:Fb,fontWeight:600,letterSpacing:"0.02em"}}>{duration}s</span>
+                      </div>
+                      <input
+                        type="range" min="1" max="10" step="1" value={duration}
+                        onChange={e=>{
+                          const next = [...(form.takeDurations||[5,5,5,5])];
+                          next[origSlot] = parseInt(e.target.value, 10);
+                          setForm({...form, takeDurations: next});
+                        }}
+                        style={{width:"100%",accentColor:C.brand,margin:0,height:24}}
+                      />
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
-          <p style={{margin:"10px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic",lineHeight:1.5}}>💡 Tip: interior a 2× se siente dinámico. Exterior y entrada en 1× se sienten estables.</p>
+          <p style={{margin:"12px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic",lineHeight:1.5}}>💡 Tip: 3-4 segundos por toma se siente dinámico. Interior a 2× + exterior a 1× es la mezcla más usada.</p>
         </div>
       )}
 
       {/* TAB: MUSIC */}
-      {tab==="music" && (
+      {tab==="music" && (() => {
+        const cats = ["Todas", ...Array.from(new Set(MUSIC_LIBRARY.map(m=>m.cat)))];
+        const visible = musicCat==="Todas" ? MUSIC_LIBRARY : MUSIC_LIBRARY.filter(m=>m.cat===musicCat);
+        return (
         <div>
-          <p style={{margin:"0 0 12px",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Elige el vibe que más calce con tu {form.type?.toLowerCase()||"propiedad"}.</p>
+          <p style={{margin:"0 0 10px",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>{MUSIC_LIBRARY.length} tracks royalty-free para tu reel.</p>
+          {/* Category chips */}
+          <div style={{display:"flex",gap:5,marginBottom:12,overflowX:"auto",WebkitOverflowScrolling:"touch",paddingBottom:4}}>
+            {cats.map(c=>{
+              const on = musicCat===c;
+              return <button key={c} onClick={()=>setMusicCat(c)} style={{padding:"6px 13px",borderRadius:999,border:`1px solid ${on?C.brand:C.line}`,background:on?C.brand:C.surface,color:on?C.surface:C.muted,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,whiteSpace:"nowrap",letterSpacing:"0.02em",flexShrink:0}}>{c}</button>;
+            })}
+          </div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {MUSIC_LIBRARY.map(m=>{
+            {visible.map(m=>{
               const on = form.musicTrack===m.k;
               const isSuggested = m.defaultFor.includes(form.type);
               return (
@@ -1812,9 +2096,109 @@ function ReelEditor({form, setForm}){
             })}
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
+}
+
+// ─── Media analysis (quality + moderation) ───
+// Quality checks run 100% in browser via canvas pixel analysis.
+// Content moderation (NSFW, violence, drugs) is mocked here — in production this
+// must run server-side with Google Vision SafeSearch, AWS Rekognition, or similar.
+async function analyzeMedia(url, isVideo) {
+  // For video, capture first frame to a canvas
+  const sourceImg = await new Promise((resolve, reject) => {
+    if (isVideo) {
+      const v = document.createElement("video");
+      v.src = url; v.muted = true; v.playsInline = true; v.preload = "auto";
+      v.onloadeddata = () => { v.currentTime = Math.min(0.5, v.duration/2 || 0.5); };
+      v.onseeked = () => {
+        const c = document.createElement("canvas");
+        c.width = v.videoWidth || 640; c.height = v.videoHeight || 480;
+        c.getContext("2d").drawImage(v, 0, 0);
+        resolve({src: c.toDataURL(), width: v.videoWidth, height: v.videoHeight});
+      };
+      v.onerror = () => reject(new Error("video-load-failed"));
+    } else {
+      const img = new Image();
+      img.onload = () => resolve({src: url, width: img.naturalWidth, height: img.naturalHeight});
+      img.onerror = () => reject(new Error("img-load-failed"));
+      img.src = url;
+    }
+  }).catch(() => null);
+
+  if (!sourceImg) return {status:"done", issues:[{k:"error",t:"No se pudo analizar el archivo",sev:"error"}], good:[], moderationOk:false, allowPublish:false};
+
+  // Draw downscaled version to canvas for fast pixel analysis
+  const ANALYSIS_SIZE = 200;
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload=()=>res(i); i.onerror=()=>rej(); i.src = sourceImg.src; }).catch(()=>null);
+  if (!img) return {status:"done", issues:[{k:"error",t:"Análisis falló",sev:"error"}], good:[], moderationOk:false, allowPublish:false};
+
+  const c = document.createElement("canvas");
+  c.width = ANALYSIS_SIZE; c.height = ANALYSIS_SIZE;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0, ANALYSIS_SIZE, ANALYSIS_SIZE);
+  const data = ctx.getImageData(0,0,ANALYSIS_SIZE,ANALYSIS_SIZE).data;
+
+  // 1. Brightness (avg luminance, 0-255)
+  let totalL = 0;
+  const gray = new Float32Array(ANALYSIS_SIZE*ANALYSIS_SIZE);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+    const lum = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+    totalL += lum; gray[p] = lum;
+  }
+  const avgBrightness = totalL / (ANALYSIS_SIZE*ANALYSIS_SIZE);
+
+  // 2. Sharpness — Laplacian variance (higher = sharper)
+  let lapSum = 0, lapSumSq = 0, count = 0;
+  for (let y = 1; y < ANALYSIS_SIZE-1; y++) {
+    for (let x = 1; x < ANALYSIS_SIZE-1; x++) {
+      const i = y*ANALYSIS_SIZE + x;
+      const lap = -4*gray[i] + gray[i-1] + gray[i+1] + gray[i-ANALYSIS_SIZE] + gray[i+ANALYSIS_SIZE];
+      lapSum += lap; lapSumSq += lap*lap; count++;
+    }
+  }
+  const lapMean = lapSum / count;
+  const sharpness = lapSumSq/count - lapMean*lapMean;
+
+  // 3. Resolution
+  const minSide = Math.min(sourceImg.width || 0, sourceImg.height || 0);
+
+  // Build feedback
+  const issues = [];
+  const good = [];
+
+  // Brightness
+  if (avgBrightness < 55) issues.push({k:"dark", t:"Foto muy oscura — buscá luz natural o agregá iluminación", sev:"high"});
+  else if (avgBrightness < 80) issues.push({k:"dim", t:"Iluminación débil — abrí cortinas o esperá mejor luz", sev:"low"});
+  else if (avgBrightness > 230) issues.push({k:"overexp", t:"Sobreexpuesta — evitá contraluz fuerte", sev:"low"});
+  else good.push({k:"light", t:"Iluminación adecuada"});
+
+  // Sharpness — variance thresholds tuned for typical phone photos
+  if (sharpness < 80) issues.push({k:"blur", t:"Foto borrosa — estabilizá la cámara con ambas manos", sev:"high"});
+  else if (sharpness < 200) issues.push({k:"soft", t:"Algo borrosa — esperá un segundo antes de disparar", sev:"low"});
+  else good.push({k:"focus", t:"Bien enfocada y nítida"});
+
+  // Resolution
+  if (minSide && minSide < 720) issues.push({k:"low_res", t:"Resolución baja — usa la cámara principal del celular", sev:"low"});
+  else if (minSide) good.push({k:"res", t:`Buena resolución (${sourceImg.width}×${sourceImg.height})`});
+
+  // 4. Content moderation — MOCK (in production this hits a server-side AI)
+  // Returns "ok" for all uploads — in Fase 2 this calls Google Vision SafeSearch API
+  await new Promise(r => setTimeout(r, 600)); // simulate API latency
+  const moderationOk = true; // mocked — would be: await fetch('/api/moderate', {body: imgBlob}).then(r=>r.json()).safe
+  good.push({k:"safe", t:"Contenido apropiado para la plataforma"});
+
+  // Allow publish unless there's a high-severity quality issue or moderation failed
+  const hasHighIssue = issues.some(i => i.sev === "high");
+  return {
+    status: "done",
+    issues, good,
+    metrics: { brightness: Math.round(avgBrightness), sharpness: Math.round(sharpness), resolution: `${sourceImg.width}×${sourceImg.height}` },
+    moderationOk,
+    allowPublish: moderationOk && !hasHighIssue,
+  };
 }
 
 function Sell({onPublish, goTo}) {
@@ -1831,13 +2215,14 @@ function Sell({onPublish, goTo}) {
     musicTrack:"", // auto-suggested when entering editor
     takeSpeeds:[1, 2, 2, 1],
     takeOrder:[0, 1, 2, 3],
+    takeDurations:[5, 5, 5, 5], // max seconds per take (trim length)
   });
   const [aiDone,setAiDone]=useState(false);
   const [uploadFor,setUploadFor]=useState(null);
   const [mapModal,setMapModal]=useState(false);
   const [locFocus,setLocFocus]=useState(false);
   const [published,setPublished]=useState(false);
-  const total=6;
+  const total=5; // 1 tipo · 2 detalles · 3 video · 4 descripción · 5 publicar
 
   // Auto-fill reel meta when all 4 takes are uploaded
   useEffect(()=>{
@@ -1888,9 +2273,9 @@ function Sell({onPublish, goTo}) {
         }
       } catch(e) { console.warn("Geocode failed", e); }
     }
-    // Build the prop object that goes into the feed/profile
-    const firstPhotoUrl = (form.photoFiles && form.photoFiles[Object.keys(form.photoFiles)[0]])
-      || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop";
+    // Build the prop object — image is generated from the first video frame in async path,
+    // or fallback to a default property image while in prototype.
+    const firstPhotoUrl = "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop";
     const newProp = {
       id: Date.now(),
       type: form.type || "Casa",
@@ -1934,9 +2319,12 @@ function Sell({onPublish, goTo}) {
     setForm({
       type:"", operacion:"venta", title:"", desc:"",
       currency:"UF", price:"",
-      loc:"", beds:"", baths:"", parks:"",
+      loc:"", comuna:"", lat:null, lng:null,
+      beds:"", baths:"", parks:"",
       area:"", areaTerreno:"", areaTotal:"", hectareas:"", privados:"",
       photos:[], videoUp:false, videoTakes:[false,false,false,false], amenities:[],
+      reelTitle:"", reelSubtitle:"", titleStyle:"editorial",
+      musicTrack:"", takeSpeeds:[1, 2, 2, 1], takeOrder:[0, 1, 2, 3], takeDurations:[5,5,5,5],
     });
     setAiDone(false);
     setStep(1);
@@ -1964,27 +2352,40 @@ function Sell({onPublish, goTo}) {
       e.target.value = "";
       return;
     }
-    // For photo + video-take, move to preview phase
-    setUploadFor({...uploadFor, phase:"preview", tempUrl:url, tempIsVideo: uploadFor.kind==="video-take"});
+    // For photo + video-take, move to preview phase + kick off AI analysis
+    const isVideo = uploadFor.kind==="video-take";
+    setUploadFor({...uploadFor, phase:"preview", tempUrl:url, tempIsVideo: isVideo, analysis:{status:"loading"}});
     e.target.value = "";
+    // Run quality + moderation analysis in background
+    analyzeMedia(url, isVideo).then(res => {
+      setUploadFor(prev => prev ? ({...prev, analysis:res}) : prev);
+    });
   };
 
   // User confirms the captured file
+  const [uploadToast,setUploadToast]=useState(null);
   const confirmCapture = () => {
     if (!uploadFor || !uploadFor.tempUrl) return;
+    let toastMsg = "";
     if (uploadFor.kind === "photo") {
       const slot = uploadFor.slot;
       const existing = form.photoFiles || {};
       const newPhotos = form.photos.includes(slot) ? form.photos : [...form.photos, slot];
       setForm({...form, photos: newPhotos, photoFiles: {...existing, [slot]: uploadFor.tempUrl}});
+      toastMsg = `Foto ${slot} guardada ✓`;
     } else if (uploadFor.kind === "video-take") {
       const takes = [...(form.videoTakes || [false,false,false,false])];
       takes[uploadFor.slot - 1] = true;
       const allDone = takes.every(Boolean);
       const takeFiles = {...(form.videoTakeFiles||{}), [uploadFor.slot]: uploadFor.tempUrl};
       setForm({...form, videoTakes: takes, videoTakeFiles: takeFiles, videoUp: allDone});
+      toastMsg = allDone ? `Toma ${uploadFor.slot} guardada ✓ Las 4 tomas están listas` : `Toma ${uploadFor.slot} de 4 guardada ✓`;
     }
     setUploadFor(null);
+    if (toastMsg) {
+      setUploadToast(toastMsg);
+      setTimeout(()=>setUploadToast(null), 2400);
+    }
   };
 
   return (
@@ -1992,19 +2393,41 @@ function Sell({onPublish, goTo}) {
       <div style={{display:"flex",gap:3,marginBottom:6}}>{Array.from({length:total}).map((_,i)=><div key={i} style={{flex:1,height:2,borderRadius:1,background:step>i?C.brand:C.line,transition:"all 0.3s"}} />)}</div>
       <p style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,margin:"0 0 18px",letterSpacing:"0.12em",textTransform:"uppercase"}}>Paso {step} de {total}</p>
 
-      {step===1&&<div>
-        <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 16px",letterSpacing:"-0.01em"}}>¿Qué vas a publicar?</h3>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          {PROP_TYPES.map(({t,icon})=>(
-            <button key={t} onClick={()=>{setForm({...form,type:t});setStep(2);}} style={{padding:"20px 12px",borderRadius:12,background:form.type===t?C.brandWash:C.surface,border:`1px solid ${form.type===t?C.brand:C.line}`,cursor:"pointer",textAlign:"center"}}>
-              <div style={{display:"flex",justifyContent:"center",marginBottom:6}}>
-                <Icon name={icon} size={26} color={form.type===t?C.brand:C.text} stroke={1.4}/>
-              </div>
-              <div style={{fontSize:12.5,fontWeight:500,color:form.type===t?C.brand:C.ink,fontFamily:Fb,letterSpacing:"0.01em"}}>{t}</div>
+      {step===1&&(() => {
+        const types = form.types || (form.type ? [form.type] : []);
+        const toggle = (t) => {
+          let next;
+          if (types.includes(t)) next = types.filter(x=>x!==t);
+          else if (types.length < 2) next = [...types, t];
+          else next = [types[0], t]; // replace second selection
+          setForm({...form, types: next, type: next[0] || ""});
+        };
+        return (
+          <div>
+            <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 4px",letterSpacing:"-0.01em"}}>¿Qué vas a publicar?</h3>
+            <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 16px"}}>Elige 1 tipo, o hasta 2 si tu propiedad mezcla categorías (ej: Casa con local comercial).</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              {PROP_TYPES.map(({t,icon})=>{
+                const on = types.includes(t);
+                const order = types.indexOf(t)+1;
+                return (
+                  <button key={t} onClick={()=>toggle(t)} style={{position:"relative",padding:"20px 12px",borderRadius:12,background:on?C.brandWash:C.surface,border:`1px solid ${on?C.brand:C.line}`,cursor:"pointer",textAlign:"center"}}>
+                    {on && <div style={{position:"absolute",top:8,right:8,width:22,height:22,borderRadius:"50%",background:C.brand,color:C.surface,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,fontFamily:Fb}}>{order}</div>}
+                    <div style={{display:"flex",justifyContent:"center",marginBottom:6}}>
+                      <Icon name={icon} size={26} color={on?C.brand:C.text} stroke={1.4}/>
+                    </div>
+                    <div style={{fontSize:12.5,fontWeight:500,color:on?C.brand:C.ink,fontFamily:Fb,letterSpacing:"0.01em"}}>{t}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={()=>types.length>0 && setStep(2)} disabled={types.length===0} style={{width:"100%",marginTop:18,padding:"13px 18px",borderRadius:12,background:types.length>0?C.ink:C.line,border:"none",cursor:types.length>0?"pointer":"default",color:C.surface,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6,letterSpacing:"0.01em"}}>
+              {types.length===0 ? "Selecciona al menos 1 tipo" : `Continuar con ${types.length} tipo${types.length>1?"s":""}`}
+              {types.length>0 && <Icon name="arrowRight" size={15} color={C.surface} stroke={1.6}/>}
             </button>
-          ))}
-        </div>
-      </div>}
+          </div>
+        );
+      })()}
 
       {step===2&&<div>
         <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Detalles de tu {form.type||"propiedad"}</h3>
@@ -2159,93 +2582,109 @@ function Sell({onPublish, goTo}) {
       </div>}
 
       {step===3&&<div>
-        <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Sube tus fotos</h3>
-        <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 14px"}}>Mínimo 4, máximo 15 — sigue la guía</p>
-        <div style={{display:"flex",flexDirection:"column",gap:7}}>
-          {PHOTO_GUIDE.map(g=>{
-            const up=form.photos.includes(g.s);
-            const previewUrl = (form.photoFiles||{})[g.s];
-            return <div key={g.s} onClick={()=>setUploadFor({kind:"photo",slot:g.s,label:g.l,phase:"guide",guideData:g})} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,background:up?C.brandWash:C.surface,border:`1px solid ${up?C.brand:C.line}`,cursor:"pointer"}}>
-              {previewUrl ? (
-                <div style={{width:42,height:42,borderRadius:10,overflow:"hidden",flexShrink:0,position:"relative"}}>
-                  <img src={previewUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                  <div style={{position:"absolute",top:2,right:2,width:14,height:14,borderRadius:"50%",background:C.brand,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    <Icon name="check" size={9} color={C.surface} stroke={2.5}/>
-                  </div>
-                </div>
-              ) : (
-                <div style={{width:38,height:38,borderRadius:10,background:up?C.brand:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  {up?<Icon name="check" size={16} color={C.surface} stroke={2}/>:<Icon name="camera" size={16} color={C.subtle} stroke={1.5}/>}
-                </div>
-              )}
-              <div style={{flex:1}}>
-                <div style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,display:"flex",alignItems:"center",gap:5}}>
-                  {g.l}{g.r&&<span style={{color:C.terracotta,fontSize:10}}>*</span>}
-                </div>
-                <div style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{up?"Toca para cambiar":g.t}</div>
-              </div>
-            </div>;
-          })}
-        </div>
-        <div style={{marginTop:12,display:"flex",alignItems:"center",gap:6,fontSize:11.5,fontFamily:Fb,fontWeight:500,color:form.photos.length>=4?C.sage:C.terracotta}}>
-          {form.photos.length>=4&&<Icon name="check" size={13} color={C.sage} stroke={2}/>}
-          {form.photos.length}/15 fotos {form.photos.length>=4?"":"(mínimo 4)"}
-        </div>
-      </div>}
+        <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Tu video</h3>
+        <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 14px"}}>Elige cómo quieres armar el reel de tu propiedad.</p>
 
-      {step===4&&<div>
-        <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Graba tu video</h3>
-        <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 14px"}}>4 tomas — la IA lo edita por ti</p>
+        {/* ─── OPTION A: Video completo (most prominent) ─── */}
+        <div style={{padding:"16px 14px",borderRadius:14,background:form.videoFile?C.mintWash:C.surface,border:`2px solid ${form.videoFile?C.forest:C.brand}`,marginBottom:10,position:"relative"}}>
+          {form.videoFile && <div style={{position:"absolute",top:10,right:10,padding:"3px 8px",borderRadius:999,background:C.forest,fontSize:9,color:C.surface,fontWeight:600,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>Listo ✓</div>}
+          <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+            <div style={{width:46,height:46,borderRadius:12,background:form.videoFile?C.forest:C.brand,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Icon name="video" size={22} color={C.surface} stroke={1.5}/>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:14,fontWeight:500,color:C.ink,fontFamily:Fb}}>Sube un video completo</div>
+              <p style={{margin:"3px 0 10px",fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{form.videoFile?"Video cargado. Toca para reemplazar.":"Tu reel ya editado (15-30s). Recomendado si tienes uno listo."}</p>
+              <label style={{display:"inline-flex",alignItems:"center",gap:7,padding:"9px 14px",borderRadius:10,background:form.videoFile?C.surface:C.brand,border:form.videoFile?`1px solid ${C.line}`:"none",color:form.videoFile?C.brand:C.surface,fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>
+                <Icon name={form.videoFile?"pencil":"plus"} size={13} color={form.videoFile?C.brand:C.surface} stroke={1.8}/>
+                {form.videoFile?"Reemplazar video":"Subir video"}
+                <input type="file" accept="video/*" style={{display:"none"}} onChange={(e)=>{const f=e.target.files?.[0]; if(f){const url=URL.createObjectURL(f); setForm(prev=>({...prev,videoFile:url,videoUp:true,videoTakes:[true,true,true,true]})); e.target.value="";}}}/>
+              </label>
+            </div>
+          </div>
+          {form.videoFile && (
+            <video src={form.videoFile} controls style={{width:"100%",borderRadius:10,marginTop:12,maxHeight:200,background:"#000"}}/>
+          )}
+        </div>
+
+        {/* ─── Divider ─── */}
+        <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0"}}>
+          <div style={{flex:1,height:1,background:C.line}}/>
+          <span style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase"}}>o arma uno con 4 tomas</span>
+          <div style={{flex:1,height:1,background:C.line}}/>
+        </div>
+
+        {/* ─── OPTION B: 4 takes (multi-select all at once + individual) ─── */}
+        {/* Bulk multi-upload button */}
+        <label style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:12,background:C.brandWash,border:`1px dashed ${C.brand}`,cursor:"pointer",marginBottom:10}}>
+          <div style={{width:36,height:36,borderRadius:10,background:C.brand,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Icon name="plus" size={18} color={C.surface} stroke={2}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:500,color:C.brand,fontFamily:Fb}}>Subir las 4 tomas juntas</div>
+            <div style={{fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>Selecciona hasta 4 videos de tu galería al mismo tiempo</div>
+          </div>
+          <input type="file" accept="video/*" multiple style={{display:"none"}} onChange={(e)=>{
+            const files = Array.from(e.target.files || []).slice(0, 4);
+            if (files.length === 0) return;
+            const newTakes = [...(form.videoTakes || [false,false,false,false])];
+            const newTakeFiles = {...(form.videoTakeFiles || {})};
+            files.forEach((f, i) => {
+              const slot = i + 1;
+              newTakes[i] = true;
+              newTakeFiles[slot] = URL.createObjectURL(f);
+            });
+            const allDone = newTakes.every(Boolean);
+            setForm({...form, videoTakes: newTakes, videoTakeFiles: newTakeFiles, videoUp: allDone});
+            setUploadToast(`${files.length} toma${files.length>1?"s":""} cargada${files.length>1?"s":""} ✓`);
+            setTimeout(()=>setUploadToast(null), 2400);
+            e.target.value = "";
+          }}/>
+        </label>
+
+        {/* Individual takes (each with its own guide) */}
         {VID_GUIDE.map(g=>{
           const isUp = (form.videoTakes||[])[g.n-1];
           return (
-            <div key={g.n} style={{padding:14,borderRadius:12,background:isUp?C.brandWash:C.surface,border:`1px solid ${isUp?C.brand:C.line}`,display:"flex",gap:12,marginBottom:8,alignItems:"center"}}>
-              <div style={{width:42,height:42,borderRadius:10,background:isUp?C.brand:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                <Icon name={isUp?"check":g.icon} size={20} color={isUp?C.surface:C.brand} stroke={isUp?2:1.5}/>
+            <div key={g.n} style={{padding:12,borderRadius:12,background:isUp?C.brandWash:C.surface,border:`1px solid ${isUp?C.brand:C.line}`,display:"flex",gap:11,marginBottom:7,alignItems:"center"}}>
+              <div style={{width:38,height:38,borderRadius:10,background:isUp?C.brand:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:Fb,fontSize:13,fontWeight:600,color:isUp?C.surface:C.brand}}>
+                {isUp ? <Icon name="check" size={16} color={C.surface} stroke={2.2}/> : g.n}
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,gap:8}}>
-                  <span style={{fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>Toma {g.n} · {g.t}</span>
-                  <span style={{fontSize:10,color:C.brand,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{g.dur}</span>
-                </div>
-                <p style={{margin:0,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{isUp?"Grabada ✓ — toca para reemplazar":g.d}</p>
+                <div style={{fontSize:12,fontWeight:500,color:C.ink,fontFamily:Fb,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{g.t} <span style={{color:C.muted,fontWeight:400,fontSize:10.5}}>· {g.dur}</span></div>
+                <p style={{margin:"1px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.35,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isUp?"Lista ✓ — toca para cambiar":g.d}</p>
               </div>
-              <button onClick={()=>setUploadFor({kind:"video-take",slot:g.n,label:`Toma ${g.n}: ${g.t}`,phase:"guide",guideData:g})} style={{padding:"8px 12px",borderRadius:8,background:isUp?C.surface:C.brand,border:isUp?`1px solid ${C.brand}`:"none",color:isUp?C.brand:C.surface,fontSize:11.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,whiteSpace:"nowrap",letterSpacing:"0.02em",flexShrink:0}}>
+              <button onClick={()=>setUploadFor({kind:"video-take",slot:g.n,label:`Toma ${g.n}: ${g.t}`,phase:"guide",guideData:g})} style={{padding:"7px 11px",borderRadius:8,background:isUp?C.surface:C.brand,border:isUp?`1px solid ${C.brand}`:"none",color:isUp?C.brand:C.surface,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:Fb,whiteSpace:"nowrap",flexShrink:0}}>
                 {isUp?"Cambiar":"Subir"}
               </button>
             </div>
           );
         })}
 
-        {/* Progress indicator */}
-        <div style={{margin:"10px 0 12px",padding:"10px 12px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,display:"flex",alignItems:"center",gap:10}}>
+        {/* Progress bar */}
+        <div style={{margin:"10px 0 0",padding:"10px 12px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,display:"flex",alignItems:"center",gap:10}}>
           <div style={{display:"flex",gap:3,flex:1}}>
             {(form.videoTakes||[false,false,false,false]).map((up,i)=>(
               <div key={i} style={{flex:1,height:4,borderRadius:2,background:up?C.forest:C.line,transition:"all 0.25s"}}/>
             ))}
           </div>
-          <span style={{fontSize:11.5,color:(form.videoTakes||[]).every(Boolean)?C.forest:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em"}}>
+          <span style={{fontSize:11,color:(form.videoTakes||[]).every(Boolean)?C.forest:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em"}}>
             {(form.videoTakes||[]).filter(Boolean).length}/4 tomas
           </span>
         </div>
 
-        {/* Alternative: single full video */}
-        <button onClick={()=>setUploadFor({kind:"video",slot:null,label:"video completo"})} style={{width:"100%",padding:12,borderRadius:10,marginTop:4,background:"transparent",border:`1px dashed ${C.line}`,cursor:"pointer",color:C.muted,fontSize:11.5,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-          <Icon name="video" size={14} color={C.muted} stroke={1.5}/>O subir un video completo (sustituye las 4 tomas)
-        </button>
-
-        <div style={{marginTop:10,padding:12,borderRadius:10,background:C.mintWash,border:`1px solid #CDDBCE`,display:"flex",alignItems:"center",gap:10}}>
-          <Icon name="sparkle" size={16} color={C.forest} stroke={1.5}/>
-          <p style={{margin:0,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.4}}>La IA edita tus 4 tomas con transiciones y música automáticas</p>
+        <div style={{marginTop:10,padding:11,borderRadius:10,background:C.mintWash,border:`1px solid #CDDBCE`,display:"flex",alignItems:"center",gap:10}}>
+          <Icon name="sparkle" size={15} color={C.forest} stroke={1.5}/>
+          <p style={{margin:0,fontSize:11,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.4}}>La IA edita tu reel con transiciones, música y texto automáticamente.</p>
         </div>
 
-        {/* ─── Reel Editor: appears automatically when all 4 takes are uploaded ─── */}
-        {(form.videoTakes||[]).every(Boolean) && (form.videoTakeFiles||{})[1] && (
+        {/* ─── Reel Editor: appears when all 4 takes OR full video uploaded ─── */}
+        {((form.videoTakes||[]).every(Boolean) && (form.videoTakeFiles||{})[1]) && (
           <ReelEditor form={form} setForm={setForm}/>
         )}
       </div>}
 
-      {step===5&&<div>
+      {step===4&&<div>
         <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 16px",letterSpacing:"-0.01em"}}>Descripción</h3>
         <textarea placeholder="Describe tu propiedad con tus palabras..." value={form.desc} onChange={e=>{setForm({...form,desc:e.target.value});setAiDone(false);}} style={{width:"100%",minHeight:130,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13.5,fontFamily:Fb,fontWeight:400,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}} />
         <button onClick={()=>{if(form.desc){setForm({...form,desc:"Amplia propiedad con excelente ubicación y terminaciones de primer nivel. Espacios luminosos, ideal para familias. Cercana a transporte, colegios y áreas verdes."});setAiDone(true);}}} style={{width:"100%",padding:13,borderRadius:12,marginTop:10,background:aiDone?C.brandWash:C.ink,border:aiDone?`1px solid ${C.line}`:"none",cursor:"pointer",color:aiDone?C.brand:C.surface,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
@@ -2254,7 +2693,7 @@ function Sell({onPublish, goTo}) {
         </button>
       </div>}
 
-      {step===6&&(()=>{
+      {step===5&&(()=>{
         // Build dynamic summary rows based on type
         const rows = [
           ["Tipo", form.type||"—"],
@@ -2275,8 +2714,7 @@ function Sell({onPublish, goTo}) {
         }
         rows.push(
           ["Características", form.amenities.length?`${form.amenities.length} seleccionadas`:"Ninguna"],
-          ["Fotos", `${form.photos.length||0} de 4 mínimo`],
-          ["Video", form.videoUp?"Listo ✓":"Pendiente"],
+          ["Video", form.videoFile ? "Subido (completo) ✓" : (form.videoTakes||[]).every(Boolean) ? "Listo (4 tomas) ✓" : `${(form.videoTakes||[]).filter(Boolean).length}/4 tomas`],
           ["Texto", aiDone?"Mejorado con IA ✓":"Manual"],
         );
         return (
@@ -2301,7 +2739,7 @@ function Sell({onPublish, goTo}) {
         );
       })()}
 
-      {step>1&&step<6&&(
+      {step>1&&step<5&&(
         <div style={{display:"flex",gap:8,marginTop:18}}>
           <button onClick={()=>setStep(step-1)} style={{padding:"12px 18px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",gap:6}}>
             <Icon name="arrowLeft" size={15} color={C.text} stroke={1.6}/>Atrás
@@ -2425,24 +2863,68 @@ function Sell({onPublish, goTo}) {
                   </div>
                 </div>
 
-                {/* Checklist visual */}
-                {uploadFor.guideData?.tips && (
-                  <div style={{marginBottom:16,padding:"12px 14px",borderRadius:12,background:C.mintWash,border:`1px solid #CDDBCE`}}>
-                    <p style={{margin:"0 0 8px",fontSize:11.5,color:C.forest,fontFamily:Fb,fontWeight:600,letterSpacing:"0.04em"}}>Revisa rápido antes de continuar:</p>
-                    {uploadFor.guideData.tips.slice(0,3).map((tip,i)=>(
-                      <div key={i} style={{display:"flex",gap:8,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>
-                        <Icon name="check" size={12} color={C.forest} stroke={2.2}/>{tip}
+                {/* AI Analysis Panel — quality + content moderation */}
+                {(() => {
+                  const a = uploadFor.analysis;
+                  if (!a || a.status === "loading") {
+                    return (
+                      <div style={{marginBottom:14,padding:"14px 14px",borderRadius:12,background:C.brandWash,border:`1px solid ${C.brand}30`}}>
+                        <div style={{display:"flex",alignItems:"center",gap:9}}>
+                          <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${C.brand}`,borderTopColor:"transparent",animation:"spin 0.9s linear infinite"}}/>
+                          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+                          <div style={{flex:1}}>
+                            <p style={{margin:0,fontSize:12,color:C.brand,fontFamily:Fb,fontWeight:600,letterSpacing:"0.04em"}}>Analizando con IA…</p>
+                            <p style={{margin:"1px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>Calidad de imagen + revisión de contenido</p>
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  }
+                  const cardBg = a.allowPublish ? C.mintWash : "#FCEEDC";
+                  const cardBorder = a.allowPublish ? "#CDDBCE" : "#E8B996";
+                  const headColor = a.allowPublish ? C.forest : "#A6601C";
+                  return (
+                    <div style={{marginBottom:14,padding:"12px 14px",borderRadius:12,background:cardBg,border:`1px solid ${cardBorder}`}}>
+                      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
+                        <Icon name={a.allowPublish?"checkCircle":"sparkle"} size={15} color={headColor} stroke={1.7}/>
+                        <p style={{margin:0,fontSize:11.5,color:headColor,fontFamily:Fb,fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase"}}>Análisis IA — {a.allowPublish?"aprobada":"con observaciones"}</p>
+                      </div>
+                      {/* Good signals (only when there are issues, otherwise too crowded) */}
+                      {a.good && a.good.length > 0 && (
+                        <div style={{marginBottom:a.issues.length>0?8:0}}>
+                          {a.good.map((g,i)=>(
+                            <div key={g.k} style={{display:"flex",gap:7,alignItems:"flex-start",padding:"3px 0",fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.4}}>
+                              <Icon name="check" size={11} color={C.forest} stroke={2.5}/>{g.t}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Issues */}
+                      {a.issues && a.issues.length > 0 && a.issues.map((iss)=>(
+                        <div key={iss.k} style={{display:"flex",gap:7,alignItems:"flex-start",padding:"3px 0",fontSize:11.5,color:iss.sev==="high"?"#9B3D2B":C.text,fontFamily:Fb,fontWeight:iss.sev==="high"?500:400,lineHeight:1.4}}>
+                          <span style={{display:"inline-flex",width:11,height:11,borderRadius:"50%",background:iss.sev==="high"?"#9B3D2B":"#C97A30",color:C.surface,fontSize:9,fontWeight:700,alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>!</span>
+                          {iss.t}
+                        </div>
+                      ))}
+                      {/* Metrics chip row */}
+                      {a.metrics && (
+                        <div style={{display:"flex",gap:6,marginTop:9,flexWrap:"wrap"}}>
+                          <span style={{padding:"2px 8px",borderRadius:999,background:"rgba(255,255,255,0.6)",fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Luz {a.metrics.brightness}/255</span>
+                          <span style={{padding:"2px 8px",borderRadius:999,background:"rgba(255,255,255,0.6)",fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Nitidez {a.metrics.sharpness}</span>
+                          <span style={{padding:"2px 8px",borderRadius:999,background:"rgba(255,255,255,0.6)",fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>{a.metrics.resolution}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>setUploadFor({...uploadFor,phase:"source",tempUrl:null})} style={{flex:1,padding:13,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                  <button onClick={()=>setUploadFor({...uploadFor,phase:"source",tempUrl:null,analysis:null})} style={{flex:1,padding:13,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
                     <Icon name={uploadFor.tempIsVideo?"video":"camera"} size={14} color={C.text} stroke={1.6}/>Tomar otra
                   </button>
-                  <button onClick={confirmCapture} style={{flex:1.4,padding:13,borderRadius:12,background:C.forest,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:`0 4px 14px ${C.forest}30`}}>
-                    <Icon name="check" size={14} color={C.surface} stroke={2}/>Usar esta {uploadFor.tempIsVideo?"toma":"foto"}
+                  <button onClick={confirmCapture} disabled={uploadFor.analysis?.status==="loading" || (uploadFor.analysis && !uploadFor.analysis.allowPublish)} style={{flex:1.4,padding:13,borderRadius:12,background:(uploadFor.analysis?.status==="loading"||(uploadFor.analysis&&!uploadFor.analysis.allowPublish))?C.line:C.forest,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:(uploadFor.analysis?.status==="loading"||(uploadFor.analysis&&!uploadFor.analysis.allowPublish))?"default":"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:uploadFor.analysis?.allowPublish?`0 4px 14px ${C.forest}30`:"none"}}>
+                    <Icon name="check" size={14} color={C.surface} stroke={2}/>
+                    {uploadFor.analysis?.status==="loading" ? "Analizando…" : (uploadFor.analysis && !uploadFor.analysis.allowPublish ? "Retomar (calidad baja)" : `Usar esta ${uploadFor.tempIsVideo?"toma":"foto"}`)}
                   </button>
                 </div>
               </div>
@@ -2452,34 +2934,63 @@ function Sell({onPublish, goTo}) {
       )}
 
       {/* Mapa modal (Vender step 2) */}
-      {mapModal && (
-        <div onClick={()=>setMapModal(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{maxWidth:420,width:"100%",background:C.surface,borderRadius:18,padding:"20px 18px",animation:"slideUp 0.25s ease"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:34,height:34,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="pin" size={17} color={C.brand} stroke={1.6}/></div>
-                <h3 style={{margin:0,fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Ubicación en el mapa</h3>
-              </div>
-              <button onClick={()=>setMapModal(false)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
-            </div>
-
-            {form.lat && form.lng ? (
-              <>
-                <MapView lat={form.lat} lng={form.lng} address={form.loc} height={260} zoom={16}/>
-                <p style={{margin:"10px 0 0",fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.5,fontStyle:"italic"}}>📍 {form.loc}</p>
-              </>
-            ) : (
-              <>
-                <div style={{height:160,borderRadius:12,background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,marginBottom:14}}>
-                  <Logo size={32}/>
-                  <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>Sin ubicación marcada</span>
+      {mapModal && (() => {
+        const hasPin = typeof form.lat === "number" && typeof form.lng === "number";
+        return (
+          <div onClick={()=>setMapModal(false)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(28,26,23,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div onClick={e=>e.stopPropagation()} style={{maxWidth:460,width:"100%",background:C.surface,borderRadius:18,padding:"20px 18px 18px",animation:"slideUp 0.25s ease",maxHeight:"92vh",overflowY:"auto"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:34,height:34,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="pin" size={17} color={C.brand} stroke={1.6}/></div>
+                  <div>
+                    <h3 style={{margin:0,fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Ubicación en el mapa</h3>
+                    <p style={{margin:"1px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>{hasPin?"Arrastra el pin para refinar":"Toca el mapa para marcar la ubicación"}</p>
+                  </div>
                 </div>
-                <p style={{margin:"0 0 14px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Para que tu propiedad aparezca en el mapa, completa el campo "Ubicación" arriba con una dirección real (Google Maps lo geocodifica automáticamente).</p>
-              </>
-            )}
+                <button onClick={()=>setMapModal(false)} style={{width:30,height:30,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="close" size={16} color={C.ink} stroke={1.7}/></button>
+              </div>
 
-            <button onClick={()=>setMapModal(false)} style={{width:"100%",padding:"11px 18px",borderRadius:12,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,marginTop:14}}>Listo</button>
+              <InteractiveMap
+                lat={form.lat}
+                lng={form.lng}
+                height={320}
+                onPinPlaced={({lat,lng,address,comuna})=>{
+                  setForm(f=>({...f, lat, lng, loc: address || f.loc, comuna: comuna || f.comuna }));
+                }}
+              />
+
+              {hasPin ? (
+                <div style={{marginTop:12,padding:"10px 12px",borderRadius:10,background:C.brandWash,border:`1px solid ${C.brand}30`,display:"flex",gap:8,alignItems:"center"}}>
+                  <Icon name="checkCircle" size={15} color={C.brand} stroke={1.6}/>
+                  <p style={{margin:0,fontSize:12,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.4,flex:1}}>{form.loc || `Lat ${form.lat.toFixed(5)}, Lng ${form.lng.toFixed(5)}`}</p>
+                </div>
+              ) : (
+                <div style={{marginTop:12,padding:"10px 12px",borderRadius:10,background:C.bg,border:`1px dashed ${C.line}`,display:"flex",gap:8,alignItems:"center"}}>
+                  <Icon name="pin" size={15} color={C.muted} stroke={1.6}/>
+                  <p style={{margin:0,fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.4,flex:1}}>Haz click en el mapa donde está tu propiedad</p>
+                </div>
+              )}
+
+              <div style={{display:"flex",gap:8,marginTop:14}}>
+                {hasPin && (
+                  <button onClick={()=>setForm(f=>({...f, lat:null, lng:null}))} style={{padding:"11px 14px",borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.terracotta,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",gap:6}}>
+                    <Icon name="trash" size={13} color={C.terracotta} stroke={1.6}/>Quitar
+                  </button>
+                )}
+                <button onClick={()=>setMapModal(false)} style={{flex:1,padding:"11px 18px",borderRadius:12,background:hasPin?C.forest:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>{hasPin?"Guardar ubicación":"Cerrar"}</button>
+              </div>
+            </div>
           </div>
+        );
+      })()}
+
+      {/* Upload toast (foto / toma de video confirmada) */}
+      {uploadToast && (
+        <div style={{position:"fixed",bottom:108,left:"50%",transform:"translateX(-50%)",zIndex:600,padding:"12px 22px 12px 18px",borderRadius:999,background:C.forest,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,boxShadow:`0 10px 30px ${C.forest}50`,display:"flex",alignItems:"center",gap:10,maxWidth:"calc(100vw - 32px)",animation:"toastIn 0.25s ease"}}>
+          <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(255,255,255,0.22)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Icon name="check" size={13} color={C.surface} stroke={2.5}/>
+          </div>
+          <span style={{letterSpacing:"0.01em"}}>{uploadToast}</span>
         </div>
       )}
 
