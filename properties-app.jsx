@@ -4643,8 +4643,36 @@ function MainApp({ authProfile, setAuthProfile }) {
               me={me}
               setMe={setMe}
               onOpenProp={(p)=>open(p)}
-              onEditProp={(id,patch)=>{setProps(ps=>ps.map(p=>p.id===id?{...p,...patch}:p)); showToast("Publicación actualizada ✓");}}
-              onDeleteProp={(id)=>{setProps(ps=>ps.filter(p=>p.id!==id)); showToast("Publicación eliminada");}}
+              onEditProp={async (id,patch)=>{
+                // Optimistic update — actualiza UI inmediatamente
+                setProps(ps=>ps.map(p=>p.id===id?{...p,...patch}:p));
+                // Persist en la DB
+                if (supabase && typeof id === "string") {
+                  const dbPatch = {};
+                  if (patch.title !== undefined) dbPatch.title = patch.title;
+                  if (patch.price !== undefined) dbPatch.price = patch.price;
+                  if (patch.cur !== undefined) dbPatch.currency = patch.cur;
+                  if (patch.desc !== undefined) dbPatch.description = patch.desc;
+                  if (patch.loc !== undefined) dbPatch.loc = patch.loc;
+                  const { error } = await supabase.from("properties").update(dbPatch).eq("id", id);
+                  if (error) { console.error("Edit failed", error); showToast("Error al actualizar"); return; }
+                }
+                showToast("Publicación actualizada ✓");
+              }}
+              onDeleteProp={async (id)=>{
+                // Optimistic UI — remueve del feed inmediatamente
+                setProps(ps=>ps.filter(p=>p.id!==id));
+                // Persist en la DB (solo si id es un UUID — los demo PROPS tienen ids numéricos)
+                if (supabase && typeof id === "string") {
+                  const { error } = await supabase.from("properties").delete().eq("id", id);
+                  if (error) {
+                    console.error("Delete failed", error);
+                    showToast("Error al eliminar — volvé a cargar la app");
+                    return;
+                  }
+                }
+                showToast("Publicación eliminada");
+              }}
             />}
           </>
         )}
