@@ -1495,17 +1495,30 @@ function Feed({props,onTap,onOpenReel}) {
 
 // ═══ DETAIL ═══
 function Detail({p,back,onLike,onSave}) {
+  const hasUploadedVideo = !!p.videoFile;
+  const has4Takes = p.videoTakeFiles && Object.keys(p.videoTakeFiles).length > 0;
   return (
     <div style={{paddingBottom:92,background:C.bg}}>
-      <div style={{position:"relative"}}>
-        <img src={p.img} alt="" style={{width:"100%",height:280,objectFit:"cover",display:"block"}} />
-        <button onClick={back} style={{position:"absolute",top:14,left:14,width:38,height:38,borderRadius:"50%",background:"rgba(252,251,248,0.95)",backdropFilter:"blur(10px)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{position:"relative",background:"#000",height:280,overflow:"hidden"}}>
+        {hasUploadedVideo ? (
+          <video src={p.videoFile} controls poster={p.img||undefined} playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block",background:"#000"}}/>
+        ) : has4Takes ? (
+          <ReelPlayer takeFiles={p.videoTakeFiles||{}} takeOrder={p.takeOrder||[0,1,2,3]} takeSpeeds={p.takeSpeeds||[1,2,2,1]} takeDurations={p.takeDurations||[5,5,5,5]} title={p.reelTitle||""} subtitle={p.reelSubtitle||""} titleStyle={p.titleStyle||"editorial"} musicTrack={p.musicTrack||""} autoplay={false} height={280}/>
+        ) : p.img ? (
+          <img src={p.img} alt="" style={{width:"100%",height:280,objectFit:"cover",display:"block"}} />
+        ) : (
+          <div style={{width:"100%",height:280,background:C.brandWash,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}}>
+            <Icon name={p.type==="Departamento"?"building":p.type==="Parcela"?"mountain":p.type==="Oficina"?"briefcase":"house"} size={48} color={C.brand} stroke={1.3}/>
+            <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.08em",textTransform:"uppercase"}}>Sin portada</span>
+          </div>
+        )}
+        <button onClick={back} style={{position:"absolute",top:14,left:14,width:38,height:38,borderRadius:"50%",background:"rgba(252,251,248,0.95)",backdropFilter:"blur(10px)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
           <Icon name="chevronLeft" size={16} color={C.ink} stroke={1.8}/>
         </button>
-        <div style={{position:"absolute",bottom:14,left:14,display:"flex",gap:6}}>
-          <span style={{background:"rgba(28,26,23,0.5)",backdropFilter:"blur(10px)",borderRadius:999,padding:"5px 11px",fontSize:10.5,color:C.surface,fontFamily:Fb,fontWeight:500,display:"inline-flex",alignItems:"center",gap:5}}>
+        <div style={{position:"absolute",bottom:14,left:14,display:"flex",gap:6,zIndex:10}}>
+          {p.photos>0 && <span style={{background:"rgba(28,26,23,0.5)",backdropFilter:"blur(10px)",borderRadius:999,padding:"5px 11px",fontSize:10.5,color:C.surface,fontFamily:Fb,fontWeight:500,display:"inline-flex",alignItems:"center",gap:5}}>
             <Icon name="camera" size={11} color={C.surface} stroke={1.6}/>{p.photos}
-          </span>
+          </span>}
           {p.hasVideo&&<span style={{background:"rgba(28,26,23,0.5)",backdropFilter:"blur(10px)",borderRadius:999,padding:"5px 11px",fontSize:10.5,color:C.surface,fontFamily:Fb,fontWeight:500,display:"inline-flex",alignItems:"center",gap:5}}>
             <Icon name="video" size={11} color={C.surface} stroke={1.6}/>Video
           </span>}
@@ -1643,8 +1656,21 @@ function CommentsSheet({propId, prop, onClose}) {
 }
 
 function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
+  // Dynamic reel feed: combine the hardcoded REELS (demo) + any user-published prop with video
+  const reelFeed = (() => {
+    const userPublishedReels = (props || [])
+      .filter(p => p.hasVideo && !REELS.some(r => r.propId === p.id))
+      .map(p => ({
+        id: `user-${p.id}`,
+        propId: p.id,
+        views: p.nuevo ? "Nuevo" : "0",
+        caption: p.reelTitle || p.title || "Tu nueva propiedad",
+        likes: 0,
+      }));
+    return [...userPublishedReels, ...REELS];
+  })();
   // If startPropId is provided, jump to that reel
-  const startIdx = startPropId ? Math.max(0, REELS.findIndex(r=>r.propId===startPropId)) : 0;
+  const startIdx = startPropId ? Math.max(0, reelFeed.findIndex(r=>r.propId===startPropId)) : 0;
   const [idx,setIdx]=useState(startIdx);
   const [commentsOpenFor,setCommentsOpenFor]=useState(null); // propId of property whose comments are open
   // Touch tracking — startY anchors first touch; deltaY tracks live finger movement for real-time slide
@@ -1654,7 +1680,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   const dragging = startY !== null;
 
   // Navigation helpers
-  const goNext = () => setIdx(i => Math.min(REELS.length-1, i+1));
+  const goNext = () => setIdx(i => Math.min(reelFeed.length-1, i+1));
   const goPrev = () => setIdx(i => Math.max(0, i-1));
 
   // Swipe (mobile) — real-time finger tracking
@@ -1663,13 +1689,13 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
     if (startY===null) return;
     const dy = e.touches[0].clientY - startY; // positive = swipe down (prev), negative = swipe up (next)
     // Rubber-band effect at edges
-    if ((idx===0 && dy>0) || (idx===REELS.length-1 && dy<0)) setDeltaY(dy * 0.25);
+    if ((idx===0 && dy>0) || (idx===reelFeed.length-1 && dy<0)) setDeltaY(dy * 0.25);
     else setDeltaY(dy);
   };
   const onTE = () => {
     if (startY===null) return;
     const threshold = 70;
-    if (deltaY < -threshold && idx < REELS.length-1) goNext();
+    if (deltaY < -threshold && idx < reelFeed.length-1) goNext();
     else if (deltaY > threshold && idx > 0) goPrev();
     setStartY(null);
     setDeltaY(0);
@@ -1713,14 +1739,19 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         transition: dragging ? "none" : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
         willChange:"transform"
       }}>
-        {REELS.map((rl, i) => {
+        {reelFeed.map((rl, i) => {
           const prop = props.find(x=>x.id===rl.propId);
           if (!prop) return null;
           const isActive = i === idx;
+          const reelVideoSrc = prop.videoFile || (prop.videoTakeFiles && prop.videoTakeFiles[1]) || null;
           return (
-            <div key={rl.id} style={{position:"absolute",top:`${i*100}vh`,left:0,right:0,height:"100vh",overflow:"hidden"}}>
-              {/* Background image */}
-              <img src={prop.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>
+            <div key={rl.id} style={{position:"absolute",top:`${i*100}vh`,left:0,right:0,height:"100vh",overflow:"hidden",background:"#000"}}>
+              {/* Background: user's video if available, else property image */}
+              {reelVideoSrc ? (
+                <video src={reelVideoSrc} autoPlay={isActive} muted loop playsInline style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+              ) : (
+                <img src={prop.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>
+              )}
               <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
 
               {/* Action column — right side */}
@@ -1785,11 +1816,11 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
           <Icon name="chevronUp" size={16} color={C.surface} stroke={1.8}/>
         </button>
         <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
-          {REELS.map((_,i)=>(
+          {reelFeed.map((_,i)=>(
             <div key={i} style={{width:3,height:i===idx?16:6,borderRadius:2,background:i===idx?C.surface:"rgba(255,255,255,0.4)",transition:"all 0.2s"}}/>
           ))}
         </div>
-        <button onClick={()=>goNext()} disabled={idx===REELS.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===REELS.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===REELS.length-1?0.3:1}}>
+        <button onClick={()=>goNext()} disabled={idx===reelFeed.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===reelFeed.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===reelFeed.length-1?0.3:1}}>
           <Icon name="chevronDown" size={16} color={C.surface} stroke={1.8}/>
         </button>
       </div>
@@ -2175,6 +2206,34 @@ function ReelEditor({form, setForm}){
 // Quality checks run 100% in browser via canvas pixel analysis.
 // Content moderation (NSFW, violence, drugs) is mocked here — in production this
 // must run server-side with Google Vision SafeSearch, AWS Rekognition, or similar.
+// Capture a single frame from a video at a specific time, return as data URL (JPEG)
+async function captureVideoFrame(videoUrl, atSecond = 1.0) {
+  return new Promise((resolve, reject) => {
+    const v = document.createElement("video");
+    v.src = videoUrl; v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous";
+    let done = false;
+    const finish = (data) => { if (done) return; done = true; resolve(data); };
+    const fail = (e) => { if (done) return; done = true; reject(e); };
+    v.onloadeddata = () => {
+      const t = Math.min(Math.max(0.1, atSecond), Math.max(0.1, (v.duration || atSecond) - 0.05));
+      v.currentTime = t;
+    };
+    v.onseeked = () => {
+      try {
+        const c = document.createElement("canvas");
+        const maxW = 1280;
+        const ratio = (v.videoWidth || 1) / (v.videoHeight || 1);
+        c.width = Math.min(v.videoWidth || maxW, maxW);
+        c.height = Math.round(c.width / (ratio || 1));
+        c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+        finish(c.toDataURL("image/jpeg", 0.88));
+      } catch(e) { fail(e); }
+    };
+    v.onerror = () => fail(new Error("video-load-failed"));
+    setTimeout(() => fail(new Error("capture-timeout")), 10000);
+  });
+}
+
 async function analyzeMedia(url, isVideo) {
   // For video, capture first frame to a canvas
   const sourceImg = await new Promise((resolve, reject) => {
@@ -2367,9 +2426,15 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange}) {
         }
       } catch(e) { console.warn("Geocode failed", e); }
     }
-    // Build the prop object — image is generated from the first video frame in async path,
-    // or fallback to a default property image while in prototype.
-    const firstPhotoUrl = "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop";
+    // Cover image priority: explicit cover > first uploaded photo > extracted video frame > null
+    let firstPhotoUrl = form.coverUrl || null;
+    if (!firstPhotoUrl && form.photoFiles && form.photos?.length > 0) {
+      firstPhotoUrl = form.photoFiles[form.photos[0]];
+    }
+    if (!firstPhotoUrl && (form.videoFile || (form.videoTakeFiles && form.videoTakeFiles[1]))) {
+      const sourceVid = form.videoFile || form.videoTakeFiles[1];
+      try { firstPhotoUrl = await captureVideoFrame(sourceVid, 1.0); } catch(e) {}
+    }
     const newProp = {
       id: Date.now(),
       type: form.type || "Casa",
@@ -2404,6 +2469,11 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange}) {
       videoTakeFiles: form.videoTakeFiles || null,
       reelTitle: form.reelTitle || "",
       reelSubtitle: form.reelSubtitle || "",
+      titleStyle: form.titleStyle || "editorial",
+      musicTrack: form.musicTrack || "",
+      takeOrder: form.takeOrder || [0,1,2,3],
+      takeSpeeds: form.takeSpeeds || [1,2,2,1],
+      takeDurations: form.takeDurations || [5,5,5,5],
     };
     // Push to global props state via callback
     onPublish && onPublish(newProp);
