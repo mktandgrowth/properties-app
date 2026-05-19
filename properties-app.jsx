@@ -4321,7 +4321,7 @@ function useAuth() {
 }
 
 // ─── AuthScreen: signup / login ───
-function AuthScreen({ onAuthed }) {
+function AuthScreen({ onAuthed, onGuest }) {
   const [mode, setMode] = useState("login"); // "login" | "signup"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -4465,6 +4465,12 @@ function AuthScreen({ onAuthed }) {
             </button>
           </p>
         </div>
+
+        {/* Guest mode — explorar sin cuenta */}
+        <button onClick={()=>onGuest && onGuest()} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:7,width:"100%",marginTop:14,padding:"11px 14px",borderRadius:11,background:"transparent",border:`1px solid ${C.line}`,cursor:"pointer",color:C.text,fontSize:12,fontWeight:500,fontFamily:Fb,letterSpacing:"0.02em"}}>
+          <Icon name="eye" size={14} color={C.text} stroke={1.6}/>Continuar como invitado
+          <span style={{fontSize:10,color:C.muted,fontWeight:400,letterSpacing:"0.04em"}}>· explorar sin cuenta</span>
+        </button>
       </div>
     </div>
   );
@@ -4473,8 +4479,24 @@ function AuthScreen({ onAuthed }) {
 // ─── Auth gate wrapper — keeps the hooks of MainApp stable across auth changes ───
 export default function App() {
   const { session, profile, setProfile, loading: authLoading } = useAuth();
+  // Guest mode — explorar la app sin crear cuenta
+  const [guestMode, setGuestMode] = useState(() => {
+    try { return window.localStorage.getItem("guest_mode") === "1"; } catch(e) { return false; }
+  });
+  const enterGuestMode = () => {
+    try { window.localStorage.setItem("guest_mode", "1"); } catch(e) {}
+    setGuestMode(true);
+  };
+  // Si la persona se loguea, salimos del modo invitado automáticamente
+  useEffect(() => {
+    if (session && guestMode) {
+      try { window.localStorage.removeItem("guest_mode"); } catch(e) {}
+      setGuestMode(false);
+    }
+  }, [session, guestMode]);
+
   // While checking auth on first load, show a small loader
-  if (supabase && authLoading) {
+  if (supabase && authLoading && !guestMode) {
     return (
       <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -4485,14 +4507,14 @@ export default function App() {
       </div>
     );
   }
-  // Not authenticated → show signup/login screen
-  if (supabase && !session) return <AuthScreen />;
-  // Authenticated (or no Supabase configured) → render the full app.
-  // Use session.user.id as `key` so MainApp fully remounts when user changes — clean state.
-  return <MainApp key={session?.user?.id || "anon"} authProfile={profile} setAuthProfile={setProfile}/>;
+  // Not authenticated AND not guest → show signup/login screen
+  if (supabase && !session && !guestMode) return <AuthScreen onGuest={enterGuestMode}/>;
+  // Authenticated (or guest, or no Supabase) → render the full app.
+  // Use session.user.id as `key` so MainApp fully remounts when user changes.
+  return <MainApp key={session?.user?.id || (guestMode?"guest":"anon")} authProfile={profile} setAuthProfile={setProfile} isGuest={!session && guestMode} onExitGuest={()=>{try{window.localStorage.removeItem("guest_mode");}catch(e){};setGuestMode(false);}}/>;
 }
 
-function MainApp({ authProfile, setAuthProfile }) {
+function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   // ─── App state ───
   const [tab,setTab]=useState("feed");
   const [view,setView]=useState(null);
@@ -4577,11 +4599,13 @@ function MainApp({ authProfile, setAuthProfile }) {
 
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2000); };
   const like=id=>{
+    if (isGuest) { setGuestPromptFor("dar like a propiedades"); return; }
     setProps(ps=>ps.map(p=>p.id===id?{...p,liked:!p.liked}:p));
     const p = props.find(x=>x.id===id);
     showToast(p?.liked?"Quitado de tus likes":"Agregado a tus likes");
   };
   const save=id=>{
+    if (isGuest) { setGuestPromptFor("guardar propiedades"); return; }
     setProps(ps=>ps.map(p=>p.id===id?{...p,saved:!p.saved}:p));
     const p = props.find(x=>x.id===id);
     showToast(p?.saved?"Quitado de guardados":"Guardado en tu lista");
@@ -4593,7 +4617,14 @@ function MainApp({ authProfile, setAuthProfile }) {
   // ─── Sell navigation guard — prevent accidental loss of draft ───
   const [sellHasDraft,setSellHasDraft]=useState(false);
   const [navConfirm,setNavConfirm]=useState(null); // pending tab to navigate to
+  const [guestPromptFor,setGuestPromptFor]=useState(null); // texto a mostrar cuando un invitado intenta hacer algo de auth
   const go=id=>{
+    // Guest mode: bloqueamos Vender, Guardados y Perfil (necesitan cuenta)
+    if (isGuest && (id==="sell" || id==="profile" || id==="saved")) {
+      const labels = { sell:"publicar una propiedad", profile:"acceder a tu perfil", saved:"ver tus guardados" };
+      setGuestPromptFor(labels[id]);
+      return;
+    }
     // If leaving Sell tab while user has a draft in progress, ask first
     if (tab==="sell" && id!=="sell" && sellHasDraft) {
       setNavConfirm(id);
@@ -4660,6 +4691,15 @@ function MainApp({ authProfile, setAuthProfile }) {
       `}</style>
 
       <TopBarDesktop active={tab} go={go} onNotif={onNotifAction}/>
+
+      {/* Banner de modo invitado — solo visible si entró sin cuenta */}
+      {isGuest && (
+        <div style={{position:"sticky",top:0,zIndex:80,background:C.brand,color:C.surface,padding:"9px 14px",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontSize:11.5,fontFamily:Fb,fontWeight:500,letterSpacing:"0.01em",boxShadow:`0 2px 8px ${C.ink}25`}}>
+          <Icon name="eye" size={13} color={C.surface} stroke={1.8}/>
+          <span>Estás viendo como invitado</span>
+          <button onClick={()=>onExitGuest && onExitGuest()} style={{padding:"4px 11px",borderRadius:999,background:C.surface,border:"none",color:C.brand,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.02em"}}>Crear cuenta</button>
+        </div>
+      )}
 
       <div className="main-app" style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,position:"relative"}}>
         <div className="mob-header">
@@ -4733,6 +4773,23 @@ function MainApp({ authProfile, setAuthProfile }) {
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>setNavConfirm(null)} style={{flex:1,padding:12,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Seguir editando</button>
                 <button onClick={()=>forceGo(navConfirm)} style={{flex:1.3,padding:12,borderRadius:11,background:C.ink,border:"none",color:C.surface,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Salir (guardado)</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Guest prompt — cuando un invitado intenta hacer algo que requiere cuenta */}
+        {guestPromptFor && (
+          <div onClick={()=>setGuestPromptFor(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(28,26,23,0.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div onClick={e=>e.stopPropagation()} style={{maxWidth:380,width:"100%",background:C.surface,borderRadius:18,padding:"22px 22px 18px",animation:"successIn 0.25s ease",textAlign:"center"}}>
+              <div style={{width:54,height:54,borderRadius:"50%",margin:"0 auto 14px",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <Logo size={26}/>
+              </div>
+              <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Creá tu cuenta</h3>
+              <p style={{margin:"0 0 18px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Para {guestPromptFor} necesitás tener una cuenta. Es gratis y toma menos de 1 minuto.</p>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>setGuestPromptFor(null)} style={{flex:1,padding:13,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Después</button>
+                <button onClick={()=>{setGuestPromptFor(null); onExitGuest && onExitGuest();}} style={{flex:1.4,padding:13,borderRadius:11,background:C.ink,border:"none",color:C.surface,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Crear cuenta</button>
               </div>
             </div>
           </div>
