@@ -309,7 +309,8 @@ const AMENITIES = [
   { k:"gimnasio", l:"Gimnasio", icon:"gym" },
 ];
 
-const fmt = n => n>=10000?`${(n/1000).toFixed(0)}K`:n.toLocaleString("es-CL");
+// Format precios — siempre número completo con puntos (no más "25K")
+const fmt = n => (n||0).toLocaleString("es-CL");
 
 // ── Brand Logo (refined) ──
 const Logo = ({size=24,color=C.brand}) => (
@@ -1432,8 +1433,15 @@ function Feed({props,onTap,onOpenReel}) {
           const style = big ? {gridColumn:"span 2",gridRow:"span 2",aspectRatio:"1/1"} : {aspectRatio:"1/1"};
           const isReel = p.hasVideo;
           return (
-            <div key={p.id} onClick={()=>isReel?onOpenReel(p.id):onTap(p)} style={{...style,position:"relative",overflow:"hidden",cursor:"pointer",background:"#000"}}>
-              <img src={p.img} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
+            <div key={p.id} onClick={()=>isReel?onOpenReel(p.id):onTap(p)} style={{...style,position:"relative",overflow:"hidden",cursor:"pointer",background:C.brandWash}}>
+              {p.img ? (
+                <img src={p.img} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
+              ) : (
+                <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg, ${C.brandWash} 0%, ${C.surface} 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
+                  <Icon name={p.type==="Departamento"?"building":p.type==="Parcela"?"mountain":p.type==="Oficina"?"briefcase":p.type==="Sitio"?"land":"house"} size={big?44:28} color={C.brand} stroke={1.3}/>
+                  <span style={{fontSize:big?10:8.5,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Sin portada</span>
+                </div>
+              )}
 
               {/* Corner indicator: reel (play) or gallery */}
               <div style={{position:"absolute",top:6,right:6,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1570,7 +1578,10 @@ function Detail({p,back,onLike,onSave}) {
           </div>
         </div>
         <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>window.open(waUrl(p.wa,`Hola ${p.user}, vi tu publicación "${p.title}" en properties. Me interesa coordinar una visita.`),"_blank")} style={{flex:1,padding:14,borderRadius:12,background:C.ink,border:"none",cursor:"pointer",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
+          <button onClick={()=>{
+            if (!p.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
+            window.open(waUrl(p.wa,`Hola ${p.user}, vi tu publicación "${p.title}" en properties. Me interesa coordinar una visita.`),"_blank");
+          }} disabled={!p.wa} style={{flex:1,padding:14,borderRadius:12,background:p.wa?C.ink:C.line,border:"none",cursor:p.wa?"pointer":"default",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
             <Icon name="whatsapp" size={18} color={C.surface} stroke={1.6}/>WhatsApp
           </button>
           <button onClick={()=>onLike(p.id)} style={{width:50,height:50,borderRadius:12,background:p.liked?C.brandWash:C.surface,border:`1px solid ${p.liked?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1658,18 +1669,33 @@ function CommentsSheet({propId, prop, onClose}) {
 }
 
 function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
-  // Dynamic reel feed: combine the hardcoded REELS (demo) + any user-published prop with video
+  // Dynamic reel feed: user-published props with video first + hardcoded REELS, dedup
   const reelFeed = (() => {
-    const userPublishedReels = (props || [])
-      .filter(p => p.hasVideo && !REELS.some(r => r.propId === p.id))
-      .map(p => ({
+    const seenPropIds = new Set();
+    const out = [];
+    // 1. User-published props with video (latest first)
+    (props || []).forEach(p => {
+      if (!p.hasVideo) return;
+      if (seenPropIds.has(p.id)) return;
+      seenPropIds.add(p.id);
+      // Skip if it's a hardcoded REEL (will be added below with proper meta)
+      if (REELS.some(r => r.propId === p.id)) return;
+      out.push({
         id: `user-${p.id}`,
         propId: p.id,
         views: p.nuevo ? "Nuevo" : "0",
         caption: p.reelTitle || p.title || "Tu nueva propiedad",
         likes: 0,
-      }));
-    return [...userPublishedReels, ...REELS];
+      });
+    });
+    // 2. Hardcoded demo REELS — only if their matching prop exists in props
+    REELS.forEach(r => {
+      if (seenPropIds.has(r.propId)) return;
+      if (!(props||[]).some(p => p.id === r.propId)) return;
+      seenPropIds.add(r.propId);
+      out.push(r);
+    });
+    return out;
   })();
   // If startPropId is provided, jump to that reel
   const startIdx = startPropId ? Math.max(0, reelFeed.findIndex(r=>r.propId===startPropId)) : 0;
@@ -1771,7 +1797,10 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
                   <Icon name="bookmark" size={27} color={prop.saved?C.brandSoft:C.surface} stroke={1.6} fill={prop.saved?C.brandSoft:"none"}/>
                   <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Guardar</span>
                 </button>
-                <button onClick={()=>window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank")} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <button onClick={()=>{
+                  if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
+                  window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
+                }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
                   <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
                   <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
                 </button>
@@ -2216,16 +2245,72 @@ function ReelEditor({form, setForm}){
 // must run server-side with Google Vision SafeSearch, AWS Rekognition, or similar.
 // ─── Supabase Storage / DB helpers (Phase 2) ───
 
+// Try to re-encode a video Blob to a smaller MP4/WebM via MediaRecorder + canvas
+// (best effort — returns original if browser doesn't support or compression fails)
+async function compressVideoIfNeeded(blob, maxBytes) {
+  if (!blob || blob.size <= maxBytes) return blob;
+  if (typeof MediaRecorder === "undefined") return blob; // unsupported browser
+  try {
+    const url = URL.createObjectURL(blob);
+    const v = document.createElement("video");
+    v.src = url; v.muted = true; v.playsInline = true;
+    await new Promise((resolve, reject) => {
+      v.onloadedmetadata = () => resolve();
+      v.onerror = () => reject(new Error("video-load-failed"));
+    });
+    // Downscale to max 720px on the long side
+    const ratio = v.videoWidth / v.videoHeight;
+    let w = v.videoWidth, h = v.videoHeight;
+    if (Math.max(w, h) > 720) {
+      if (ratio > 1) { w = 720; h = Math.round(720 / ratio); }
+      else { h = 720; w = Math.round(720 * ratio); }
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const stream = canvas.captureStream(24);
+    // Pick best supported codec
+    const mime = ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"]
+      .find(t => MediaRecorder.isTypeSupported(t)) || "";
+    if (!mime) { URL.revokeObjectURL(url); return blob; }
+    const chunks = [];
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 1_200_000 });
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    const finished = new Promise(res => { rec.onstop = () => res(); });
+    rec.start();
+    v.play().catch(()=>{});
+    const draw = () => {
+      if (v.ended || v.paused) return;
+      ctx.drawImage(v, 0, 0, w, h);
+      requestAnimationFrame(draw);
+    };
+    draw();
+    await new Promise(res => { v.onended = () => res(); });
+    rec.stop();
+    await finished;
+    URL.revokeObjectURL(url);
+    const out = new Blob(chunks, { type: mime });
+    return (out.size > 0 && out.size < blob.size) ? out : blob;
+  } catch (e) {
+    console.warn("Video compression failed, using original:", e);
+    return blob;
+  }
+}
+
 // Upload a Blob/File to a bucket under {userId}/{ts}-{rand}.{ext}, return public URL
 // Validates size — Supabase default limits 50MB per file
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB
 async function uploadToStorage(bucket, file, userId, extHint) {
   if (!supabase) throw new Error("Supabase not configured");
   if (!userId) throw new Error("Need authenticated user to upload");
+  // Auto-compress videos that exceed the limit before failing
+  if (bucket === "videos" && file?.size && file.size > MAX_UPLOAD_BYTES) {
+    file = await compressVideoIfNeeded(file, MAX_UPLOAD_BYTES);
+  }
   // Size check
   if (file?.size && file.size > MAX_UPLOAD_BYTES) {
     const mb = (file.size / 1024 / 1024).toFixed(1);
-    throw new Error(`Archivo demasiado grande (${mb}MB). El máximo es 50MB. Considera comprimir el video.`);
+    throw new Error(`Archivo muy grande (${mb}MB). Máximo 50MB. Probá comprimirlo con HandBrake o reducir la duración.`);
   }
   let ext = extHint || "";
   if (!ext && file?.name) ext = (file.name.split(".").pop() || "").toLowerCase();
@@ -3337,16 +3422,36 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
         );
       })()}
 
-      {step>1&&step<6&&(
-        <div style={{display:"flex",gap:8,marginTop:18}}>
-          <button onClick={()=>setStep(step-1)} style={{padding:"12px 18px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",gap:6}}>
-            <Icon name="arrowLeft" size={15} color={C.text} stroke={1.6}/>Atrás
-          </button>
-          <button onClick={()=>setStep(step+1)} style={{flex:1,padding:"12px 18px",borderRadius:10,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6,letterSpacing:"0.01em"}}>
-            Siguiente<Icon name="arrowRight" size={15} color={C.surface} stroke={1.6}/>
-          </button>
-        </div>
-      )}
+      {step>1&&step<6&&(() => {
+        // Validación por step antes de avanzar
+        const stepValid = () => {
+          if (step===4) return !!form.coverUrl; // portada obligatoria
+          return true;
+        };
+        const stepInvalidMsg = () => {
+          if (step===4) return "Elegí una portada antes de continuar";
+          return "";
+        };
+        const valid = stepValid();
+        return (
+          <div style={{marginTop:18}}>
+            {!valid && (
+              <div style={{padding:"8px 12px",borderRadius:9,background:"#FCEEDC",border:"1px solid #E8B996",marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{display:"inline-flex",width:14,height:14,borderRadius:"50%",background:"#A6601C",color:C.surface,fontSize:10,fontWeight:700,alignItems:"center",justifyContent:"center"}}>!</span>
+                <span style={{fontSize:11.5,color:"#A6601C",fontFamily:Fb,fontWeight:500}}>{stepInvalidMsg()}</span>
+              </div>
+            )}
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setStep(step-1)} style={{padding:"12px 18px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",gap:6}}>
+                <Icon name="arrowLeft" size={15} color={C.text} stroke={1.6}/>Atrás
+              </button>
+              <button onClick={()=>{if(valid) setStep(step+1);}} disabled={!valid} style={{flex:1,padding:"12px 18px",borderRadius:10,background:valid?C.ink:C.line,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:valid?"pointer":"default",fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:6,letterSpacing:"0.01em"}}>
+                Siguiente<Icon name="arrowRight" size={15} color={C.surface} stroke={1.6}/>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Upload modal — 3 phases: guide → source → preview */}
       {uploadFor && (
@@ -4525,15 +4630,24 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
-  // Load real properties from Supabase on mount + merge with demo PROPS
+  // Load real properties from Supabase on mount + subscribe to real-time changes
   useEffect(() => {
     if (!supabase) return;
-    fetchProperties().then(rows => {
-      if (rows && rows.length > 0) {
-        // Real props first, then demo as filler
-        setProps([...rows, ...PROPS]);
-      }
-    }).catch(e => console.warn("Initial fetch error", e));
+    let active = true;
+    const refresh = async () => {
+      try {
+        const rows = await fetchProperties();
+        if (!active) return;
+        if (rows && rows.length > 0) setProps([...rows, ...PROPS]);
+      } catch(e) { console.warn("Fetch error", e); }
+    };
+    refresh();
+    // Real-time: cuando alguien publica/edita/borra, todos refrescan el feed
+    const channel = supabase
+      .channel("properties-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "properties" }, () => { refresh(); })
+      .subscribe();
+    return () => { active = false; supabase.removeChannel(channel); };
   }, []);
   // "me" state — initialized from authenticated profile if available, else SELLER fallback
   const [me,setMe]=useState(() => {
