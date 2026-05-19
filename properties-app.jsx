@@ -378,6 +378,9 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
     gym: <><path d="M6 5v14M3 9v6M18 5v14M21 9v6M6 12h12"/></>,
     new: <><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/><circle cx="18" cy="18" r="3"/><path d="M16.8 18l1 1 2-2.5"/></>,
     pencil: <><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z"/></>,
+    star: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>,
+    volume: <><path d="M3 10v4a1 1 0 001 1h4l5 5V4l-5 5H4a1 1 0 00-1 1z"/><path d="M16 7a5 5 0 010 10M19 3a9 9 0 010 18"/></>,
+    volumeOff: <><path d="M3 10v4a1 1 0 001 1h4l5 5V4l-5 5H4a1 1 0 00-1 1z"/><path d="M22 9l-5 5M22 14l-5-5"/></>,
     trash: <><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>,
     dots: <><circle cx="12" cy="6" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="12" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="18" r="1.4" fill={color} stroke="none"/></>,
   };
@@ -1672,6 +1675,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   // If startPropId is provided, jump to that reel
   const startIdx = startPropId ? Math.max(0, reelFeed.findIndex(r=>r.propId===startPropId)) : 0;
   const [idx,setIdx]=useState(startIdx);
+  const [muted, setMuted] = useState(true); // global mute for all reels (must start muted for autoplay)
   const [commentsOpenFor,setCommentsOpenFor]=useState(null); // propId of property whose comments are open
   // Touch tracking — startY anchors first touch; deltaY tracks live finger movement for real-time slide
   const [startY,setStartY]=useState(null);
@@ -1748,7 +1752,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
             <div key={rl.id} style={{position:"absolute",top:`${i*100}vh`,left:0,right:0,height:"100vh",overflow:"hidden",background:"#000"}}>
               {/* Background: user's video if available, else property image */}
               {reelVideoSrc ? (
-                <video src={reelVideoSrc} autoPlay={isActive} muted loop playsInline style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+                <video src={reelVideoSrc} autoPlay={isActive} muted={muted} loop playsInline style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
               ) : (
                 <img src={prop.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>
               )}
@@ -1809,6 +1813,11 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         <Logo size={22} color={C.surface} />
         <span style={{fontSize:17,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em"}}>properties<span style={{color:C.brandSoft}}>.</span> <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
       </div>
+
+      {/* Mute / unmute button (top right) */}
+      <button onClick={()=>setMuted(m=>!m)} style={{position:"absolute",top:18,right:18,zIndex:20,width:40,height:40,borderRadius:"50%",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}} title={muted?"Activar sonido":"Silenciar"}>
+        <Icon name={muted?"volumeOff":"volume"} size={18} color={C.surface} stroke={1.8}/>
+      </button>
 
       {/* Pager indicator + arrows on the LEFT side, vertically centered (fixed) */}
       <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:20}}>
@@ -2467,6 +2476,7 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
   const [uploadFor,setUploadFor]=useState(null);
   const [mapModal,setMapModal]=useState(false);
   const [locFocus,setLocFocus]=useState(false);
+  const [comunaFieldFocus,setComunaFieldFocus]=useState(false);
   const [published,setPublished]=useState(false);
   const total=6; // 1 tipo · 2 detalles · 3 video · 4 fotos · 5 descripción · 6 publicar
 
@@ -2841,13 +2851,43 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
           <p style={{margin:"5px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Rol de avalúo fiscal. Lo encontrás en el último pago de contribuciones.</p>
         </div>
 
-        {/* País / Región / Comuna / Sector */}
+        {/* País / Región / Comuna / Sector — comuna con autocomplete que cascadea región */}
         <div style={{marginBottom:14}}>
           <label style={lbl}>Ubicación geográfica *</label>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:6}}>
             <input type="text" placeholder="País" value={form.pais} onChange={e=>setForm({...form,pais:e.target.value})} style={{...inp,marginTop:0}}/>
-            <input type="text" placeholder="Región (ej: Metropolitana)" value={form.region} onChange={e=>setForm({...form,region:e.target.value})} style={{...inp,marginTop:0}}/>
-            <input type="text" placeholder="Comuna (ej: Las Condes)" value={form.comuna} onChange={e=>setForm({...form,comuna:e.target.value})} style={{...inp,marginTop:0}}/>
+            <input type="text" placeholder="Región" value={form.region} onChange={e=>setForm({...form,region:e.target.value})} style={{...inp,marginTop:0}}/>
+            {/* Comuna con autocomplete */}
+            <div style={{position:"relative"}}>
+              <input type="text" placeholder="Comuna (ej: Las Condes)" value={form.comuna}
+                onChange={e=>{
+                  const v = e.target.value;
+                  // Auto-fill region if comuna exactly matches one in our list
+                  const match = COMUNAS.find(([c])=>c.toLowerCase()===v.toLowerCase());
+                  setForm(f=>({...f, comuna:v, region: match ? match[1] : f.region}));
+                  setComunaFieldFocus(true);
+                }}
+                onFocus={()=>setComunaFieldFocus(true)}
+                onBlur={()=>setTimeout(()=>setComunaFieldFocus(false),200)}
+                style={{...inp,marginTop:0}}/>
+              {comunaFieldFocus && form.comuna && form.comuna.length>=1 && (() => {
+                const sugs = COMUNAS.filter(([c,r])=>c.toLowerCase().includes(form.comuna.toLowerCase())).slice(0,6);
+                if (sugs.length===0) return null;
+                return (
+                  <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:100,background:C.surface,border:`1px solid ${C.line}`,borderRadius:10,boxShadow:`0 8px 24px ${C.ink}15`,maxHeight:220,overflowY:"auto"}}>
+                    {sugs.map(([c,r],i)=>(
+                      <button key={c} onMouseDown={(e)=>{e.preventDefault(); setForm(f=>({...f, comuna:c, region:r})); setComunaFieldFocus(false);}} style={{width:"100%",padding:"9px 11px",border:"none",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:7,textAlign:"left",borderBottom:i<sugs.length-1?`1px solid ${C.lineSoft}`:"none"}}>
+                        <Icon name="pin" size={11} color={C.muted} stroke={1.5}/>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c}</div>
+                          <div style={{fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>{r}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
             <input type="text" placeholder="Sector (ej: San Damián)" value={form.sector} onChange={e=>setForm({...form,sector:e.target.value})} style={{...inp,marginTop:0}}/>
           </div>
         </div>
@@ -3218,6 +3258,12 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
           ["Video", form.videoFile ? "Subido (completo) ✓" : (form.videoTakes||[]).every(Boolean) ? "Listo (4 tomas) ✓" : `${(form.videoTakes||[]).filter(Boolean).length}/4 tomas`],
           ["Texto", aiDone?"Mejorado con IA ✓":"Manual"],
         );
+        // Build options for cover picker: uploaded photos + extracted video frames
+        const photoSlots = form.photos || [];
+        const photoFiles = form.photoFiles || {};
+        const coverOptions = photoSlots.map(slot => ({ kind:"photo", slot, url: photoFiles[slot] })).filter(o=>o.url);
+        // Current selected cover (default: first photo, or videoframe placeholder)
+        const currentCover = form.coverUrl || (coverOptions[0]?.url) || null;
         return (
           <div style={{textAlign:"center",padding:"20px 0"}}>
             <div style={{width:68,height:68,borderRadius:"50%",margin:"0 auto 14px",background:C.mintWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -3225,6 +3271,54 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
             </div>
             <h3 style={{fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 6px",letterSpacing:"-0.01em"}}>Listo para publicar</h3>
             <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 18px"}}>Revisa el resumen antes de enviar</p>
+
+            {/* ─── Cover picker ─── */}
+            <div style={{textAlign:"left",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Foto de portada</span>
+                {(form.videoFile || (form.videoTakeFiles && form.videoTakeFiles[1])) && (
+                  <button onClick={async ()=>{
+                    const src = form.videoFile || form.videoTakeFiles[1];
+                    try {
+                      const frame = await captureVideoFrame(src, 1.0);
+                      setForm(f=>({...f, coverUrl: frame}));
+                    } catch(e){ console.warn(e); }
+                  }} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:999,background:"transparent",border:`1px solid ${C.line}`,color:C.brand,fontSize:10.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>
+                    <Icon name="video" size={11} color={C.brand} stroke={1.6}/>Capturar del video
+                  </button>
+                )}
+              </div>
+              {currentCover ? (
+                <img src={currentCover} alt="Portada" style={{width:"100%",height:160,objectFit:"cover",borderRadius:12,border:`1px solid ${C.line}`,marginBottom:8}}/>
+              ) : (
+                <div style={{height:160,borderRadius:12,background:C.bg,border:`1px dashed ${C.line}`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                  <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500}}>Sin portada aún — sube fotos o captura del video</span>
+                </div>
+              )}
+              {coverOptions.length > 0 && (
+                <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:4}}>
+                  {coverOptions.map((o,i)=>{
+                    const isSelected = currentCover === o.url;
+                    return (
+                      <button key={i} onClick={()=>setForm(f=>({...f, coverUrl: o.url}))} style={{flexShrink:0,width:62,height:62,borderRadius:9,overflow:"hidden",border:`2px solid ${isSelected?C.brand:C.line}`,padding:0,background:C.bg,cursor:"pointer",position:"relative"}}>
+                        <img src={o.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        {isSelected && <div style={{position:"absolute",top:2,right:2,width:16,height:16,borderRadius:"50%",background:C.brand,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="check" size={10} color={C.surface} stroke={2.5}/></div>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ─── Mapa preview (si hay pin) ─── */}
+            {typeof form.lat === "number" && typeof form.lng === "number" && (
+              <div style={{textAlign:"left",marginBottom:14}}>
+                <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",display:"block",marginBottom:8}}>Ubicación en el mapa</span>
+                <MapView lat={form.lat} lng={form.lng} address={form.loc} height={160} zoom={15}/>
+                <p style={{margin:"6px 0 0",fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.4}}>📍 {form.loc}</p>
+              </div>
+            )}
+
             <div style={{padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,textAlign:"left",margin:"0 0 18px"}}>
               {rows.map(([k,v],i)=>(
                 <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<rows.length-1?`1px solid ${C.lineSoft}`:"none"}}>
