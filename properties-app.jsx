@@ -2288,7 +2288,7 @@ function mapDbPropToUi(row) {
     avatar: initials,
     liked: false,
     saved: false,
-    wa: row.owner?.wa || "",
+    wa: row.contact_wa || row.owner?.wa || "",
     tags: (row.amenities || []).slice(0,3),
     photos: (row.photo_urls || []).length,
     hasVideo: !!row.video_url || (row.video_take_urls && Object.keys(row.video_take_urls).length > 0),
@@ -2459,6 +2459,7 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
       street:"", number:"",
       // Ubicación a mostrar (nombre amigable para el público)
       vanityLocation:"",
+      contactWa:"",
       // Geo
       loc:"", lat:null, lng:null,
       // Distribución
@@ -2473,6 +2474,12 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
     };
   })();
   const [form,setForm]=useState(initialForm);
+  // Pre-fill contact WhatsApp with the user's profile number once available
+  useEffect(() => {
+    if (me?.wa && !form.contactWa) {
+      setForm(f => ({...f, contactWa: me.wa}));
+    }
+  }, [me?.wa]);
   // ─── Autosave draft on every form change ───
   useEffect(() => {
     try {
@@ -2652,6 +2659,7 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
         title: form.title || `${form.type||"Propiedad"} en ${finalComuna || finalLoc || "Santiago"}`,
         description: form.desc || "",
         amenities: form.amenities || [],
+        contact_wa: form.contactWa || me?.wa || null,
         thumbnail_url: coverUrl,
         video_url: videoUrl,
         video_take_urls: videoTakeUrls,
@@ -2967,6 +2975,13 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
             </div>
             <input type="number" placeholder={form.currency==="UF"?"Ej: 3.500":"Ej: 140000000"} value={form.price} onChange={e=>setForm({...form,price:e.target.value})} style={{...inp,marginTop:0,flex:1}}/>
           </div>
+        </div>
+
+        {/* Número de contacto — por default el del perfil, editable por propiedad */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Número de contacto *</label>
+          <input type="tel" placeholder="+56 9 8765 4321" value={form.contactWa||""} onChange={e=>setForm({...form,contactWa:e.target.value})} style={inp}/>
+          <p style={{margin:"5px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>{me?.wa && form.contactWa===me.wa ? "Usando tu WhatsApp del perfil. Podés cambiarlo solo para esta propiedad." : "Los interesados van a contactarte por WhatsApp a este número."}</p>
         </div>
 
         {/* Superficies dinámicas por tipo */}
@@ -4117,9 +4132,17 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
             </div>
             <div style={{display:"flex",gap:8,marginTop:18}}>
               <button onClick={()=>setEditProfile(false)} style={{flex:1,padding:13,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Cancelar</button>
-              <button onClick={()=>{
+              <button onClick={async ()=>{
                 const newAvatar = (pf.name||"VS").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+                // Optimistic update of local state
                 setMe && setMe(m=>({...m, name:pf.name, email:pf.email, wa:pf.wa, city:pf.city, avatar:newAvatar}));
+                // Persist to Supabase profiles table
+                if (supabase && me?.id) {
+                  const { error } = await supabase.from("profiles").update({
+                    name: pf.name, wa: pf.wa, city: pf.city,
+                  }).eq("id", me.id);
+                  if (error) console.warn("Profile update error:", error);
+                }
                 setEditProfile(false);
               }} style={{flex:1.4,padding:13,borderRadius:11,background:C.ink,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Guardar cambios</button>
             </div>
@@ -4302,10 +4325,23 @@ function AuthScreen({ onAuthed }) {
   const [mode, setMode] = useState("login"); // "login" | "signup"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [wa, setWa] = useState("+56");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [info, setInfo] = useState("");
+
+  // Normalize phone — strip non-digits but keep leading +
+  const normalizePhone = (raw) => {
+    const trimmed = (raw || "").trim();
+    if (!trimmed) return "";
+    const digits = trimmed.replace(/\D/g, "");
+    if (digits.length < 8) return "";
+    // If user typed without +, prepend +56 (Chile)
+    if (trimmed.startsWith("+")) return "+" + digits;
+    if (digits.startsWith("56")) return "+" + digits;
+    return "+56" + digits;
+  };
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -4315,14 +4351,28 @@ function AuthScreen({ onAuthed }) {
       if (mode === "signup") {
         if (!name.trim()) throw new Error("Tu nombre es obligatorio");
         if (password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
-        const { error } = await supabase.auth.signUp({
+        const phone = normalizePhone(wa);
+        if (!phone) throw new Error("Necesitamos tu WhatsApp para que los interesados te contacten");
+        const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: { data: { name: name.trim() } },
         });
         if (error) throw error;
-        setInfo("Listo, te enviamos un email para confirmar tu cuenta. Después podés iniciar sesión.");
-        setMode("login");
+        // Update profile row with WhatsApp (the trigger created the row with just name+email)
+        if (data?.user?.id) {
+          // Wait a tick so the trigger has time to create the profile row
+          await new Promise(r => setTimeout(r, 800));
+          const { error: updErr } = await supabase.from("profiles").update({ wa: phone }).eq("id", data.user.id);
+          if (updErr) console.warn("Profile WhatsApp update error:", updErr);
+        }
+        // If session auto-created (email confirmation off), we're logged in
+        if (data?.session) {
+          onAuthed && onAuthed();
+        } else {
+          setInfo("Cuenta creada. Iniciá sesión para continuar.");
+          setMode("login");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
@@ -4364,10 +4414,17 @@ function AuthScreen({ onAuthed }) {
 
         <form onSubmit={submit}>
           {mode==="signup" && (
-            <div style={{marginBottom:11}}>
-              <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Nombre completo</label>
-              <input value={name} onChange={e=>setName(e.target.value)} placeholder="Valentina Sanchez" autoComplete="name" style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
-            </div>
+            <>
+              <div style={{marginBottom:11}}>
+                <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Nombre completo</label>
+                <input value={name} onChange={e=>setName(e.target.value)} placeholder="Valentina Sanchez" autoComplete="name" style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{marginBottom:11}}>
+                <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>WhatsApp</label>
+                <input type="tel" value={wa} onChange={e=>setWa(e.target.value)} placeholder="+56 9 8765 4321" autoComplete="tel" style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+                <p style={{margin:"4px 0 0",fontSize:10,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Para que los interesados te contacten cuando vean tus reels.</p>
+              </div>
+            </>
           )}
           <div style={{marginBottom:11}}>
             <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Email</label>
