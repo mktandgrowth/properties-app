@@ -214,11 +214,12 @@ const FILTER_CATALOGS = {
       { k:"cerco_electrico",  l:"Cerco eléctrico",    icon:"sparkle" },
       { k:"guardia",          l:"Guardia",            icon:"user" },
       { k:"amoblada",         l:"Amoblada",           icon:"sparkle" },
+      { k:"termopanel",       l:"Ventanas termopanel",icon:"sparkle" },
       // Orientación
       { k:"orient_norte",     l:"Orientación Norte",  icon:"sparkle", group:"orientacion" },
       { k:"orient_sur",       l:"Orientación Sur",    icon:"sparkle", group:"orientacion" },
-      { k:"orient_este",      l:"Orientación Este",   icon:"sparkle", group:"orientacion" },
-      { k:"orient_oeste",     l:"Orientación Oeste",  icon:"sparkle", group:"orientacion" },
+      { k:"orient_oriente",   l:"Orientación Oriente", icon:"sparkle", group:"orientacion" },
+      { k:"orient_poniente",  l:"Orientación Poniente",icon:"sparkle", group:"orientacion" },
     ],
     showBeds: true, showBaths: true, showParks: false, showArea: true, showTerreno: true,
   },
@@ -235,11 +236,12 @@ const FILTER_CATALOGS = {
       { k:"gimnasio",         l:"Gimnasio",           icon:"gym" },
       { k:"salon_eventos",    l:"Salón de eventos",   icon:"sparkle" },
       { k:"amoblado",         l:"Amoblado",           icon:"sparkle" },
+      { k:"termopanel",       l:"Ventanas termopanel",icon:"sparkle" },
       // Orientación
       { k:"orient_norte",     l:"Orientación Norte",  icon:"sparkle", group:"orientacion" },
       { k:"orient_sur",       l:"Orientación Sur",    icon:"sparkle", group:"orientacion" },
-      { k:"orient_este",      l:"Orientación Este",   icon:"sparkle", group:"orientacion" },
-      { k:"orient_oeste",     l:"Orientación Oeste",  icon:"sparkle", group:"orientacion" },
+      { k:"orient_oriente",   l:"Orientación Oriente", icon:"sparkle", group:"orientacion" },
+      { k:"orient_poniente",  l:"Orientación Poniente",icon:"sparkle", group:"orientacion" },
     ],
     showBeds: true, showBaths: true, showParks: true, showArea: true, showTotal: true,
   },
@@ -275,6 +277,7 @@ const FILTER_CATALOGS = {
       { k:"terraza",          l:"Terraza",            icon:"terrace" },
       { k:"jardin",           l:"Jardín",             icon:"tree" },
       { k:"bodega",           l:"Bodega",             icon:"storage" },
+      { k:"termopanel",       l:"Ventanas termopanel",icon:"sparkle" },
     ],
     showBeds: false, showBaths: true, showParks: true, showArea: true, showPrivados: true,
   },
@@ -2201,28 +2204,53 @@ async function analyzeMedia(url, isVideo) {
   };
 }
 
-function Sell({onPublish, goTo}) {
+function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange}) {
   const [step,setStep]=useState(1);
-  const [form,setForm]=useState({
-    type:"", operacion:"venta", title:"", desc:"",
-    currency:"UF", price:"",
-    loc:"", comuna:"", lat:null, lng:null,
-    beds:"", baths:"", parks:"",
-    area:"", areaTerreno:"", areaTotal:"", hectareas:"", privados:"",
-    photos:[], videoUp:false, videoTakes:[false,false,false,false], amenities:[],
-    // Reel editor state
-    reelTitle:"", reelSubtitle:"", titleStyle:"editorial",
-    musicTrack:"", // auto-suggested when entering editor
-    takeSpeeds:[1, 2, 2, 1],
-    takeOrder:[0, 1, 2, 3],
-    takeDurations:[5, 5, 5, 5], // max seconds per take (trim length)
-  });
+  // ─── Initial form (loads draft from localStorage if exists) ───
+  const initialForm = (() => {
+    try {
+      const stored = typeof window !== "undefined" && window.localStorage.getItem(draftKey);
+      if (stored) return JSON.parse(stored);
+    } catch(e) {}
+    return {
+      type:"", types:[], operacion:"venta", title:"", desc:"",
+      currency:"UF", price:"",
+      // Identificación
+      rol:"",
+      // Ubicación jerárquica
+      pais:"Chile", region:"", comuna:"", sector:"",
+      // Dirección dividida
+      street:"", number:"",
+      // Ubicación a mostrar (nombre amigable para el público)
+      vanityLocation:"",
+      // Geo
+      loc:"", lat:null, lng:null,
+      // Distribución
+      beds:"", suites:"", baths:"", parks:"",
+      area:"", areaTerreno:"", areaTotal:"", hectareas:"", privados:"",
+      photos:[], photoFiles:{}, videoUp:false, videoTakes:[false,false,false,false], amenities:[],
+      reelTitle:"", reelSubtitle:"", titleStyle:"editorial",
+      musicTrack:"",
+      takeSpeeds:[1, 2, 2, 1],
+      takeOrder:[0, 1, 2, 3],
+      takeDurations:[5, 5, 5, 5],
+    };
+  })();
+  const [form,setForm]=useState(initialForm);
+  // ─── Autosave draft on every form change ───
+  useEffect(() => {
+    try {
+      // Skip persisting blob URLs (they don't survive reload anyway) and large fields
+      const lite = {...form, photoFiles:{}, videoTakeFiles:undefined, videoFile:undefined};
+      window.localStorage.setItem(draftKey, JSON.stringify(lite));
+    } catch(e) {}
+  }, [form, draftKey]);
   const [aiDone,setAiDone]=useState(false);
   const [uploadFor,setUploadFor]=useState(null);
   const [mapModal,setMapModal]=useState(false);
   const [locFocus,setLocFocus]=useState(false);
   const [published,setPublished]=useState(false);
-  const total=5; // 1 tipo · 2 detalles · 3 video · 4 descripción · 5 publicar
+  const total=6; // 1 tipo · 2 detalles · 3 video · 4 fotos · 5 descripción · 6 publicar
 
   // Auto-fill reel meta when all 4 takes are uploaded
   useEffect(()=>{
@@ -2313,9 +2341,12 @@ function Sell({onPublish, goTo}) {
     };
     // Push to global props state via callback
     onPublish && onPublish(newProp);
+    // Publish — clear the saved draft
+    try { window.localStorage.removeItem(draftKey); } catch(e) {}
     setPublished(true);
   };
   const resetForm = () => {
+    try { window.localStorage.removeItem(draftKey); } catch(e) {}
     setForm({
       type:"", operacion:"venta", title:"", desc:"",
       currency:"UF", price:"",
@@ -2388,8 +2419,19 @@ function Sell({onPublish, goTo}) {
     }
   };
 
+  // Detect if form has non-trivial content (used for navigation guard)
+  const hasContent = !!(form.type || form.title || form.price || form.rol || form.street || form.vanityLocation || (form.photos||[]).length>0 || (form.videoTakes||[]).some(Boolean) || form.videoFile || form.desc);
+  useEffect(() => { onDraftChange && onDraftChange(hasContent && !published); }, [hasContent, published, onDraftChange]);
+
   return (
     <div style={{padding:"0 18px",paddingBottom:92}}>
+      {/* Autosave indicator */}
+      {hasContent && (
+        <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",marginBottom:8,borderRadius:999,background:C.mintWash,border:`1px solid #CDDBCE`,width:"fit-content"}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:C.forest,animation:"pulseRing 1.6s ease-in-out infinite"}}/>
+          <span style={{fontSize:10.5,color:C.forest,fontFamily:Fb,fontWeight:600,letterSpacing:"0.04em"}}>Borrador guardado automáticamente</span>
+        </div>
+      )}
       <div style={{display:"flex",gap:3,marginBottom:6}}>{Array.from({length:total}).map((_,i)=><div key={i} style={{flex:1,height:2,borderRadius:1,background:step>i?C.brand:C.line,transition:"all 0.3s"}} />)}</div>
       <p style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,margin:"0 0 18px",letterSpacing:"0.12em",textTransform:"uppercase"}}>Paso {step} de {total}</p>
 
@@ -2451,17 +2493,51 @@ function Sell({onPublish, goTo}) {
           <p style={{margin:"5px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Si lo dejas en blanco, lo armamos automáticamente con la IA según los datos.</p>
         </div>
 
-        {/* Ubicación con Places Autocomplete (Google Maps) */}
+        {/* ROL del SII */}
         <div style={{marginBottom:14}}>
-          <label style={lbl}>Ubicación *</label>
+          <label style={lbl}>ROL del SII <span style={{textTransform:"none",fontWeight:400,letterSpacing:"0",color:C.subtle,marginLeft:4}}>(opcional)</span></label>
+          <input type="text" placeholder="Ej: 1234-5" value={form.rol} onChange={e=>setForm({...form,rol:e.target.value})} style={inp}/>
+          <p style={{margin:"5px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Rol de avalúo fiscal. Lo encontrás en el último pago de contribuciones.</p>
+        </div>
+
+        {/* País / Región / Comuna / Sector */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Ubicación geográfica *</label>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:6}}>
+            <input type="text" placeholder="País" value={form.pais} onChange={e=>setForm({...form,pais:e.target.value})} style={{...inp,marginTop:0}}/>
+            <input type="text" placeholder="Región (ej: Metropolitana)" value={form.region} onChange={e=>setForm({...form,region:e.target.value})} style={{...inp,marginTop:0}}/>
+            <input type="text" placeholder="Comuna (ej: Las Condes)" value={form.comuna} onChange={e=>setForm({...form,comuna:e.target.value})} style={{...inp,marginTop:0}}/>
+            <input type="text" placeholder="Sector (ej: San Damián)" value={form.sector} onChange={e=>setForm({...form,sector:e.target.value})} style={{...inp,marginTop:0}}/>
+          </div>
+        </div>
+
+        {/* Dirección — calle y número separados */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Dirección *</label>
+          <div style={{display:"flex",gap:8,marginTop:6}}>
+            <input type="text" placeholder="Nombre de la calle (ej: Av. Manquehue)" value={form.street} onChange={e=>setForm({...form,street:e.target.value, loc:`${e.target.value} ${form.number}, ${form.comuna||""}`})} style={{...inp,marginTop:0,flex:2}}/>
+            <input type="text" placeholder="Número" value={form.number} onChange={e=>setForm({...form,number:e.target.value, loc:`${form.street} ${e.target.value}, ${form.comuna||""}`})} style={{...inp,marginTop:0,flex:1}}/>
+          </div>
+        </div>
+
+        {/* Ubicación a mostrar (vanity name visible al público) */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Ubicación a mostrar <span style={{textTransform:"none",fontWeight:400,letterSpacing:"0",color:C.subtle,marginLeft:4}}>(opcional)</span></label>
+          <input type="text" placeholder="Ej: Santa María de Manquehue plano · Las Hualtatas con las Tranqueras" value={form.vanityLocation} onChange={e=>setForm({...form,vanityLocation:e.target.value})} style={inp}/>
+          <p style={{margin:"5px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Nombre amigable del barrio o referencia conocida. Se muestra en el reel y en la ficha pública.</p>
+        </div>
+
+        {/* Ubicación con Places Autocomplete (Google Maps) — geolocalización exacta */}
+        <div style={{marginBottom:14}}>
+          <label style={lbl}>Geolocalizar en el mapa <span style={{textTransform:"none",fontWeight:400,letterSpacing:"0",color:C.subtle,marginLeft:4}}>(opcional)</span></label>
           {GMAPS_KEY ? (
             <AddressAutocomplete
               value={form.loc}
               onChange={(v)=>setForm({...form,loc:v})}
               onSelect={({address,comuna,region,lat,lng})=>{
-                setForm({...form,loc:address,comuna:comuna||form.comuna,lat,lng});
+                setForm({...form,loc:address,comuna:comuna||form.comuna,region:region||form.region,lat,lng});
               }}
-              placeholder="Av. Manquehue 1234, Las Condes..."
+              placeholder="Confirma la dirección para ubicar el pin..."
               style={inp}
             />
           ) : (
@@ -2543,6 +2619,7 @@ function Sell({onPublish, goTo}) {
         {(sellCatalog?.showBeds || sellCatalog?.showBaths || sellCatalog?.showParks) && (
           <div style={{display:"flex",gap:8,marginBottom:14}}>
             {sellCatalog?.showBeds && <div style={{flex:1}}><label style={lbl}>Dorms.</label><input type="number" placeholder="0" value={form.beds} onChange={e=>setForm({...form,beds:e.target.value})} style={inp}/></div>}
+            {sellCatalog?.showBeds && <div style={{flex:1}}><label style={lbl}>Suites <span style={{textTransform:"none",fontWeight:400,color:C.subtle}}>(opc)</span></label><input type="number" placeholder="0" value={form.suites} onChange={e=>setForm({...form,suites:e.target.value})} style={inp}/></div>}
             {sellCatalog?.showBaths && <div style={{flex:1}}><label style={lbl}>Baños</label><input type="number" placeholder="0" value={form.baths} onChange={e=>setForm({...form,baths:e.target.value})} style={inp}/></div>}
             {sellCatalog?.showParks && <div style={{flex:1}}><label style={lbl}>Estac.</label><input type="number" placeholder="0" value={form.parks} onChange={e=>setForm({...form,parks:e.target.value})} style={inp}/></div>}
           </div>
@@ -2685,6 +2762,89 @@ function Sell({onPublish, goTo}) {
       </div>}
 
       {step===4&&<div>
+        <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 4px",letterSpacing:"-0.01em"}}>Fotos de la propiedad</h3>
+        <p style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 14px"}}>Sube todas las fotos que quieras desde la carpeta de tu propiedad. Sin límite.</p>
+
+        {/* Multi-upload — selecciona la carpeta completa o varias fotos a la vez */}
+        <label style={{display:"flex",alignItems:"center",gap:11,padding:"14px 14px",borderRadius:14,background:C.brandWash,border:`2px dashed ${C.brand}`,cursor:"pointer",marginBottom:10}}>
+          <div style={{width:46,height:46,borderRadius:12,background:C.brand,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Icon name="camera" size={22} color={C.surface} stroke={1.6}/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13.5,fontWeight:500,color:C.brand,fontFamily:Fb}}>Subir toda la carpeta</div>
+            <div style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:2,lineHeight:1.4}}>Selecciona todas las fotos a la vez desde tu galería o carpeta. Sin límite de cantidad.</div>
+          </div>
+          <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={(e)=>{
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
+            const existing = form.photoFiles || {};
+            const startSlot = Math.max(0, ...Object.keys(existing).map(k=>parseInt(k,10)||0));
+            const newFiles = {...existing};
+            const newPhotos = [...(form.photos||[])];
+            files.forEach((f, i) => {
+              const slot = startSlot + i + 1;
+              newFiles[slot] = URL.createObjectURL(f);
+              if (!newPhotos.includes(slot)) newPhotos.push(slot);
+            });
+            setForm({...form, photoFiles: newFiles, photos: newPhotos});
+            setUploadToast(`${files.length} foto${files.length>1?"s":""} subida${files.length>1?"s":""} ✓`);
+            setTimeout(()=>setUploadToast(null), 2400);
+            e.target.value = "";
+          }}/>
+        </label>
+
+        {/* Agregar una más / individual */}
+        <label style={{display:"inline-flex",alignItems:"center",gap:7,padding:"9px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",marginBottom:14,fontSize:12,fontWeight:500,fontFamily:Fb,color:C.text}}>
+          <Icon name="plus" size={13} color={C.text} stroke={1.8}/>Agregar más fotos
+          <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={(e)=>{
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
+            const existing = form.photoFiles || {};
+            const startSlot = Math.max(0, ...Object.keys(existing).map(k=>parseInt(k,10)||0));
+            const newFiles = {...existing};
+            const newPhotos = [...(form.photos||[])];
+            files.forEach((f, i) => {
+              const slot = startSlot + i + 1;
+              newFiles[slot] = URL.createObjectURL(f);
+              if (!newPhotos.includes(slot)) newPhotos.push(slot);
+            });
+            setForm({...form, photoFiles: newFiles, photos: newPhotos});
+            e.target.value = "";
+          }}/>
+        </label>
+
+        {/* Grid de fotos cargadas */}
+        {(form.photos||[]).length > 0 ? (
+          <>
+            <p style={{margin:"0 0 8px",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>{form.photos.length} foto{form.photos.length===1?"":"s"} cargada{form.photos.length===1?"":"s"}</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:6}}>
+              {form.photos.map(slot => {
+                const url = (form.photoFiles||{})[slot];
+                return (
+                  <div key={slot} style={{position:"relative",aspectRatio:"1",borderRadius:10,overflow:"hidden",background:C.bg,border:`1px solid ${C.line}`}}>
+                    {url && <img src={url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>}
+                    <button onClick={()=>{
+                      const newFiles = {...form.photoFiles};
+                      delete newFiles[slot];
+                      setForm({...form, photoFiles: newFiles, photos: (form.photos||[]).filter(s=>s!==slot)});
+                    }} style={{position:"absolute",top:5,right:5,width:22,height:22,borderRadius:"50%",background:"rgba(28,26,23,0.7)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <Icon name="close" size={11} color={C.surface} stroke={2.5}/>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div style={{padding:24,borderRadius:12,background:C.surface,border:`1px dashed ${C.line}`,textAlign:"center"}}>
+            <Icon name="camera" size={28} color={C.subtle} stroke={1.4}/>
+            <p style={{margin:"10px 0 0",fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400}}>Aún no has subido fotos</p>
+            <p style={{margin:"4px 0 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic"}}>Las fotos son opcionales — el video es lo que más importa, pero las fotos ayudan en la ficha.</p>
+          </div>
+        )}
+      </div>}
+
+      {step===5&&<div>
         <h3 style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 16px",letterSpacing:"-0.01em"}}>Descripción</h3>
         <textarea placeholder="Describe tu propiedad con tus palabras..." value={form.desc} onChange={e=>{setForm({...form,desc:e.target.value});setAiDone(false);}} style={{width:"100%",minHeight:130,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13.5,fontFamily:Fb,fontWeight:400,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}} />
         <button onClick={()=>{if(form.desc){setForm({...form,desc:"Amplia propiedad con excelente ubicación y terminaciones de primer nivel. Espacios luminosos, ideal para familias. Cercana a transporte, colegios y áreas verdes."});setAiDone(true);}}} style={{width:"100%",padding:13,borderRadius:12,marginTop:10,background:aiDone?C.brandWash:C.ink,border:aiDone?`1px solid ${C.line}`:"none",cursor:"pointer",color:aiDone?C.brand:C.surface,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
@@ -2693,7 +2853,7 @@ function Sell({onPublish, goTo}) {
         </button>
       </div>}
 
-      {step===5&&(()=>{
+      {step===6&&(()=>{
         // Build dynamic summary rows based on type
         const rows = [
           ["Tipo", form.type||"—"],
@@ -2739,7 +2899,7 @@ function Sell({onPublish, goTo}) {
         );
       })()}
 
-      {step>1&&step<5&&(
+      {step>1&&step<6&&(
         <div style={{display:"flex",gap:8,marginTop:18}}>
           <button onClick={()=>setStep(step-1)} style={{padding:"12px 18px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb,display:"flex",alignItems:"center",gap:6}}>
             <Icon name="arrowLeft" size={15} color={C.text} stroke={1.6}/>Atrás
@@ -3724,7 +3884,18 @@ export default function App() {
   const openReel=id=>{setReelStart(id);setTab("reels");setView(null);};
   const openChat=()=>{setTab("saved");setSavedSubTab("chats");setView(null);setSelectedChat(null);};
   const openConvo=convo=>{setTab("saved");setSavedSubTab("chats");setView(null);setSelectedChat(convo);};
-  const go=id=>{setTab(id);setView(null);if(id!=="reels")setReelStart(null);if(id!=="saved")setSelectedChat(null);};
+  // ─── Sell navigation guard — prevent accidental loss of draft ───
+  const [sellHasDraft,setSellHasDraft]=useState(false);
+  const [navConfirm,setNavConfirm]=useState(null); // pending tab to navigate to
+  const go=id=>{
+    // If leaving Sell tab while user has a draft in progress, ask first
+    if (tab==="sell" && id!=="sell" && sellHasDraft) {
+      setNavConfirm(id);
+      return;
+    }
+    setTab(id);setView(null);if(id!=="reels")setReelStart(null);if(id!=="saved")setSelectedChat(null);
+  };
+  const forceGo = (id) => { setTab(id); setView(null); if(id!=="reels")setReelStart(null); if(id!=="saved")setSelectedChat(null); setNavConfirm(null); };
   // Generic navigator used by Profile stats and Notifications
   const goTo = (t,opts={}) => {
     setTab(t); setView(null);
@@ -3793,7 +3964,7 @@ export default function App() {
           <>
             {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
             {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
-            {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps]); showToast("Propiedad publicada ✓");}} goTo={go} />}
+            {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile
               props={props}
@@ -3815,6 +3986,23 @@ export default function App() {
 
         {/* Toast feedback */}
         {toast && <div style={{position:"fixed",bottom:96,left:"50%",transform:"translateX(-50%)",padding:"10px 18px",borderRadius:999,background:C.ink,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,boxShadow:"0 8px 24px rgba(28,26,23,0.3)",zIndex:400,animation:"toastIn 0.2s ease",letterSpacing:"0.01em",pointerEvents:"none"}}>{toast}</div>}
+
+        {/* Sell draft navigation guard */}
+        {navConfirm && (
+          <div onClick={()=>setNavConfirm(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(28,26,23,0.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div onClick={e=>e.stopPropagation()} style={{maxWidth:380,width:"100%",background:C.surface,borderRadius:18,padding:"22px 22px 18px",animation:"successIn 0.25s ease"}}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:"#FCEEDC",border:"1px solid #E8B996",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12}}>
+                <Icon name="sparkle" size={22} color="#A6601C" stroke={1.7}/>
+              </div>
+              <h3 style={{margin:"0 0 6px",fontSize:17,fontWeight:500,color:C.ink,fontFamily:Fb}}>¿Salir de Vender?</h3>
+              <p style={{margin:"0 0 14px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Tienes una propiedad en proceso. Tu <strong style={{color:C.forest}}>borrador queda guardado</strong> automáticamente — podés volver cuando quieras y seguir donde dejaste.</p>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>setNavConfirm(null)} style={{flex:1,padding:12,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Seguir editando</button>
+                <button onClick={()=>forceGo(navConfirm)} style={{flex:1.3,padding:12,borderRadius:11,background:C.ink,border:"none",color:C.surface,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Salir (guardado)</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
