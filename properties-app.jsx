@@ -483,17 +483,22 @@ function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
 
 // Interactive map: user taps anywhere to drop a pin; pin is draggable to refine.
 // Calls onPinPlaced({lat,lng,address,comuna}) whenever the pin moves.
-function InteractiveMap({ lat, lng, height = 280, onPinPlaced, defaultCenter = {lat:-33.4489, lng:-70.6693} }) {
+function InteractiveMap({ lat, lng, height = 320, onPinPlaced, defaultCenter = {lat:-33.4489, lng:-70.6693} }) {
   const ref = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const loaded = useGoogleMaps();
+  const [hasPin, setHasPin] = useState(typeof lat === "number" && typeof lng === "number");
+  const [busy, setBusy] = useState(false);
+  // Keep latest onPinPlaced callback accessible from closures
+  const onPinPlacedRef = useRef(onPinPlaced);
+  useEffect(() => { onPinPlacedRef.current = onPinPlaced; }, [onPinPlaced]);
 
   // Reverse-geocode helper — given lat/lng, fetch address + comuna
-  const reverseGeocode = (lat, lng, cb) => {
+  const reverseGeocode = (rLat, rLng, cb) => {
     if (!window.google?.maps?.Geocoder) return cb(null);
     const g = new window.google.maps.Geocoder();
-    g.geocode({ location: { lat, lng } }, (results, status) => {
+    g.geocode({ location: { lat: rLat, lng: rLng } }, (results, status) => {
       if (status !== "OK" || !results || !results[0]) return cb(null);
       const r = results[0];
       let comuna = "";
@@ -506,6 +511,68 @@ function InteractiveMap({ lat, lng, height = 280, onPinPlaced, defaultCenter = {
     });
   };
 
+  // Branded SVG pin icon
+  const buildPinIcon = (bounce = false) => ({
+    path: "M12 0C6.48 0 2 4.48 2 10c0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10z",
+    fillColor: "#A65547",
+    fillOpacity: 1,
+    strokeColor: "#FFFFFF",
+    strokeWeight: 2.5,
+    scale: 1.4,
+    anchor: new window.google.maps.Point(12, 28),
+  });
+
+  // Drop or move the pin to latLng + notify parent
+  const placeOrMovePin = (latLng) => {
+    if (!mapRef.current) return;
+    const newLat = typeof latLng.lat === "function" ? latLng.lat() : latLng.lat;
+    const newLng = typeof latLng.lng === "function" ? latLng.lng() : latLng.lng;
+    setBusy(true);
+    if (markerRef.current) {
+      markerRef.current.setPosition({ lat: newLat, lng: newLng });
+      markerRef.current.setAnimation(window.google.maps.Animation.DROP);
+    } else {
+      markerRef.current = new window.google.maps.Marker({
+        position: { lat: newLat, lng: newLng },
+        map: mapRef.current,
+        draggable: true,
+        animation: window.google.maps.Animation.DROP,
+        icon: buildPinIcon(),
+        cursor: "grab",
+      });
+      markerRef.current.addListener("dragend", (ev) => {
+        const ll = ev.latLng;
+        setBusy(true);
+        reverseGeocode(ll.lat(), ll.lng(), (info) => {
+          onPinPlacedRef.current && onPinPlacedRef.current({ lat: ll.lat(), lng: ll.lng(), address: info?.address || "", comuna: info?.comuna || "" });
+          setBusy(false);
+        });
+      });
+    }
+    setHasPin(true);
+    reverseGeocode(newLat, newLng, (info) => {
+      onPinPlacedRef.current && onPinPlacedRef.current({ lat: newLat, lng: newLng, address: info?.address || "", comuna: info?.comuna || "" });
+      setBusy(false);
+    });
+  };
+
+  // Use device geolocation to drop pin at current location
+  const useMyLocation = () => {
+    if (!navigator.geolocation) { alert("Tu navegador no soporta geolocalización"); return; }
+    setBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (mapRef.current) {
+          mapRef.current.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          mapRef.current.setZoom(17);
+        }
+        placeOrMovePin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => { setBusy(false); alert("No pudimos obtener tu ubicación: " + (err.message || "permiso denegado")); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   // Initial map setup
   useEffect(() => {
     if (!loaded || !ref.current || mapRef.current) return;
@@ -513,47 +580,16 @@ function InteractiveMap({ lat, lng, height = 280, onPinPlaced, defaultCenter = {
     const center = hasInitial ? { lat, lng } : defaultCenter;
     const map = new window.google.maps.Map(ref.current, {
       center,
-      zoom: hasInitial ? 16 : 12,
+      zoom: hasInitial ? 17 : 12,
       disableDefaultUI: true,
       zoomControl: true,
       styles: MAP_STYLE,
       gestureHandling: "greedy",
       clickableIcons: false,
+      mapTypeControl: false,
+      streetViewControl: false,
     });
     mapRef.current = map;
-
-    // Pin drop handler
-    const placeOrMove = (latLng) => {
-      const newLat = latLng.lat();
-      const newLng = latLng.lng();
-      if (markerRef.current) {
-        markerRef.current.setPosition(latLng);
-      } else {
-        markerRef.current = new window.google.maps.Marker({
-          position: latLng,
-          map,
-          draggable: true,
-          icon: {
-            path: "M12 21s-7-7.5-7-12a7 7 0 1114 0c0 4.5-7 12-7 12z",
-            fillColor: "#4A3122",
-            fillOpacity: 1,
-            strokeColor: "#FFFFFF",
-            strokeWeight: 1.5,
-            scale: 2,
-            anchor: new window.google.maps.Point(12, 21),
-          },
-        });
-        markerRef.current.addListener("dragend", (ev) => {
-          const ll = ev.latLng;
-          reverseGeocode(ll.lat(), ll.lng(), (info) => {
-            onPinPlaced && onPinPlaced({ lat: ll.lat(), lng: ll.lng(), address: info?.address || "", comuna: info?.comuna || "" });
-          });
-        });
-      }
-      reverseGeocode(newLat, newLng, (info) => {
-        onPinPlaced && onPinPlaced({ lat: newLat, lng: newLng, address: info?.address || "", comuna: info?.comuna || "" });
-      });
-    };
 
     // Initial marker if coords provided
     if (hasInitial) {
@@ -561,26 +597,22 @@ function InteractiveMap({ lat, lng, height = 280, onPinPlaced, defaultCenter = {
         position: center,
         map,
         draggable: true,
-        icon: {
-          path: "M12 21s-7-7.5-7-12a7 7 0 1114 0c0 4.5-7 12-7 12z",
-          fillColor: "#4A3122",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 1.5,
-          scale: 2,
-          anchor: new window.google.maps.Point(12, 21),
-        },
+        animation: window.google.maps.Animation.DROP,
+        icon: buildPinIcon(),
+        cursor: "grab",
       });
       markerRef.current.addListener("dragend", (ev) => {
         const ll = ev.latLng;
+        setBusy(true);
         reverseGeocode(ll.lat(), ll.lng(), (info) => {
-          onPinPlaced && onPinPlaced({ lat: ll.lat(), lng: ll.lng(), address: info?.address || "", comuna: info?.comuna || "" });
+          onPinPlacedRef.current && onPinPlacedRef.current({ lat: ll.lat(), lng: ll.lng(), address: info?.address || "", comuna: info?.comuna || "" });
+          setBusy(false);
         });
       });
     }
 
-    // Tap on empty map to drop pin
-    map.addListener("click", (ev) => placeOrMove(ev.latLng));
+    // Click ANYWHERE on the map to drop / move pin (works on mobile tap + desktop click)
+    map.addListener("click", (ev) => placeOrMovePin(ev.latLng));
   }, [loaded]);
 
   // Recenter & move marker when external lat/lng change
@@ -605,7 +637,33 @@ function InteractiveMap({ lat, lng, height = 280, onPinPlaced, defaultCenter = {
       </div>
     );
   }
-  return <div ref={ref} style={{width:"100%",height,borderRadius:12,overflow:"hidden",cursor:"crosshair"}}/>;
+  return (
+    <div style={{position:"relative",width:"100%",borderRadius:14,overflow:"hidden",border:`1px solid ${C.line}`}}>
+      <div ref={ref} style={{width:"100%",height,cursor:"crosshair"}}/>
+
+      {/* "Toca para marcar" hint — desaparece cuando hay pin */}
+      {!hasPin && (
+        <div style={{position:"absolute",top:14,left:14,right:14,padding:"10px 14px",borderRadius:999,background:"rgba(74,49,34,0.94)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",gap:9,boxShadow:"0 6px 18px rgba(28,26,23,0.3)",pointerEvents:"none",animation:"pulseHint 1.8s ease-in-out infinite"}}>
+          <style>{`@keyframes pulseHint { 0%,100%{opacity:0.94} 50%{opacity:0.7} }`}</style>
+          <Icon name="pin" size={15} color={C.surface} stroke={2}/>
+          <span style={{fontSize:12,color:C.surface,fontFamily:Fb,fontWeight:500,letterSpacing:"0.01em"}}>Toca el mapa para marcar la ubicación</span>
+        </div>
+      )}
+
+      {/* Status when pin is placed */}
+      {hasPin && (
+        <div style={{position:"absolute",top:14,left:14,right:14,padding:"9px 14px",borderRadius:999,background:"rgba(45,74,55,0.94)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",gap:9,boxShadow:"0 6px 18px rgba(28,26,23,0.25)",pointerEvents:"none"}}>
+          <Icon name="checkCircle" size={14} color={C.surface} stroke={2}/>
+          <span style={{fontSize:11.5,color:C.surface,fontFamily:Fb,fontWeight:500,letterSpacing:"0.01em"}}>{busy?"Buscando dirección…":"Pin colocado — arrástralo para ajustar"}</span>
+        </div>
+      )}
+
+      {/* "Mi ubicación" floating button */}
+      <button onClick={useMyLocation} disabled={busy} style={{position:"absolute",bottom:14,right:14,width:42,height:42,borderRadius:"50%",background:C.surface,border:`1px solid ${C.line}`,cursor:busy?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 12px rgba(28,26,23,0.2)"}} title="Usar mi ubicación actual">
+        <Icon name="pin" size={18} color={C.brand} stroke={1.8}/>
+      </button>
+    </div>
+  );
 }
 
 // Map showing multiple property pins — Airbnb-style search by location.
