@@ -1,4 +1,12 @@
 import { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ── Supabase client ──
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+export const supabase = (SUPABASE_URL && SUPABASE_ANON)
+  ? createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
+  : null;
 
 /* ═══════════════════════════════════════════════
    properties. — Sector Inmobiliario
@@ -3534,7 +3542,7 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
         <p style={{margin:"0 0 22px",fontSize:14,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.55,textAlign:"center"}}>¿Estás segura que quieres cerrar tu sesión en properties?</p>
         <div style={{display:"flex",gap:10}}>
           <button onClick={()=>setPanel(null)} style={{flex:1,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Cancelar</button>
-          <button onClick={()=>{alert("Sesión cerrada (demo).");setPanel(null);}} style={{flex:1,padding:14,borderRadius:12,background:C.terracotta,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Sí, salir</button>
+          <button onClick={async ()=>{setPanel(null); if(supabase){await supabase.auth.signOut();}}} style={{flex:1,padding:14,borderRadius:12,background:C.terracotta,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Sí, salir</button>
         </div>
       </Sheet>}
 
@@ -3832,7 +3840,169 @@ function TopBarDesktop({active,go,onNotif}) {
   );
 }
 
+// ─── useAuth: tracks supabase session + profile ───
+function useAuth() {
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Listen to auth state changes
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return; }
+    let mounted = true;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      setSession(session);
+      setLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => { mounted = false; subscription.unsubscribe(); };
+  }, []);
+
+  // Load profile whenever session changes
+  useEffect(() => {
+    if (!supabase || !session?.user) { setProfile(null); return; }
+    const load = async () => {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+      if (error) { console.warn("Profile load error", error); return; }
+      // If trigger hasn't created the profile yet (race), wait and retry once
+      if (!data) {
+        await new Promise(r => setTimeout(r, 600));
+        const retry = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+        setProfile(retry.data || null);
+      } else {
+        setProfile(data);
+      }
+    };
+    load();
+  }, [session?.user?.id]);
+
+  return { session, user: session?.user || null, profile, setProfile, loading };
+}
+
+// ─── AuthScreen: signup / login ───
+function AuthScreen({ onAuthed }) {
+  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [info, setInfo] = useState("");
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    setErr(""); setInfo(""); setBusy(true);
+    try {
+      if (!supabase) throw new Error("Supabase no configurado");
+      if (mode === "signup") {
+        if (!name.trim()) throw new Error("Tu nombre es obligatorio");
+        if (password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { data: { name: name.trim() } },
+        });
+        if (error) throw error;
+        setInfo("Listo, te enviamos un email para confirmar tu cuenta. Después podés iniciar sesión.");
+        setMode("login");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+        onAuthed && onAuthed();
+      }
+    } catch (e) {
+      setErr(e?.message || "Algo salió mal. Inténtalo otra vez.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const forgot = async () => {
+    if (!email.trim()) { setErr("Escribe tu email arriba primero"); return; }
+    setErr(""); setInfo(""); setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) throw error;
+      setInfo("Te enviamos un email para resetear tu contraseña.");
+    } catch (e) {
+      setErr(e?.message || "Error enviando email de reseteo");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px 18px"}}>
+      <div style={{width:"100%",maxWidth:380,background:C.surface,borderRadius:18,padding:"28px 24px 24px",boxShadow:`0 18px 50px ${C.ink}10`,border:`1px solid ${C.line}`}}>
+        {/* Brand header */}
+        <div style={{textAlign:"center",marginBottom:22}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:9}}>
+            <Logo size={32}/>
+            <h1 style={{margin:0,fontSize:28,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em"}}>properties<span style={{color:C.brand}}>.</span></h1>
+          </div>
+          <p style={{margin:"6px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.16em",textTransform:"uppercase"}}>Sector inmobiliario</p>
+        </div>
+
+        <h2 style={{margin:"0 0 4px",fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{mode==="signup"?"Crear cuenta":"Iniciar sesión"}</h2>
+        <p style={{margin:"0 0 18px",fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,lineHeight:1.45}}>{mode==="signup"?"Sumate a properties y publicá tu propiedad en minutos.":"Bienvenida de vuelta."}</p>
+
+        <form onSubmit={submit}>
+          {mode==="signup" && (
+            <div style={{marginBottom:11}}>
+              <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Nombre completo</label>
+              <input value={name} onChange={e=>setName(e.target.value)} placeholder="Valentina Sanchez" autoComplete="name" style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+            </div>
+          )}
+          <div style={{marginBottom:11}}>
+            <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Email</label>
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@email.com" autoComplete="email" required style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Contraseña</label>
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={mode==="signup"?"Al menos 6 caracteres":"Tu contraseña"} autoComplete={mode==="signup"?"new-password":"current-password"} required style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.bg,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+          </div>
+
+          {err && (
+            <div style={{padding:"8px 11px",borderRadius:9,background:"#FCEEDC",border:"1px solid #E8B996",marginBottom:11}}>
+              <p style={{margin:0,fontSize:11.5,color:"#9B3D2B",fontFamily:Fb,fontWeight:500,lineHeight:1.4}}>{err}</p>
+            </div>
+          )}
+          {info && (
+            <div style={{padding:"8px 11px",borderRadius:9,background:C.mintWash,border:"1px solid #CDDBCE",marginBottom:11}}>
+              <p style={{margin:0,fontSize:11.5,color:C.forest,fontFamily:Fb,fontWeight:500,lineHeight:1.4}}>{info}</p>
+            </div>
+          )}
+
+          <button type="submit" disabled={busy} style={{width:"100%",padding:13,borderRadius:11,background:busy?C.line:C.ink,border:"none",color:C.surface,fontSize:13.5,fontWeight:500,cursor:busy?"default":"pointer",fontFamily:Fb,letterSpacing:"0.02em"}}>
+            {busy ? "Procesando…" : (mode==="signup" ? "Crear cuenta" : "Iniciar sesión")}
+          </button>
+
+          {mode==="login" && (
+            <button type="button" onClick={forgot} style={{display:"block",margin:"10px auto 0",background:"none",border:"none",cursor:"pointer",fontSize:11.5,color:C.brand,fontFamily:Fb,fontWeight:500,textDecoration:"underline"}}>
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
+        </form>
+
+        <div style={{marginTop:18,paddingTop:14,borderTop:`1px solid ${C.lineSoft}`,textAlign:"center"}}>
+          <p style={{margin:0,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>
+            {mode==="signup" ? "¿Ya tenés cuenta?" : "¿Primera vez en properties?"}
+            <button onClick={()=>{setMode(mode==="signup"?"login":"signup");setErr("");setInfo("");}} style={{marginLeft:5,background:"none",border:"none",cursor:"pointer",color:C.brand,fontFamily:Fb,fontWeight:600,fontSize:11.5}}>
+              {mode==="signup" ? "Iniciá sesión" : "Crear cuenta"}
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  // ─── Auth gate ───
+  const { session, user, profile, setProfile, loading: authLoading } = useAuth();
+
+  // ─── App state ───
   const [tab,setTab]=useState("feed");
   const [view,setView]=useState(null);
   const [reelStart,setReelStart]=useState(null);
@@ -3842,8 +4012,48 @@ export default function App() {
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
-  // Editable "me" state — persists during session
+  // "me" state — derived from authenticated profile, falls back to SELLER if no auth (dev)
   const [me,setMe]=useState({...SELLER, email:"valentina@mktandgrowth.com", city:"Santiago", photo:null});
+
+  // Sync `me` with the authenticated profile whenever it loads/changes
+  useEffect(() => {
+    if (profile) {
+      const initials = (profile.name||"VS").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+      setMe({
+        name: profile.name || "Usuario",
+        email: profile.email || "",
+        wa: profile.wa || "",
+        city: profile.city || "Santiago",
+        avatar: initials,
+        photo: profile.avatar_url || null,
+        verified: profile.verified || false,
+        id: profile.id,
+      });
+    }
+  }, [profile]);
+
+  // ─── Logout helper ───
+  const logout = async () => {
+    if (supabase) await supabase.auth.signOut();
+  };
+
+  // While checking auth on first load, show a small loader
+  if (supabase && authLoading) {
+    return (
+      <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:24,height:24,borderRadius:"50%",border:`2.5px solid ${C.brand}`,borderTopColor:"transparent",animation:"spin 0.9s linear infinite"}}/>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          <span style={{fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.06em",textTransform:"uppercase"}}>Cargando properties.</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If Supabase is configured AND user is not logged in, show AuthScreen
+  if (supabase && !session) {
+    return <AuthScreen />;
+  }
 
   // ─── Back-button navigation: handle Android back button gracefully ───
   // Each time we open Detail or Chat, push a history entry. When popstate fires (back pressed),
