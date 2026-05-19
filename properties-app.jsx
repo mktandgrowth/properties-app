@@ -4056,45 +4056,9 @@ function AuthScreen({ onAuthed }) {
   );
 }
 
+// ─── Auth gate wrapper — keeps the hooks of MainApp stable across auth changes ───
 export default function App() {
-  // ─── Auth gate ───
-  const { session, user, profile, setProfile, loading: authLoading } = useAuth();
-
-  // ─── App state ───
-  const [tab,setTab]=useState("feed");
-  const [view,setView]=useState(null);
-  const [reelStart,setReelStart]=useState(null);
-  const [savedSubTab,setSavedSubTab]=useState("chats");
-  const [profileSubTab,setProfileSubTab]=useState("pub");
-  const [openProfilePanel,setOpenProfilePanel]=useState(null);
-  const [selectedChat,setSelectedChat]=useState(null);
-  const [toast,setToast]=useState(null);
-  const [props,setProps]=useState(PROPS);
-  // "me" state — derived from authenticated profile, falls back to SELLER if no auth (dev)
-  const [me,setMe]=useState({...SELLER, email:"valentina@mktandgrowth.com", city:"Santiago", photo:null});
-
-  // Sync `me` with the authenticated profile whenever it loads/changes
-  useEffect(() => {
-    if (profile) {
-      const initials = (profile.name||"VS").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
-      setMe({
-        name: profile.name || "Usuario",
-        email: profile.email || "",
-        wa: profile.wa || "",
-        city: profile.city || "Santiago",
-        avatar: initials,
-        photo: profile.avatar_url || null,
-        verified: profile.verified || false,
-        id: profile.id,
-      });
-    }
-  }, [profile]);
-
-  // ─── Logout helper ───
-  const logout = async () => {
-    if (supabase) await supabase.auth.signOut();
-  };
-
+  const { session, profile, setProfile, loading: authLoading } = useAuth();
   // While checking auth on first load, show a small loader
   if (supabase && authLoading) {
     return (
@@ -4107,11 +4071,61 @@ export default function App() {
       </div>
     );
   }
+  // Not authenticated → show signup/login screen
+  if (supabase && !session) return <AuthScreen />;
+  // Authenticated (or no Supabase configured) → render the full app.
+  // Use session.user.id as `key` so MainApp fully remounts when user changes — clean state.
+  return <MainApp key={session?.user?.id || "anon"} authProfile={profile} setAuthProfile={setProfile}/>;
+}
 
-  // If Supabase is configured AND user is not logged in, show AuthScreen
-  if (supabase && !session) {
-    return <AuthScreen />;
-  }
+function MainApp({ authProfile, setAuthProfile }) {
+  // ─── App state ───
+  const [tab,setTab]=useState("feed");
+  const [view,setView]=useState(null);
+  const [reelStart,setReelStart]=useState(null);
+  const [savedSubTab,setSavedSubTab]=useState("chats");
+  const [profileSubTab,setProfileSubTab]=useState("pub");
+  const [openProfilePanel,setOpenProfilePanel]=useState(null);
+  const [selectedChat,setSelectedChat]=useState(null);
+  const [toast,setToast]=useState(null);
+  const [props,setProps]=useState(PROPS);
+  // "me" state — initialized from authenticated profile if available, else SELLER fallback
+  const [me,setMe]=useState(() => {
+    if (authProfile) {
+      const initials = (authProfile.name||"VS").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+      return {
+        name: authProfile.name || "Usuario",
+        email: authProfile.email || "",
+        wa: authProfile.wa || "",
+        city: authProfile.city || "Santiago",
+        avatar: initials,
+        photo: authProfile.avatar_url || null,
+        verified: authProfile.verified || false,
+        id: authProfile.id,
+      };
+    }
+    return {...SELLER, email:"valentina@mktandgrowth.com", city:"Santiago", photo:null};
+  });
+
+  // Sync `me` with profile changes
+  useEffect(() => {
+    if (authProfile) {
+      const initials = (authProfile.name||"VS").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+      setMe({
+        name: authProfile.name || "Usuario",
+        email: authProfile.email || "",
+        wa: authProfile.wa || "",
+        city: authProfile.city || "Santiago",
+        avatar: initials,
+        photo: authProfile.avatar_url || null,
+        verified: authProfile.verified || false,
+        id: authProfile.id,
+      });
+    }
+  }, [authProfile]);
+
+  // Logout helper available inside MainApp
+  const logout = async () => { if (supabase) await supabase.auth.signOut(); };
 
   // ─── Back-button navigation: handle Android back button gracefully ───
   // Each time we open Detail or Chat, push a history entry. When popstate fires (back pressed),
