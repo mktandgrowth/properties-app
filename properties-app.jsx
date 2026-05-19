@@ -2206,6 +2206,99 @@ function ReelEditor({form, setForm}){
 // Quality checks run 100% in browser via canvas pixel analysis.
 // Content moderation (NSFW, violence, drugs) is mocked here — in production this
 // must run server-side with Google Vision SafeSearch, AWS Rekognition, or similar.
+// ─── Supabase Storage / DB helpers (Phase 2) ───
+
+// Upload a Blob/File to a bucket under {userId}/{ts}-{rand}.{ext}, return public URL
+async function uploadToStorage(bucket, file, userId, extHint) {
+  if (!supabase) throw new Error("Supabase not configured");
+  if (!userId) throw new Error("Need authenticated user to upload");
+  let ext = extHint || "";
+  if (!ext && file?.name) ext = (file.name.split(".").pop() || "").toLowerCase();
+  if (!ext && file?.type) {
+    const map = { "image/jpeg":"jpg", "image/png":"png", "image/webp":"webp", "video/mp4":"mp4", "video/quicktime":"mov", "video/webm":"webm" };
+    ext = map[file.type] || "bin";
+  }
+  const fname = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext||"bin"}`;
+  const { error } = await supabase.storage.from(bucket).upload(fname, file, { upsert:false, contentType: file?.type || undefined });
+  if (error) throw error;
+  const { data } = supabase.storage.from(bucket).getPublicUrl(fname);
+  return data.publicUrl;
+}
+
+// Convert any URL (blob:, data:, https:) into a Blob via fetch
+async function urlToBlob(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch blob from URL");
+  return await res.blob();
+}
+
+// Map a DB row (from properties table) to the UI prop shape
+function mapDbPropToUi(row) {
+  const ownerName = row.owner?.name || "Usuario";
+  const initials = ownerName.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+  return {
+    id: row.id,
+    type: row.type,
+    operacion: row.operacion,
+    price: Number(row.price) || 0,
+    cur: row.currency || "UF",
+    loc: row.loc || "",
+    comuna: row.comuna || "",
+    region: row.region || "",
+    sector: row.sector || "",
+    pais: row.pais || "Chile",
+    rol: row.rol || "",
+    street: row.street || "",
+    number: row.numero || "",
+    vanityLocation: row.vanity_location || "",
+    lat: row.lat,
+    lng: row.lng,
+    beds: row.beds || 0,
+    suites: row.suites || 0,
+    baths: row.baths || 0,
+    parks: row.parks || 0,
+    area: Number(row.area) || 0,
+    areaTerreno: Number(row.area_terreno) || 0,
+    areaTotal: Number(row.area_total) || 0,
+    hectareas: Number(row.hectareas) || 0,
+    nuevo: !!row.nuevo,
+    amenities: row.amenities || [],
+    title: row.title || "",
+    desc: row.description || "",
+    img: row.thumbnail_url || (row.photo_urls && row.photo_urls[0]) || null,
+    user: ownerName,
+    avatar: initials,
+    liked: false,
+    saved: false,
+    wa: row.owner?.wa || "",
+    tags: (row.amenities || []).slice(0,3),
+    photos: (row.photo_urls || []).length,
+    hasVideo: !!row.video_url || (row.video_take_urls && Object.keys(row.video_take_urls).length > 0),
+    videoFile: row.video_url || null,
+    videoTakeFiles: row.video_take_urls || null,
+    reelTitle: row.reel_title || "",
+    reelSubtitle: row.reel_subtitle || "",
+    titleStyle: row.title_style || "editorial",
+    musicTrack: row.music_track || "",
+    takeOrder: row.take_order || [0,1,2,3],
+    takeSpeeds: row.take_speeds || [1,2,2,1],
+    takeDurations: row.take_durations || [5,5,5,5],
+    _ownerId: row.owner_id,
+  };
+}
+
+// Fetch all published properties from the database (newest first)
+async function fetchProperties() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("properties")
+    .select("*, owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
+  if (error) { console.warn("fetchProperties error", error); return []; }
+  return (data || []).map(mapDbPropToUi);
+}
+
 // Capture a single frame from a video at a specific time, return as data URL (JPEG)
 async function captureVideoFrame(videoUrl, atSecond = 1.0) {
   return new Promise((resolve, reject) => {
@@ -2329,7 +2422,7 @@ async function analyzeMedia(url, isVideo) {
   };
 }
 
-function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange}) {
+function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
   const [step,setStep]=useState(1);
   // ─── Initial form (loads draft from localStorage if exists) ───
   const initialForm = (() => {
@@ -2402,84 +2495,196 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange}) {
     }
   }, [form.videoTakes, form.type, form.loc, form.beds, form.baths, form.area, form.hectareas, form.privados]);
 
+  const [publishing,setPublishing]=useState(false);
+  const [publishStatus,setPublishStatus]=useState(""); // visible progress text
   const handlePublish = async () => {
-    // If user typed an address but never selected from Google's dropdown,
-    // try to geocode the text so the property still gets coords for the map.
-    let finalLat = form.lat, finalLng = form.lng, finalLoc = form.loc, finalComuna = form.comuna;
-    if ((!finalLat || !finalLng) && form.loc && window.google?.maps?.Geocoder) {
-      try {
-        const g = new window.google.maps.Geocoder();
-        const res = await new Promise((resolve) => {
-          g.geocode({ address: form.loc + ", Chile", componentRestrictions:{country:"CL"} }, (results, status) => {
-            if (status === "OK" && results && results[0]) resolve(results[0]); else resolve(null);
+    if (publishing) return;
+    setPublishing(true);
+    try {
+      // 1. Resolve geocode if no coords yet
+      setPublishStatus("Verificando ubicación…");
+      let finalLat = form.lat, finalLng = form.lng, finalLoc = form.loc, finalComuna = form.comuna, finalRegion = form.region;
+      if ((!finalLat || !finalLng) && form.loc && window.google?.maps?.Geocoder) {
+        try {
+          const g = new window.google.maps.Geocoder();
+          const res = await new Promise((resolve) => {
+            g.geocode({ address: form.loc + ", Chile", componentRestrictions:{country:"CL"} }, (results, status) => {
+              if (status === "OK" && results && results[0]) resolve(results[0]); else resolve(null);
+            });
           });
-        });
-        if (res) {
-          finalLat = res.geometry.location.lat();
-          finalLng = res.geometry.location.lng();
-          finalLoc = res.formatted_address || finalLoc;
-          (res.address_components || []).forEach(c => {
-            if (!finalComuna && (c.types.includes("administrative_area_level_3") || c.types.includes("locality"))) {
-              finalComuna = c.long_name;
-            }
-          });
+          if (res) {
+            finalLat = res.geometry.location.lat();
+            finalLng = res.geometry.location.lng();
+            finalLoc = res.formatted_address || finalLoc;
+            (res.address_components || []).forEach(c => {
+              if (!finalComuna && (c.types.includes("administrative_area_level_3") || c.types.includes("locality"))) finalComuna = c.long_name;
+              if (!finalRegion && c.types.includes("administrative_area_level_1")) finalRegion = c.long_name;
+            });
+          }
+        } catch(e) { console.warn("Geocode failed", e); }
+      }
+
+      // 2. Upload all media to Supabase Storage (replace blob URLs with public URLs)
+      const userId = me?.id;
+      if (!supabase || !userId) {
+        // Fallback (no auth): publish to local state only with existing blob URLs
+        const localProp = buildLocalProp({ form, me, finalLat, finalLng, finalLoc, finalComuna, finalRegion });
+        onPublish && onPublish(localProp);
+        try { window.localStorage.removeItem(draftKey); } catch(e) {}
+        setPublished(true);
+        return;
+      }
+
+      // Upload photos
+      let photoUrls = [];
+      const photoSlots = form.photos || [];
+      if (photoSlots.length > 0 && form.photoFiles) {
+        setPublishStatus(`Subiendo fotos (0/${photoSlots.length})…`);
+        for (let i = 0; i < photoSlots.length; i++) {
+          const slot = photoSlots[i];
+          const url = form.photoFiles[slot];
+          if (!url) continue;
+          try {
+            const blob = await urlToBlob(url);
+            const publicUrl = await uploadToStorage("photos", blob, userId, "jpg");
+            photoUrls.push(publicUrl);
+            setPublishStatus(`Subiendo fotos (${i+1}/${photoSlots.length})…`);
+          } catch (e) { console.warn("photo upload failed", e); }
         }
-      } catch(e) { console.warn("Geocode failed", e); }
+      }
+
+      // Upload video (single)
+      let videoUrl = null;
+      if (form.videoFile) {
+        setPublishStatus("Subiendo video…");
+        try {
+          const blob = await urlToBlob(form.videoFile);
+          videoUrl = await uploadToStorage("videos", blob, userId, "mp4");
+        } catch (e) { console.warn("video upload failed", e); }
+      }
+
+      // Upload 4 takes
+      let videoTakeUrls = {};
+      if (form.videoTakeFiles && Object.keys(form.videoTakeFiles).length > 0) {
+        const keys = Object.keys(form.videoTakeFiles);
+        for (let i = 0; i < keys.length; i++) {
+          const k = keys[i];
+          const url = form.videoTakeFiles[k];
+          if (!url) continue;
+          setPublishStatus(`Subiendo toma ${i+1} de ${keys.length}…`);
+          try {
+            const blob = await urlToBlob(url);
+            videoTakeUrls[k] = await uploadToStorage("videos", blob, userId, "mp4");
+          } catch (e) { console.warn("take upload failed", e); }
+        }
+      }
+
+      // Cover image: explicit > first photo > video frame
+      setPublishStatus("Generando portada…");
+      let coverUrl = null;
+      if (form.coverUrl) {
+        try { coverUrl = await uploadToStorage("photos", await urlToBlob(form.coverUrl), userId, "jpg"); } catch(e) {}
+      }
+      if (!coverUrl && photoUrls.length > 0) coverUrl = photoUrls[0];
+      if (!coverUrl && (videoUrl || videoTakeUrls[1])) {
+        try {
+          const frameDataUrl = await captureVideoFrame(videoUrl || videoTakeUrls[1] || form.videoFile || form.videoTakeFiles[1], 1.0);
+          const blob = await urlToBlob(frameDataUrl);
+          coverUrl = await uploadToStorage("photos", blob, userId, "jpg");
+        } catch(e) { console.warn("Frame extract failed", e); }
+      }
+
+      // 3. Insert into DB
+      setPublishStatus("Publicando…");
+      const row = {
+        owner_id: userId,
+        type: form.type || "Casa",
+        types: form.types || (form.type ? [form.type] : []),
+        operacion: form.operacion || "venta",
+        rol: form.rol || null,
+        pais: form.pais || "Chile",
+        region: finalRegion || form.region || null,
+        comuna: finalComuna || form.comuna || null,
+        sector: form.sector || null,
+        street: form.street || null,
+        numero: form.number || null,
+        vanity_location: form.vanityLocation || null,
+        loc: finalLoc || null,
+        lat: typeof finalLat === "number" ? finalLat : null,
+        lng: typeof finalLng === "number" ? finalLng : null,
+        price: Number(form.price) || 0,
+        currency: form.currency || "UF",
+        beds: Number(form.beds) || 0,
+        suites: Number(form.suites) || 0,
+        baths: Number(form.baths) || 0,
+        parks: Number(form.parks) || 0,
+        area: Number(form.area) || null,
+        area_terreno: Number(form.areaTerreno) || null,
+        area_total: Number(form.areaTotal) || null,
+        hectareas: Number(form.hectareas) || null,
+        privados: Number(form.privados) || 0,
+        title: form.title || `${form.type||"Propiedad"} en ${finalComuna || finalLoc || "Santiago"}`,
+        description: form.desc || "",
+        amenities: form.amenities || [],
+        thumbnail_url: coverUrl,
+        video_url: videoUrl,
+        video_take_urls: videoTakeUrls,
+        photo_urls: photoUrls,
+        music_track: form.musicTrack || null,
+        reel_title: form.reelTitle || null,
+        reel_subtitle: form.reelSubtitle || null,
+        title_style: form.titleStyle || "editorial",
+        take_speeds: form.takeSpeeds || [1,2,2,1],
+        take_order: form.takeOrder || [0,1,2,3],
+        take_durations: form.takeDurations || [5,5,5,5],
+        status: "published",
+        nuevo: true,
+      };
+      const { data, error } = await supabase
+        .from("properties")
+        .insert(row)
+        .select("*, owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
+        .single();
+      if (error) throw error;
+      const uiProp = mapDbPropToUi(data);
+      onPublish && onPublish(uiProp);
+      try { window.localStorage.removeItem(draftKey); } catch(e) {}
+      setPublished(true);
+    } catch (e) {
+      console.error("Publish failed", e);
+      alert("Hubo un error al publicar: " + (e?.message || "intenta de nuevo"));
+    } finally {
+      setPublishing(false);
+      setPublishStatus("");
     }
-    // Cover image priority: explicit cover > first uploaded photo > extracted video frame > null
+  };
+
+  // Build a prop using existing blob URLs (used as fallback when no Supabase)
+  const buildLocalProp = ({ form, me, finalLat, finalLng, finalLoc, finalComuna, finalRegion }) => {
     let firstPhotoUrl = form.coverUrl || null;
-    if (!firstPhotoUrl && form.photoFiles && form.photos?.length > 0) {
-      firstPhotoUrl = form.photoFiles[form.photos[0]];
-    }
-    if (!firstPhotoUrl && (form.videoFile || (form.videoTakeFiles && form.videoTakeFiles[1]))) {
-      const sourceVid = form.videoFile || form.videoTakeFiles[1];
-      try { firstPhotoUrl = await captureVideoFrame(sourceVid, 1.0); } catch(e) {}
-    }
-    const newProp = {
-      id: Date.now(),
-      type: form.type || "Casa",
-      operacion: form.operacion || "venta",
-      price: Number(form.price) || 0,
-      cur: form.currency || "UF",
-      loc: finalLoc || "Mi propiedad",
-      comuna: finalComuna || "",
-      lat: typeof finalLat === "number" ? finalLat : null,
-      lng: typeof finalLng === "number" ? finalLng : null,
-      beds: Number(form.beds) || 0,
-      baths: Number(form.baths) || 0,
-      parks: Number(form.parks) || 0,
-      area: Number(form.area) || 0,
-      areaTerreno: Number(form.areaTerreno) || 0,
-      areaTotal: Number(form.areaTotal) || 0,
-      hectareas: Number(form.hectareas) || 0,
-      nuevo: true,
-      amenities: form.amenities || [],
+    if (!firstPhotoUrl && form.photoFiles && form.photos?.length > 0) firstPhotoUrl = form.photoFiles[form.photos[0]];
+    return {
+      id: Date.now(), type: form.type || "Casa", operacion: form.operacion || "venta",
+      price: Number(form.price) || 0, cur: form.currency || "UF",
+      loc: finalLoc || "Mi propiedad", comuna: finalComuna || "", region: finalRegion || "",
+      lat: typeof finalLat === "number" ? finalLat : null, lng: typeof finalLng === "number" ? finalLng : null,
+      beds: Number(form.beds) || 0, suites: Number(form.suites) || 0,
+      baths: Number(form.baths) || 0, parks: Number(form.parks) || 0,
+      area: Number(form.area) || 0, areaTerreno: Number(form.areaTerreno) || 0,
+      areaTotal: Number(form.areaTotal) || 0, hectareas: Number(form.hectareas) || 0,
+      nuevo: true, amenities: form.amenities || [],
       title: form.title || `${form.type||"Propiedad"} en ${finalComuna || finalLoc || "Santiago"}`,
-      desc: form.desc || "",
-      img: firstPhotoUrl,
-      user: SELLER.name,
-      avatar: SELLER.avatar,
-      liked: false,
-      saved: false,
-      wa: SELLER.wa,
-      tags: (form.amenities||[]).slice(0,3),
-      photos: form.photos?.length || 0,
-      hasVideo: !!form.videoUp,
-      videoFile: form.videoFile || null,
+      desc: form.desc || "", img: firstPhotoUrl,
+      user: me?.name || SELLER.name, avatar: me?.avatar || SELLER.avatar,
+      liked: false, saved: false, wa: me?.wa || SELLER.wa,
+      tags: (form.amenities||[]).slice(0,3), photos: form.photos?.length || 0,
+      hasVideo: !!form.videoUp, videoFile: form.videoFile || null,
       videoTakeFiles: form.videoTakeFiles || null,
-      reelTitle: form.reelTitle || "",
-      reelSubtitle: form.reelSubtitle || "",
-      titleStyle: form.titleStyle || "editorial",
-      musicTrack: form.musicTrack || "",
-      takeOrder: form.takeOrder || [0,1,2,3],
-      takeSpeeds: form.takeSpeeds || [1,2,2,1],
+      reelTitle: form.reelTitle || "", reelSubtitle: form.reelSubtitle || "",
+      titleStyle: form.titleStyle || "editorial", musicTrack: form.musicTrack || "",
+      takeOrder: form.takeOrder || [0,1,2,3], takeSpeeds: form.takeSpeeds || [1,2,2,1],
       takeDurations: form.takeDurations || [5,5,5,5],
     };
-    // Push to global props state via callback
-    onPublish && onPublish(newProp);
-    // Publish — clear the saved draft
-    try { window.localStorage.removeItem(draftKey); } catch(e) {}
-    setPublished(true);
   };
   const resetForm = () => {
     try { window.localStorage.removeItem(draftKey); } catch(e) {}
@@ -3028,8 +3233,16 @@ function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange}) {
                 </div>
               ))}
             </div>
-            <button onClick={handlePublish} style={{width:"100%",padding:15,borderRadius:12,background:C.forest,border:"none",cursor:"pointer",color:C.surface,fontSize:13.5,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:`0 4px 14px ${C.forest}30`}}>
-              Publicar propiedad<Icon name="send" size={16} color={C.surface} stroke={1.6}/>
+            <button onClick={handlePublish} disabled={publishing} style={{width:"100%",padding:15,borderRadius:12,background:publishing?C.brand:C.forest,border:"none",cursor:publishing?"default":"pointer",color:C.surface,fontSize:13.5,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:`0 4px 14px ${publishing?C.brand:C.forest}30`}}>
+              {publishing ? (
+                <>
+                  <div style={{width:14,height:14,borderRadius:"50%",border:`2px solid ${C.surface}`,borderTopColor:"transparent",animation:"spin 0.8s linear infinite"}}/>
+                  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+                  {publishStatus || "Publicando…"}
+                </>
+              ) : (
+                <>Publicar propiedad<Icon name="send" size={16} color={C.surface} stroke={1.6}/></>
+              )}
             </button>
           </div>
         );
@@ -4159,6 +4372,16 @@ function MainApp({ authProfile, setAuthProfile }) {
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
+  // Load real properties from Supabase on mount + merge with demo PROPS
+  useEffect(() => {
+    if (!supabase) return;
+    fetchProperties().then(rows => {
+      if (rows && rows.length > 0) {
+        // Real props first, then demo as filler
+        setProps([...rows, ...PROPS]);
+      }
+    }).catch(e => console.warn("Initial fetch error", e));
+  }, []);
   // "me" state — initialized from authenticated profile if available, else SELLER fallback
   const [me,setMe]=useState(() => {
     if (authProfile) {
@@ -4316,7 +4539,7 @@ function MainApp({ authProfile, setAuthProfile }) {
           <>
             {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
             {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
-            {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft}/>}
+            {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps.filter(x=>x.id!==p.id)]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft} me={me}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile
               props={props}
