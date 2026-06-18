@@ -4621,7 +4621,20 @@ export default function App() {
 
 function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   // ─── App state ───
-  const [tab,setTab]=useState("feed");
+  // Tab inicial: leer ?modo= de la URL para integración con shell C2C.
+  //   ?modo=publicar (/publicar en el shell)  → abre el wizard de vender
+  //   ?modo=comprar  (/comprar en el shell)   → feed default
+  //   sin param                                → feed default
+  const initialTab = (() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const modo = params.get("modo");
+      if (modo === "publicar") return "sell";
+      if (modo === "comprar")  return "feed";
+    } catch(e) {}
+    return "feed";
+  })();
+  const [tab,setTab]=useState(initialTab);
   const [view,setView]=useState(null);
   const [reelStart,setReelStart]=useState(null);
   const [savedSubTab,setSavedSubTab]=useState("chats");
