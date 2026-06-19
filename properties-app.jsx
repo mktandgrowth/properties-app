@@ -782,11 +782,73 @@ function AddressAutocomplete({ value, onChange, onSelect, placeholder, style }) 
 }
 
 // ── Nav ──
+// ── Botón flotante "Mi asistente IA" — siempre visible en properties ──
+// Click → abre asistente Isidora en el shell C2C (/tasar?view=comprador)
+const SHELL_URL = import.meta.env.VITE_SHELL_URL || "https://greatdeal-platform.vercel.app";
+function FloatingAssistant() {
+  return (
+    <a
+      href={`${SHELL_URL}/tasar?view=comprador`}
+      title="Mi asistente IA — ayuda en tu compra"
+      style={{
+        position: "fixed",
+        bottom: 78,
+        right: 18,
+        width: 56,
+        height: 56,
+        borderRadius: "50%",
+        background: `linear-gradient(135deg, ${C.brand} 0%, ${C.brandSoft} 100%)`,
+        boxShadow: `0 6px 20px ${C.brand}40, 0 0 0 4px ${C.surface}`,
+        zIndex: 200,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        textDecoration: "none",
+        transition: "transform 0.2s, box-shadow 0.2s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.08)";
+        e.currentTarget.style.boxShadow = `0 10px 28px ${C.brand}60, 0 0 0 4px ${C.surface}`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = `0 6px 20px ${C.brand}40, 0 0 0 4px ${C.surface}`;
+      }}
+    >
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.surface} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+        <circle cx="9" cy="11.5" r="1" fill={C.surface}/>
+        <circle cx="13" cy="11.5" r="1" fill={C.surface}/>
+        <circle cx="17" cy="11.5" r="1" fill={C.surface}/>
+      </svg>
+      <span style={{
+        position: "absolute",
+        top: -3,
+        right: -3,
+        width: 14,
+        height: 14,
+        borderRadius: "50%",
+        background: C.terracotta,
+        border: `2px solid ${C.surface}`,
+        animation: "pulse 2s infinite",
+      }}/>
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.15); opacity: 0.85; }
+        }
+      `}</style>
+    </a>
+  );
+}
+
 function Nav({active,go}) {
+  // Tab 'sell' removido — la venta vive en el shell C2C (HOME → Quiero vender)
+  // y arranca en greatdeal-app (fotos/videos) → tasar → publicar
   const items=[
     {id:"feed",l:"Explorar",icon:"grid"},
     {id:"reels",l:"Reels",icon:"reels"},
-    {id:"sell",l:"Vender",special:true},
     {id:"saved",l:"Guardados",icon:"bookmark"},
     {id:"profile",l:"Perfil",icon:"user"},
   ];
@@ -4305,10 +4367,10 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
 function TopBarDesktop({active,go,onNotif}) {
   const [notifOpen,setNotifOpen]=useState(false);
   const unreadCount = NOTIFS.filter(n=>n.unread).length;
+  // Tab 'sell' removido — la venta vive en el shell C2C
   const items=[
     {id:"feed",l:"Explorar",icon:"grid"},
     {id:"reels",l:"Reels",icon:"reels"},
-    {id:"sell",l:"Vender",icon:"plus",accent:true},
     {id:"saved",l:"Guardados",icon:"bookmark"},
     {id:"profile",l:"Perfil",icon:"user"},
   ];
@@ -4884,6 +4946,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         )}
         </div>
         <div className="mob-nav"><Nav active={tab} go={go} /></div>
+        <FloatingAssistant />
 
         {/* Toast feedback */}
         {toast && <div style={{position:"fixed",bottom:96,left:"50%",transform:"translateX(-50%)",padding:"10px 18px",borderRadius:999,background:C.ink,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,boxShadow:"0 8px 24px rgba(28,26,23,0.3)",zIndex:400,animation:"toastIn 0.2s ease",letterSpacing:"0.01em",pointerEvents:"none"}}>{toast}</div>}
