@@ -2588,15 +2588,40 @@ async function analyzeMedia(url, isVideo) {
 }
 
 function Sell({onPublish, goTo, draftKey="sell_draft_v1", onDraftChange, me}) {
-  const [step,setStep]=useState(1);
+  // Cuando el user llega desde greatdeal-app con un reel ya generado:
+  //   ?videoUrl=...   → URL del reel ya generado (no necesita re-subir video)
+  //   ?caption=...    → copy generado por IA (pre-rellena descripción)
+  // Estos query params se consumen 1 vez al montar Sell y luego se ignoran.
+  const queryReel = (() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const videoUrl = p.get("videoUrl");
+      const caption  = p.get("caption");
+      if (videoUrl || caption) return { videoUrl: videoUrl || "", caption: caption || "" };
+    } catch(e) {}
+    return null;
+  })();
+  // Si llega con reel de greatdeal-app, arrancamos en paso 2 (tipo de propiedad).
+  // El paso 4 (video) queda auto-completado con externalReelUrl.
+  const [step,setStep]=useState(queryReel?.videoUrl ? 2 : 1);
   // ─── Initial form (loads draft from localStorage if exists) ───
   const initialForm = (() => {
     try {
       const stored = typeof window !== "undefined" && window.localStorage.getItem(draftKey);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Merge con query reel si hay
+        if (queryReel) {
+          if (queryReel.videoUrl) parsed.externalReelUrl = queryReel.videoUrl;
+          if (queryReel.caption && !parsed.desc) parsed.desc = queryReel.caption;
+        }
+        return parsed;
+      }
     } catch(e) {}
     return {
-      type:"", types:[], operacion:"venta", title:"", desc:"",
+      type:"", types:[], operacion:"venta", title:"", desc: (queryReel?.caption || ""),
+      externalReelUrl: (queryReel?.videoUrl || ""),
       currency:"UF", price:"",
       // Identificación
       rol:"",
