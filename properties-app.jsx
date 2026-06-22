@@ -14,26 +14,40 @@ export const supabase = (SUPABASE_URL && SUPABASE_ANON)
    Palette: Matte copper · Warm ivory · Warm charcoal
    ═══════════════════════════════════════════════ */
 
-// ── Palette (refined, editorial) ──
+// ── Palette · UNIFICADA con C2C shell (dark + gold champagne) ──
+// Antes era light/espresso (estilo Airbnb). Ahora dark editorial nocturno
+// para matchear shell + ia-prop + greatdeal-app. Si necesitas iterar, todos
+// los componentes leen estos tokens — no toques colores hardcoded fuera de acá.
 const C = {
-  brand: "#4A3122",        // very dark espresso — rich & grounded
-  brandSoft: "#8F7460",    // mid cocoa
-  brandWash: "#EDE4D7",    // subtle warm wash (keeps contrast vs lighter bg)
-  ink: "#1C1A17",          // warm black (primary)
-  inkMuted: "#3D3530",     // deep warm brown
-  text: "#4A443D",         // body text
-  muted: "#837A70",        // secondary text
-  subtle: "#A8A096",       // tertiary / placeholder
-  line: "#E4DDD1",         // hairline (slightly darker to stay visible on lighter bg)
-  lineSoft: "#EFEBE3",     // ultra-soft divider
-  bg: "#FCFBF8",           // very light — near-white with whisper of warmth
-  surface: "#FFFFFF",      // cards
-  forest: "#2D4A37",       // deep forest — trust accent
-  sage: "#5A7A5F",         // muted success green
-  mintWash: "#E9EFE9",     // subtle green wash
-  terracotta: "#A65547",   // muted like / accent warm
+  // GOLD — accent principal (antes brand espresso, ahora gold champagne)
+  brand:      "#c9a86a",   // gold champagne (acento principal)
+  brandSoft:  "#d4b876",   // gold bright (hover/highlight)
+  brandWash:  "rgba(201, 168, 106, 0.12)",  // wash dorado sutil
+
+  // TEXT (invertido — ahora claro sobre fondo oscuro)
+  ink:        "#f5f0e6",   // texto primario (cream)
+  inkMuted:   "#dcd5c7",   // texto primario suave
+  text:       "#b8b3a7",   // texto body
+  muted:      "#8a8579",   // texto secundario
+  subtle:     "#6a6559",   // placeholder / terciario
+
+  // LINES (ahora bordes sutiles sobre dark)
+  line:       "rgba(245, 240, 230, 0.10)",   // hairline
+  lineSoft:   "rgba(245, 240, 230, 0.05)",   // ultra-soft divider
+
+  // BACKGROUNDS (dark editorial)
+  bg:         "#0a0a0b",   // fondo principal (charcoal)
+  surface:    "#131316",   // cards / superficies elevadas
+  surface2:   "#1c1c20",   // surface hover/active
+
+  // ACCENTS (mapeados a la paleta dark)
+  forest:     "#6ec48a",   // success → verde brillante
+  sage:       "#6ec48a",   // success alt
+  mintWash:   "rgba(110, 196, 138, 0.10)",
+  terracotta: "#e57676",   // error / like → rojo coral
 };
-const Fs = "'Fraunces', 'Cormorant Garamond', Georgia, serif";
+// Fuentes unificadas con el shell C2C
+const Fs = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const Fb = "'Inter', system-ui, -apple-system, sans-serif";
 
 // ── Data — 3 propiedades de Valentina Sanchez ──
@@ -853,7 +867,7 @@ function Nav({active,go}) {
     {id:"profile",l:"Perfil",icon:"user"},
   ];
   return (
-    <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,zIndex:100,background:"rgba(252,251,248,0.92)",backdropFilter:"blur(20px)",borderTop:`1px solid ${C.line}`,display:"flex",justifyContent:"space-around",alignItems:"center",padding:"6px 0 env(safe-area-inset-bottom,8px)"}}>
+    <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,zIndex:100,background:"rgba(10,10,11,0.92)",backdropFilter:"blur(20px)",borderTop:`1px solid ${C.line}`,display:"flex",justifyContent:"space-around",alignItems:"center",padding:"6px 0 env(safe-area-inset-bottom,8px)"}}>
       {items.map(i=>i.special?(
         <button key={i.id} onClick={()=>go(i.id)} style={{width:44,height:44,borderRadius:14,background:C.ink,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 6px 18px ${C.ink}30`,marginTop:-6}}>
           <Icon name="plus" size={20} color={C.surface} stroke={1.8} />
@@ -875,7 +889,7 @@ function Header({sub,onNotif}) {
   const unreadCount = NOTIFS.filter(n=>n.unread).length;
   const SHELL = (typeof window !== "undefined" && (import.meta.env.VITE_SHELL_URL || "https://greatdeal-platform.vercel.app")) || "";
   return (
-    <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(252,251,248,0.88)",backdropFilter:"blur(20px)",padding:"12px 18px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+    <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(10,10,11,0.88)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"12px 18px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
       <a href={SHELL || "/"} style={{display:"flex",alignItems:"center",gap:8,textDecoration:"none",color:"inherit"}} title="Volver al inicio C2C">
         <div style={{display:"flex",flexDirection:"column",lineHeight:1}}>
           <span style={{fontFamily:Fs,fontSize:22,fontWeight:500,color:C.ink,letterSpacing:"-0.5px"}}>C<em style={{fontStyle:"italic",color:C.brand,fontWeight:400}}>2</em>C</span>
