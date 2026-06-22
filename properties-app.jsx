@@ -1928,7 +1928,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
       {/* Logo header — fixed, on top of slide track */}
       <div style={{position:"absolute",top:18,left:18,zIndex:20,display:"flex",alignItems:"center",gap:8,pointerEvents:"none"}}>
         <Logo size={22} color={C.surface} />
-        <span style={{fontSize:17,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em"}}>properties<span style={{color:C.brandSoft}}>.</span> <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
+        <span style={{fontSize:17,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em"}}>C<em style={{fontStyle:"italic",color:C.brandSoft,fontWeight:400}}>2</em>C <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
       </div>
 
       {/* Mute / unmute button (top right) */}
@@ -4432,7 +4432,7 @@ function TopBarDesktop({active,go,onNotif}) {
       <button onClick={()=>go("feed")} style={{display:"flex",alignItems:"center",gap:10,background:"transparent",border:"none",cursor:"pointer",padding:0}}>
         <Logo size={32}/>
         <div style={{textAlign:"left"}}>
-          <div style={{fontSize:24,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em",lineHeight:1}}>properties<span style={{color:C.brand}}>.</span></div>
+          <div style={{fontSize:24,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em",lineHeight:1}}>C<em style={{fontStyle:"italic",color:C.brand,fontWeight:400}}>2</em>C</div>
           <div style={{fontSize:8.5,color:C.muted,fontFamily:Fb,letterSpacing:"0.14em",textTransform:"uppercase",fontWeight:500,marginTop:3}}>Sector inmobiliario</div>
         </div>
       </button>
@@ -4623,7 +4623,7 @@ function AuthScreen({ onAuthed, onGuest }) {
         <div style={{textAlign:"center",marginBottom:22}}>
           <div style={{display:"inline-flex",alignItems:"center",gap:9}}>
             <Logo size={32}/>
-            <h1 style={{margin:0,fontSize:28,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em"}}>properties<span style={{color:C.brand}}>.</span></h1>
+            <h1 style={{margin:0,fontSize:28,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em"}}>C<em style={{fontStyle:"italic",color:C.brand,fontWeight:400}}>2</em>C</h1>
           </div>
           <p style={{margin:"6px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.16em",textTransform:"uppercase"}}>Sector inmobiliario</p>
         </div>
