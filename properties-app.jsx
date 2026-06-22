@@ -4431,15 +4431,7 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
 // ─── Desktop sidebar nav ───
 // ─── Desktop TopBar — horizontal nav, replaces the sidebar on PC ───
 function TopBarDesktop({active,go,onNotif}) {
-  const [notifOpen,setNotifOpen]=useState(false);
-  const unreadCount = NOTIFS.filter(n=>n.unread).length;
-  // Tab 'sell' removido — la venta vive en el shell C2C
-  const items=[
-    {id:"feed",l:"Explorar",icon:"grid"},
-    {id:"reels",l:"Reels",icon:"reels"},
-    {id:"saved",l:"Guardados",icon:"bookmark"},
-    {id:"profile",l:"Perfil",icon:"user"},
-  ];
+  const [aiOpen,setAiOpen]=useState(false);
   return (
     <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:50,background:"rgba(10,10,11,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
       {/* Logo C2C (clickable → home C2C) */}
@@ -4448,63 +4440,67 @@ function TopBarDesktop({active,go,onNotif}) {
         <span style={{fontSize:9.5,color:C.muted,fontFamily:Fb,letterSpacing:"0.2em",textTransform:"lowercase",marginTop:4,fontWeight:300}}>property market</span>
       </a>
 
-      {/* Horizontal nav */}
-      <nav style={{display:"flex",alignItems:"center",gap:4}}>
-        {items.map(i => {
-          const on = active===i.id;
-          return (
-            <button key={i.id} onClick={()=>go(i.id)} style={{
-              display:"flex",alignItems:"center",gap:8,padding:"9px 14px",borderRadius:10,border:"none",cursor:"pointer",
-              background:on?C.brandWash:i.accent?C.ink:"transparent",
-              color:on?C.brand:i.accent?C.surface:C.text,
-              fontSize:13.5,fontWeight:on?600:500,fontFamily:Fb,letterSpacing:"0.01em",transition:"all 0.15s",
-            }}>
-              <Icon name={i.icon} size={17} color={on?C.brand:i.accent?C.surface:C.text} stroke={1.6}/>
-              {i.l}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Right: bell + avatar */}
-      <div style={{display:"flex",alignItems:"center",gap:14,position:"relative"}}>
-        <button onClick={()=>setNotifOpen(!notifOpen)} style={{width:38,height:38,borderRadius:"50%",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
-          <Icon name="bell" size={17} color={C.text} stroke={1.5}/>
-          {unreadCount>0 && <div style={{position:"absolute",top:7,right:7,width:8,height:8,borderRadius:"50%",background:C.terracotta,border:`2px solid ${C.surface}`}}/>}
+      {/* Nav C2C unificado: Comprar / Vender / Mi asistente IA */}
+      <nav style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
+        <a href="https://greatdeal-platform.vercel.app/comprar" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Comprar</a>
+        <a href="https://greatdeal-platform.vercel.app/vender" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Vender</a>
+        <button onClick={(e)=>{e.stopPropagation();setAiOpen(!aiOpen)}} style={{display:"inline-flex",alignItems:"center",gap:6,color:C.text,background:`rgba(201,168,106,0.08)`,border:`1px solid ${C.brand}40`,padding:"7px 14px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",cursor:"pointer",fontFamily:Fb}}>
+          <span style={{color:C.brand,fontSize:12}}>✦</span> Mi asistente IA <span style={{fontSize:10,transform:aiOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
         </button>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <Avatar initials={SELLER.avatar} size={34} verified/>
-          <div style={{minWidth:0}}>
-            <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,whiteSpace:"nowrap"}}>{SELLER.name.split(" ")[0]}</p>
-            <p style={{margin:"1px 0 0",fontSize:9.5,color:C.muted,fontFamily:Fb,fontWeight:400,letterSpacing:"0.04em"}}>Verificada</p>
-          </div>
-        </div>
-
-        {notifOpen && <>
-          <div onClick={()=>setNotifOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
-          <div style={{position:"absolute",top:50,right:0,width:320,maxWidth:"calc(100vw - 28px)",background:C.surface,borderRadius:14,border:`1px solid ${C.line}`,boxShadow:`0 12px 32px ${C.ink}18`,overflow:"hidden",zIndex:201}}>
-            <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.lineSoft}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>Notificaciones</span>
-              {unreadCount>0 && <span style={{fontSize:9.5,color:C.brand,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>{unreadCount} nuevas</span>}
-            </div>
-            <div style={{maxHeight:360,overflowY:"auto"}}>
-              {NOTIFS.map(n=>(
-                <div key={n.id} onClick={()=>{setNotifOpen(false); onNotif&&onNotif(n);}} style={{padding:"11px 16px",display:"flex",gap:10,borderBottom:`1px solid ${C.lineSoft}`,background:n.unread?C.brandWash+"40":"transparent",cursor:"pointer"}}>
-                  <div style={{width:30,height:30,borderRadius:"50%",background:n.unread?C.brandWash:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    <Icon name={n.icon} size={14} color={n.unread?C.brand:C.muted} stroke={1.5}/>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{margin:0,fontSize:12,fontWeight:n.unread?500:400,color:C.ink,fontFamily:Fb,lineHeight:1.35}}>{n.t}</p>
-                    <p style={{margin:"2px 0 0",fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{n.d} · {n.time}</p>
-                  </div>
-                  {n.unread && <div style={{width:6,height:6,borderRadius:"50%",background:C.terracotta,marginTop:6,flexShrink:0}}/>}
-                </div>
-              ))}
-            </div>
+        {aiOpen && <>
+          <div onClick={()=>setAiOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
+          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:280,background:C.surface,border:`1px solid ${C.line}`,borderRadius:14,padding:8,boxShadow:`0 16px 40px rgba(0,0,0,0.6)`,zIndex:201}}>
+            <a href="https://greatdeal-platform.vercel.app/tasar?view=comprador" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
+              <span style={{fontSize:20,lineHeight:1}}>🔍</span>
+              <div>
+                <div style={{fontFamily:Fs,fontSize:16,fontWeight:500,color:C.ink}}>Ayuda en tu compra</div>
+                <div style={{fontSize:11,color:C.muted,fontFamily:Fb,marginTop:2}}>Isidora te encuentra la propiedad perfecta</div>
+              </div>
+            </a>
+            <a href="https://greatdeal-platform.vercel.app/tasar?view=vendedor" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
+              <span style={{fontSize:20,lineHeight:1}}>🏡</span>
+              <div>
+                <div style={{fontFamily:Fs,fontSize:16,fontWeight:500,color:C.ink}}>Ayuda en tu venta</div>
+                <div style={{fontSize:11,color:C.muted,fontFamily:Fb,marginTop:2}}>Valentina tasa y te asesora gratis</div>
+              </div>
+            </a>
           </div>
         </>}
-      </div>
+      </nav>
     </header>
+  );
+}
+
+// ─── User badge — avatar Valentina fijo abajo a la izquierda ───
+function UserCornerBadge({me, onClick}) {
+  if (!me) return null;
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position:"fixed",
+        bottom:20,
+        left:20,
+        zIndex:90,
+        display:"flex",
+        alignItems:"center",
+        gap:10,
+        padding:"8px 14px 8px 8px",
+        borderRadius:999,
+        background:C.surface,
+        border:`1px solid ${C.line}`,
+        boxShadow:`0 6px 20px rgba(0,0,0,0.4)`,
+        cursor:"pointer",
+        fontFamily:Fb,
+      }}
+      title="Mi perfil"
+    >
+      <Avatar initials={me.avatar||"VS"} size={32} verified={me.verified}/>
+      <div style={{textAlign:"left",lineHeight:1.1}}>
+        <div style={{fontSize:12.5,fontWeight:500,color:C.ink}}>{(me.name||"Usuario").split(" ")[0]}</div>
+        <div style={{fontSize:9.5,color:C.muted,fontWeight:400,letterSpacing:"0.04em",marginTop:2}}>{me.verified?"Verificada":"Sin verificar"}</div>
+      </div>
+    </button>
   );
 }
 
@@ -4928,7 +4924,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         .mob-header { display: block; position: sticky; top: 0; z-index: 50; }
         .pc-only { display:none; }
         @media (min-width: 900px) {
-          .mob-nav { display:none !important; }
+          .mob-nav { display:flex !important; }
           .mob-header { display:none !important; }
           .pc-only, .pc-topbar { display:flex !important; }
           .main-app { max-width: none !important; margin: 0 !important; }
@@ -5010,6 +5006,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         </div>
         <div className="mob-nav"><Nav active={tab} go={go} /></div>
         <FloatingAssistant />
+        <UserCornerBadge me={me} onClick={()=>go("profile")} />
 
         {/* Toast feedback */}
         {toast && <div style={{position:"fixed",bottom:96,left:"50%",transform:"translateX(-50%)",padding:"10px 18px",borderRadius:999,background:C.ink,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,boxShadow:"0 8px 24px rgba(28,26,23,0.3)",zIndex:400,animation:"toastIn 0.2s ease",letterSpacing:"0.01em",pointerEvents:"none"}}>{toast}</div>}
