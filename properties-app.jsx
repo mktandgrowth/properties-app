@@ -24,16 +24,16 @@ const C = {
   brandSoft:  "#d4b876",   // gold bright (hover/highlight)
   brandWash:  "rgba(201, 168, 106, 0.12)",  // wash dorado sutil
 
-  // TEXT (invertido — ahora claro sobre fondo oscuro)
-  ink:        "#f5f0e6",   // texto primario (cream)
-  inkMuted:   "#dcd5c7",   // texto primario suave
-  text:       "#b8b3a7",   // texto body
-  muted:      "#8a8579",   // texto secundario
-  subtle:     "#6a6559",   // placeholder / terciario
+  // TEXT (invertido — ahora claro sobre fondo oscuro, mayor contraste)
+  ink:        "#ffffff",   // texto primario (blanco puro para títulos)
+  inkMuted:   "#f0ebe0",   // texto primario suave
+  text:       "#e0d9c8",   // texto body (muy legible sobre dark)
+  muted:      "#b8b3a7",   // texto secundario
+  subtle:     "#8a8579",   // placeholder / terciario
 
-  // LINES (ahora bordes sutiles sobre dark)
-  line:       "rgba(245, 240, 230, 0.10)",   // hairline
-  lineSoft:   "rgba(245, 240, 230, 0.05)",   // ultra-soft divider
+  // LINES (bordes con más contraste sobre dark)
+  line:       "rgba(245, 240, 230, 0.15)",   // hairline más visible
+  lineSoft:   "rgba(245, 240, 230, 0.08)",   // soft divider
 
   // BACKGROUNDS (dark editorial)
   bg:         "#0a0a0b",   // fondo principal (charcoal)
@@ -4441,15 +4441,12 @@ function TopBarDesktop({active,go,onNotif}) {
     {id:"profile",l:"Perfil",icon:"user"},
   ];
   return (
-    <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:50,background:"rgba(252,251,248,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
-      {/* Logo (clickable → Explorar) */}
-      <button onClick={()=>go("feed")} style={{display:"flex",alignItems:"center",gap:10,background:"transparent",border:"none",cursor:"pointer",padding:0}}>
-        <Logo size={32}/>
-        <div style={{textAlign:"left"}}>
-          <div style={{fontSize:24,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em",lineHeight:1}}>C<em style={{fontStyle:"italic",color:C.brand,fontWeight:400}}>2</em>C</div>
-          <div style={{fontSize:8.5,color:C.muted,fontFamily:Fb,letterSpacing:"0.14em",textTransform:"uppercase",fontWeight:500,marginTop:3}}>Sector inmobiliario</div>
-        </div>
-      </button>
+    <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:50,background:"rgba(10,10,11,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
+      {/* Logo C2C (clickable → home C2C) */}
+      <a href="https://greatdeal-platform.vercel.app" style={{display:"flex",flexDirection:"column",textDecoration:"none",lineHeight:1}} title="Volver al inicio C2C">
+        <span style={{fontSize:26,fontWeight:500,fontFamily:Fs,color:C.ink,letterSpacing:"-0.5px"}}>C<em style={{fontStyle:"italic",color:C.brand,fontWeight:400}}>2</em>C</span>
+        <span style={{fontSize:9.5,color:C.muted,fontFamily:Fb,letterSpacing:"0.2em",textTransform:"lowercase",marginTop:4,fontWeight:300}}>property market</span>
+      </a>
 
       {/* Horizontal nav */}
       <nav style={{display:"flex",alignItems:"center",gap:4}}>
