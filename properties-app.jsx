@@ -4433,7 +4433,7 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
 function TopBarDesktop({active,go,onNotif}) {
   const [aiOpen,setAiOpen]=useState(false);
   return (
-    <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:50,background:"rgba(10,10,11,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
+    <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:120,background:"rgba(10,10,11,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
       {/* Logo C2C (clickable → home C2C) */}
       <a href="https://greatdeal-platform.vercel.app" style={{display:"flex",flexDirection:"column",textDecoration:"none",lineHeight:1}} title="Volver al inicio C2C">
         <span style={{fontSize:26,fontWeight:500,fontFamily:Fs,color:C.ink,letterSpacing:"-0.5px"}}>C<em style={{fontStyle:"italic",color:C.brand,fontWeight:400}}>2</em>C</span>
@@ -4449,7 +4449,7 @@ function TopBarDesktop({active,go,onNotif}) {
         </button>
         {aiOpen && <>
           <div onClick={()=>setAiOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
-          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:280,background:C.surface,border:`1px solid ${C.line}`,borderRadius:14,padding:8,boxShadow:`0 16px 40px rgba(0,0,0,0.6)`,zIndex:201}}>
+          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:280,background:"#0f0f10",border:`1px solid ${C.line}`,borderRadius:14,padding:8,boxShadow:`0 20px 50px rgba(0,0,0,0.8)`,zIndex:300}}>
             <a href="https://greatdeal-platform.vercel.app/tasar?view=comprador" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
               <span style={{fontSize:20,lineHeight:1}}>🔍</span>
               <div>
