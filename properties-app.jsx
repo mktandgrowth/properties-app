@@ -871,17 +871,44 @@ function Nav({active,go}) {
 // ── Header ──
 function Header({sub,onNotif}) {
   const [open,setOpen]=useState(false);
+  const [aiOpen,setAiOpen]=useState(false);
   const unreadCount = NOTIFS.filter(n=>n.unread).length;
+  const SHELL = (typeof window !== "undefined" && (import.meta.env.VITE_SHELL_URL || "https://greatdeal-platform.vercel.app")) || "";
   return (
-    <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(252,251,248,0.88)",backdropFilter:"blur(20px)",padding:"14px 18px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <Logo size={26} />
-        <div>
-          <h1 style={{margin:0,fontSize:24,fontWeight:400,fontFamily:Fs,color:C.ink,letterSpacing:"-0.02em",lineHeight:1}}>properties<span style={{color:C.brand}}>.</span></h1>
-          {sub&&<p style={{margin:"3px 0 0",fontSize:9,color:C.muted,fontFamily:Fb,letterSpacing:"0.14em",textTransform:"uppercase",fontWeight:500}}>{sub}</p>}
+    <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(252,251,248,0.88)",backdropFilter:"blur(20px)",padding:"12px 18px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+      <a href={SHELL || "/"} style={{display:"flex",alignItems:"center",gap:8,textDecoration:"none",color:"inherit"}} title="Volver al inicio C2C">
+        <div style={{display:"flex",flexDirection:"column",lineHeight:1}}>
+          <span style={{fontFamily:Fs,fontSize:22,fontWeight:500,color:C.ink,letterSpacing:"-0.5px"}}>C<em style={{fontStyle:"italic",color:C.brand,fontWeight:400}}>2</em>C</span>
+          <span style={{color:C.muted,fontSize:9,letterSpacing:"0.2em",marginTop:3,fontWeight:400}}>property market</span>
         </div>
-      </div>
-      <button onClick={()=>setOpen(!open)} style={{width:36,height:36,borderRadius:"50%",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+      </a>
+      <nav style={{display:"flex",alignItems:"center",gap:4,position:"relative"}}>
+        <a href={`${SHELL}/comprar`} style={{color:C.text,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Comprar</a>
+        <a href={`${SHELL}/vender`} style={{color:C.text,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Vender</a>
+        <button onClick={(e)=>{e.stopPropagation();setAiOpen(!aiOpen)}} style={{display:"inline-flex",alignItems:"center",gap:5,color:C.text,background:`rgba(74,49,34,0.04)`,border:`1px solid rgba(74,49,34,0.18)`,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",cursor:"pointer",fontFamily:Fb}}>
+          <span style={{color:C.brand,fontSize:11}}>✦</span> Mi asistente IA <span style={{fontSize:9,transform:aiOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+        </button>
+        {aiOpen && <>
+          <div onClick={()=>setAiOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
+          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:240,background:C.surface,border:`1px solid ${C.line}`,borderRadius:14,padding:8,boxShadow:`0 16px 40px ${C.ink}25`,zIndex:201}}>
+            <a href={`${SHELL}/tasar?view=comprador`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:10,textDecoration:"none",color:C.text}}>
+              <span style={{fontSize:18,lineHeight:1}}>🔍</span>
+              <div>
+                <div style={{fontFamily:Fs,fontSize:14,fontWeight:500,color:C.ink}}>Ayuda en tu compra</div>
+                <div style={{fontSize:10.5,color:C.muted,fontFamily:Fb,marginTop:2}}>Isidora te asesora</div>
+              </div>
+            </a>
+            <a href={`${SHELL}/tasar?view=vendedor`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:10,textDecoration:"none",color:C.text}}>
+              <span style={{fontSize:18,lineHeight:1}}>🏡</span>
+              <div>
+                <div style={{fontFamily:Fs,fontSize:14,fontWeight:500,color:C.ink}}>Ayuda en tu venta</div>
+                <div style={{fontSize:10.5,color:C.muted,fontFamily:Fb,marginTop:2}}>Valentina tasa gratis</div>
+              </div>
+            </a>
+          </div>
+        </>}
+      </nav>
+      <button onClick={()=>setOpen(!open)} style={{width:36,height:36,borderRadius:"50%",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
         <Icon name="bell" size={16} color={C.text} stroke={1.5} />
         {unreadCount>0 && <div style={{position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:C.terracotta,border:`2px solid ${C.surface}`}} />}
       </button>
