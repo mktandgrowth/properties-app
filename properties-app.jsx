@@ -803,26 +803,26 @@ function FloatingAssistant() {
   return (
     <a
       href={`${SHELL_URL}/tasar?view=comprador`}
-      title="Mi asistente IA — ayuda en tu compra"
+      title="Asesor de compra — Isidora te ayuda"
       style={{
         position: "fixed",
         bottom: 78,
         right: 18,
-        width: 56,
-        height: 56,
-        borderRadius: "50%",
+        height: 52,
+        padding: "0 18px 0 14px",
+        borderRadius: 26,
         background: `linear-gradient(135deg, ${C.brand} 0%, ${C.brandSoft} 100%)`,
         boxShadow: `0 6px 20px ${C.brand}40, 0 0 0 4px ${C.surface}`,
         zIndex: 200,
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
+        gap: 9,
         cursor: "pointer",
         textDecoration: "none",
         transition: "transform 0.2s, box-shadow 0.2s",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "scale(1.08)";
+        e.currentTarget.style.transform = "scale(1.05)";
         e.currentTarget.style.boxShadow = `0 10px 28px ${C.brand}60, 0 0 0 4px ${C.surface}`;
       }}
       onMouseLeave={(e) => {
@@ -830,18 +830,26 @@ function FloatingAssistant() {
         e.currentTarget.style.boxShadow = `0 6px 20px ${C.brand}40, 0 0 0 4px ${C.surface}`;
       }}
     >
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.surface} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.surface} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
         <circle cx="9" cy="11.5" r="1" fill={C.surface}/>
         <circle cx="13" cy="11.5" r="1" fill={C.surface}/>
         <circle cx="17" cy="11.5" r="1" fill={C.surface}/>
       </svg>
       <span style={{
+        color: C.surface,
+        fontFamily: Fb,
+        fontSize: 13,
+        fontWeight: 600,
+        letterSpacing: "0.01em",
+        whiteSpace: "nowrap",
+      }}>Asesor de compra</span>
+      <span style={{
         position: "absolute",
         top: -3,
         right: -3,
-        width: 14,
-        height: 14,
+        width: 12,
+        height: 12,
         borderRadius: "50%",
         background: C.terracotta,
         border: `2px solid ${C.surface}`,
@@ -4961,6 +4969,51 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [sellHasDraft,setSellHasDraft]=useState(false);
   const [navConfirm,setNavConfirm]=useState(null); // pending tab to navigate to
   const [guestPromptFor,setGuestPromptFor]=useState(null); // texto a mostrar cuando un invitado intenta hacer algo de auth
+  // ─── Signup rápido (nombre + WA + código skippable) ───
+  const [signupName,setSignupName]=useState("");
+  const [signupWa,setSignupWa]=useState("");
+  const [signupCode,setSignupCode]=useState("");
+  const [signupLoading,setSignupLoading]=useState(false);
+  const [signupError,setSignupError]=useState("");
+  const submitSignup = async () => {
+    setSignupError("");
+    const name = signupName.trim();
+    const wa = signupWa.trim();
+    if (!name) { setSignupError("Falta tu nombre"); return; }
+    const waDigits = wa.replace(/\D/g,"");
+    if (waDigits.length < 8) { setSignupError("Ingresá un WhatsApp válido"); return; }
+    setSignupLoading(true);
+    try {
+      const r = await fetch("https://greatdeal-api.onrender.com/api/profile/upsert", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ name, wa: waDigits, code: signupCode }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j?.owner_id) {
+        setSignupError(j?.error || j?.detail || "No se pudo crear la cuenta");
+        setSignupLoading(false); return;
+      }
+      // Guardar owner_id como guest owner y perfil local
+      try {
+        window.localStorage.setItem("c2c_guest_owner_id", j.owner_id);
+        window.localStorage.setItem("c2c_buyer_profile", JSON.stringify({ id: j.owner_id, name, wa: waDigits }));
+      } catch(e) {}
+      const target = guestPromptFor;
+      setGuestPromptFor(null);
+      setSignupName(""); setSignupWa(""); setSignupCode(""); setSignupLoading(false);
+      showToast("Cuenta creada ✓");
+      // Redirigir a lo que el usuario intentaba hacer
+      setTimeout(() => {
+        if (target && target.includes("perfil")) window.location.reload();
+        else if (target && target.includes("guardados")) setTab("saved");
+        else if (target && target.includes("publicar")) setTab("sell");
+      }, 300);
+    } catch (e) {
+      setSignupError("Error de conexión — reintentá");
+      setSignupLoading(false);
+    }
+  };
   const go=id=>{
     // Guest mode: bloqueamos Vender, Guardados y Perfil (necesitan cuenta)
     // EXCEPCIÓN: si el user tiene guestOwnerId (ya publicó una propiedad desde
@@ -5137,18 +5190,74 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
           </div>
         )}
 
-        {/* Guest prompt — cuando un invitado intenta hacer algo que requiere cuenta */}
+        {/* Guest prompt — mini signup con nombre + WA + código (skippable) */}
         {guestPromptFor && (
-          <div onClick={()=>setGuestPromptFor(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(28,26,23,0.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-            <div onClick={e=>e.stopPropagation()} style={{maxWidth:380,width:"100%",background:C.surface,borderRadius:18,padding:"22px 22px 18px",animation:"successIn 0.25s ease",textAlign:"center"}}>
-              <div style={{width:54,height:54,borderRadius:"50%",margin:"0 auto 14px",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div onClick={()=>{ if(!signupLoading) setGuestPromptFor(null); }} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(28,26,23,0.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div onClick={e=>e.stopPropagation()} style={{maxWidth:400,width:"100%",background:C.surface,borderRadius:18,padding:"22px 22px 18px",animation:"successIn 0.25s ease"}}>
+              <div style={{width:54,height:54,borderRadius:"50%",margin:"0 auto 12px",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
                 <Logo size={26}/>
               </div>
-              <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>Creá tu cuenta</h3>
-              <p style={{margin:"0 0 18px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Para {guestPromptFor} necesitás tener una cuenta. Es gratis y toma menos de 1 minuto.</p>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={()=>setGuestPromptFor(null)} style={{flex:1,padding:13,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Después</button>
-                <button onClick={()=>{setGuestPromptFor(null); onExitGuest && onExitGuest();}} style={{flex:1.4,padding:13,borderRadius:11,background:C.ink,border:"none",color:C.surface,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Crear cuenta</button>
+              <h3 style={{margin:"0 0 4px",fontSize:19,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em",textAlign:"center"}}>Creá tu cuenta</h3>
+              <p style={{margin:"0 0 16px",fontSize:12.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5,textAlign:"center"}}>Solo necesitamos tu nombre y WhatsApp para {guestPromptFor}.</p>
+
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div>
+                  <label style={{display:"block",fontSize:10.5,color:C.text,fontFamily:Fb,fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>Nombre</label>
+                  <input
+                    type="text"
+                    value={signupName}
+                    onChange={e=>setSignupName(e.target.value)}
+                    placeholder="Tu nombre"
+                    disabled={signupLoading}
+                    style={{width:"100%",padding:"11px 12px",borderRadius:10,background:C.brandWash,border:`1px solid ${C.line}`,color:C.ink,fontSize:14,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}
+                  />
+                </div>
+                <div>
+                  <label style={{display:"block",fontSize:10.5,color:C.text,fontFamily:Fb,fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>WhatsApp</label>
+                  <input
+                    type="tel"
+                    value={signupWa}
+                    onChange={e=>setSignupWa(e.target.value)}
+                    placeholder="+56 9 1234 5678"
+                    disabled={signupLoading}
+                    style={{width:"100%",padding:"11px 12px",borderRadius:10,background:C.brandWash,border:`1px solid ${C.line}`,color:C.ink,fontSize:14,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}
+                  />
+                </div>
+                <div>
+                  <label style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:10.5,color:C.text,fontFamily:Fb,fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>
+                    <span>Código verificación</span>
+                    <span style={{textTransform:"none",letterSpacing:0,fontSize:10,color:C.brand,fontWeight:500}}>opcional por ahora</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={signupCode}
+                    onChange={e=>setSignupCode(e.target.value)}
+                    placeholder="Se activa próximamente (SMS)"
+                    disabled={signupLoading}
+                    style={{width:"100%",padding:"11px 12px",borderRadius:10,background:C.brandWash,border:`1px dashed ${C.line}`,color:C.ink,fontSize:14,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box",opacity:0.75}}
+                  />
+                </div>
+                {signupError && (
+                  <div style={{padding:"8px 10px",borderRadius:8,background:"#FDECEC",color:"#8B2A2A",fontSize:12,fontFamily:Fb,fontWeight:500}}>{signupError}</div>
+                )}
+              </div>
+
+              <div style={{display:"flex",gap:8,marginTop:14}}>
+                <button
+                  onClick={()=>{ if(!signupLoading) setGuestPromptFor(null); }}
+                  disabled={signupLoading}
+                  style={{flex:1,padding:13,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:12.5,fontWeight:500,cursor:signupLoading?"default":"pointer",fontFamily:Fb,opacity:signupLoading?0.5:1}}
+                >Después</button>
+                <button
+                  onClick={submitSignup}
+                  disabled={signupLoading}
+                  style={{flex:1.6,padding:13,borderRadius:11,background:C.ink,border:"none",color:C.surface,fontSize:12.5,fontWeight:500,cursor:signupLoading?"default":"pointer",fontFamily:Fb,opacity:signupLoading?0.7:1}}
+                >{signupLoading?"Creando…":"Crear cuenta"}</button>
+              </div>
+              <div style={{marginTop:8,textAlign:"center"}}>
+                <span style={{fontSize:11,color:C.text,fontFamily:Fb,fontWeight:400,opacity:0.7}}>
+                  El código por SMS se activa pronto para verificar tu WhatsApp.
+                </span>
               </div>
             </div>
           </div>
