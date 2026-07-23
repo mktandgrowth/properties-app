@@ -4749,6 +4749,9 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const initialTab = (() => {
     try {
       const params = new URLSearchParams(window.location.search);
+      // Al publicar un reel desde greatdeal-app se redirige acá con ?tab=reels
+      const tab = params.get("tab");
+      if (tab === "reels" || tab === "feed" || tab === "saved" || tab === "profile") return tab;
       const modo = params.get("modo");
       if (modo === "publicar") return "sell";
       if (modo === "comprar")  return "feed";
