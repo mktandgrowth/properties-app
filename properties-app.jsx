@@ -3940,12 +3940,14 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
 
   const liked=props.filter(p=>p.liked);const saved=props.filter(p=>p.saved);
 
-  // Priority config: chats=1 (forest), guardados=2 (brand copper), likes=3 (muted warm)
+  // Chats internos deshabilitados — el contacto real vive en WhatsApp externo (wa.me).
+  // Cuando implementemos chat interno con Supabase, volver a sumar el tab acá.
   const TABS = [
-    { id:"chats",    rank:1, label:"WhatsApp",  count:CONVOS.length, color:C.forest,   wash:C.mintWash,  desc:"Historial de chats con interesados" },
-    { id:"saved",    rank:2, label:"Guardados", count:saved.length,  color:C.brand,    wash:C.brandWash, desc:"Propiedades para revisitar" },
-    { id:"likes",    rank:3, label:"Likes",     count:liked.length,  color:C.muted,    wash:"#F1EBE1",   desc:"Primera impresión" },
+    { id:"saved",    rank:1, label:"Guardados", count:saved.length,  color:C.brand,    wash:C.brandWash, desc:"Propiedades para revisitar" },
+    { id:"likes",    rank:2, label:"Likes",     count:liked.length,  color:C.muted,    wash:"#F1EBE1",   desc:"Primera impresión" },
   ];
+  // Si el usuario tenía "chats" en state (viene de link viejo), redirigir a saved
+  if (tab === "chats") { setTab && setTab("saved"); }
   const current = TABS.find(t=>t.id===tab);
 
   const RankDot = ({rank,color,active=false,size=20}) => (
@@ -4871,18 +4873,68 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   }, [view, selectedChat]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2000); };
-  const like=id=>{
-    if (isGuest) { setGuestPromptFor("dar like a propiedades"); return; }
-    setProps(ps=>ps.map(p=>p.id===id?{...p,liked:!p.liked}:p));
-    const p = props.find(x=>x.id===id);
-    showToast(p?.liked?"Quitado de tus likes":"Agregado a tus likes");
+
+  // ─── Cargar likes/saved del user autenticado desde Supabase ─────────────
+  // Tabla `user_actions` (user_id text, prop_id uuid, action text, created_at)
+  // Al montar (o cuando cambia el user), traemos sus acciones y marcamos las props.
+  useEffect(() => {
+    if (!supabase || !me?.id || isGuest) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("user_actions")
+          .select("prop_id, action")
+          .eq("user_id", me.id);
+        if (error) { console.warn("user_actions fetch error", error); return; }
+        if (!active) return;
+        const likedSet = new Set(data.filter(a => a.action === "like").map(a => a.prop_id));
+        const savedSet = new Set(data.filter(a => a.action === "save").map(a => a.prop_id));
+        setProps(ps => ps.map(p => ({
+          ...p,
+          liked: likedSet.has(p.id) || p.liked,
+          saved: savedSet.has(p.id) || p.saved,
+        })));
+      } catch (e) { console.warn("user_actions fetch failed", e); }
+    })();
+    return () => { active = false; };
+  }, [me?.id, isGuest]);
+
+  // Toggle like/save con persistencia en Supabase (optimistic UI)
+  const toggleAction = async (id, action) => {
+    if (isGuest) { setGuestPromptFor(action === "like" ? "dar like a propiedades" : "guardar propiedades"); return; }
+    const p = props.find(x => x.id === id);
+    const isActive = action === "like" ? p?.liked : p?.saved;
+    // Optimistic UI: cambiar visualmente ya
+    setProps(ps => ps.map(x => x.id === id ? { ...x, [action === "like" ? "liked" : "saved"]: !isActive } : x));
+    const msg = isActive
+      ? (action === "like" ? "Quitado de tus likes" : "Quitado de guardados")
+      : (action === "like" ? "Agregado a tus likes" : "Guardado en tu lista");
+    showToast(msg);
+    // Persistir en Supabase (silencioso si falla — no revertimos la UI para no confundir)
+    if (!supabase || !me?.id) return;
+    try {
+      if (isActive) {
+        // Delete existing action
+        await supabase
+          .from("user_actions")
+          .delete()
+          .eq("user_id", me.id)
+          .eq("prop_id", id)
+          .eq("action", action);
+      } else {
+        // Upsert new action (evita duplicados)
+        await supabase
+          .from("user_actions")
+          .upsert(
+            { user_id: me.id, prop_id: id, action },
+            { onConflict: "user_id,prop_id,action" }
+          );
+      }
+    } catch (e) { console.warn("user_actions persist failed", e); }
   };
-  const save=id=>{
-    if (isGuest) { setGuestPromptFor("guardar propiedades"); return; }
-    setProps(ps=>ps.map(p=>p.id===id?{...p,saved:!p.saved}:p));
-    const p = props.find(x=>x.id===id);
-    showToast(p?.saved?"Quitado de guardados":"Guardado en tu lista");
-  };
+  const like = id => toggleAction(id, "like");
+  const save = id => toggleAction(id, "save");
   const open=p=>setView({t:"d",p});
   const openReel=id=>{setReelStart(id);setTab("reels");setView(null);};
   const openChat=()=>{setTab("saved");setSavedSubTab("chats");setView(null);setSelectedChat(null);};
