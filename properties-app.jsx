@@ -4768,6 +4768,19 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
       return p || null;
     } catch(e) { return null; }
   })();
+  // Owner ID viene de greatdeal-app (?owner=<uuid>) cuando publica sin login.
+  // Lo guardamos en localStorage para que la app reconozca al vendedor sin auth
+  // formal — todas las propiedades con ese owner_id son "suyas".
+  const guestOwnerId = (() => {
+    try {
+      const fromUrl = new URLSearchParams(window.location.search).get("owner");
+      if (fromUrl) {
+        localStorage.setItem("c2c_guest_owner_id", fromUrl);
+        return fromUrl;
+      }
+      return localStorage.getItem("c2c_guest_owner_id") || null;
+    } catch(e) { return null; }
+  })();
   const [tab,setTab]=useState(initialTab);
   const [view,setView]=useState(null);
   const [reelStart,setReelStart]=useState(null);
@@ -4778,15 +4791,20 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
   // Toast de bienvenida: si llegaste desde greatdeal-app (?justPublished=<id>),
-  // celebrá que la propiedad ya está publicada.
+  // celebrá que la propiedad ya está publicada + abrir directo tu reel.
   useEffect(() => {
     if (justPublishedId) {
-      setToast("🎉 ¡Tu propiedad ya está publicada en el feed!");
+      setToast("🎉 ¡Tu propiedad ya está publicada!");
+      // Abrir el reel player con TU reel primero (para preview inmediato)
+      setReelStart(justPublishedId);
+      setTab("reels");
       setTimeout(() => setToast(null), 4000);
-      // Limpiar el query param de la URL para no re-mostrar al recargar
+      // Limpiar los query params de la URL para no re-mostrar al recargar
       try {
         const url = new URL(window.location.href);
         url.searchParams.delete("justPublished");
+        url.searchParams.delete("owner"); // ya está guardado en localStorage
+        url.searchParams.delete("tab");
         window.history.replaceState({}, "", url.toString());
       } catch(e) {}
     }
@@ -4945,10 +4963,17 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [guestPromptFor,setGuestPromptFor]=useState(null); // texto a mostrar cuando un invitado intenta hacer algo de auth
   const go=id=>{
     // Guest mode: bloqueamos Vender, Guardados y Perfil (necesitan cuenta)
+    // EXCEPCIÓN: si el user tiene guestOwnerId (ya publicó una propiedad desde
+    // greatdeal-app con su WA), lo dejamos entrar a Perfil para ver sus reels.
     if (isGuest && (id==="sell" || id==="profile" || id==="saved")) {
-      const labels = { sell:"publicar una propiedad", profile:"acceder a tu perfil", saved:"ver tus guardados" };
-      setGuestPromptFor(labels[id]);
-      return;
+      // Si tiene guestOwnerId, permitir acceso a "profile" (para ver sus publicaciones)
+      if (id === "profile" && guestOwnerId) {
+        // Sigue el flow normal
+      } else {
+        const labels = { sell:"publicar una propiedad", profile:"acceder a tu perfil", saved:"ver tus guardados" };
+        setGuestPromptFor(labels[id]);
+        return;
+      }
     }
     // If leaving Sell tab while user has a draft in progress, ask first
     if (tab==="sell" && id!=="sell" && sellHasDraft) {
@@ -5038,7 +5063,14 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
             {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps.filter(x=>x.id!==p.id)]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft} me={me}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile
-              props={props}
+              props={(function() {
+                // Filtrar solo las propiedades del owner actual:
+                //  - Si hay auth user (me.id), filtrar por _ownerId === me.id
+                //  - Si es guest pero tiene guestOwnerId (viene de greatdeal-app), usar ese
+                const ownerId = me?.id || guestOwnerId;
+                if (!ownerId) return props; // fallback: mostrar todas (no debería pasar)
+                return props.filter(p => p._ownerId === ownerId);
+              })()}
               subTab={profileSubTab}
               setSubTab={setProfileSubTab}
               onGoTo={goTo}
