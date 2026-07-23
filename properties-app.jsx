@@ -4758,6 +4758,14 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
     } catch(e) {}
     return "feed";
   })();
+  // ID de la propiedad recién publicada (viene de greatdeal-app después de publicar)
+  // Se usa para: (a) mostrar toast "¡Publicado!" (b) opcionalmente hacer scroll a ese reel
+  const justPublishedId = (() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get("justPublished");
+      return p || null;
+    } catch(e) { return null; }
+  })();
   const [tab,setTab]=useState(initialTab);
   const [view,setView]=useState(null);
   const [reelStart,setReelStart]=useState(null);
@@ -4767,6 +4775,20 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
+  // Toast de bienvenida: si llegaste desde greatdeal-app (?justPublished=<id>),
+  // celebrá que la propiedad ya está publicada.
+  useEffect(() => {
+    if (justPublishedId) {
+      setToast("🎉 ¡Tu propiedad ya está publicada en el feed!");
+      setTimeout(() => setToast(null), 4000);
+      // Limpiar el query param de la URL para no re-mostrar al recargar
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("justPublished");
+        window.history.replaceState({}, "", url.toString());
+      } catch(e) {}
+    }
+  }, []);
   // Load real properties from Supabase on mount + subscribe to real-time changes
   useEffect(() => {
     if (!supabase) return;
