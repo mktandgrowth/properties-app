@@ -4719,6 +4719,27 @@ export default function App() {
   const [guestMode, setGuestMode] = useState(() => {
     try { return window.localStorage.getItem("guest_mode") === "1"; } catch(e) { return false; }
   });
+  // Buyer profile — quick signup (nombre + WA), sin Supabase Auth
+  const [buyerProfile, setBuyerProfile] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem("c2c_buyer_profile");
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
+  });
+  // Escuchar cambios en localStorage (cuando el modal signup lo escribe)
+  useEffect(() => {
+    const check = () => {
+      try {
+        const raw = window.localStorage.getItem("c2c_buyer_profile");
+        const parsed = raw ? JSON.parse(raw) : null;
+        setBuyerProfile(cur => (cur?.id === parsed?.id ? cur : parsed));
+      } catch(e) {}
+    };
+    window.addEventListener("storage", check);
+    // Poll cada 1s por si se escribió en la misma pestaña
+    const iv = setInterval(check, 1000);
+    return () => { window.removeEventListener("storage", check); clearInterval(iv); };
+  }, []);
   const enterGuestMode = () => {
     try { window.localStorage.setItem("guest_mode", "1"); } catch(e) {}
     setGuestMode(true);
@@ -4730,9 +4751,12 @@ export default function App() {
       setGuestMode(false);
     }
   }, [session, guestMode]);
+  // Si tiene buyerProfile, ya no es "invitado" — es un usuario buyer con cuenta rápida
+  const hasBuyerAccount = !!buyerProfile?.id;
+  const effectiveIsGuest = !session && guestMode && !hasBuyerAccount;
 
   // While checking auth on first load, show a small loader
-  if (supabase && authLoading && !guestMode) {
+  if (supabase && authLoading && !guestMode && !hasBuyerAccount) {
     return (
       <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -4743,11 +4767,35 @@ export default function App() {
       </div>
     );
   }
-  // Not authenticated AND not guest → show signup/login screen
-  if (supabase && !session && !guestMode) return <AuthScreen onGuest={enterGuestMode}/>;
-  // Authenticated (or guest, or no Supabase) → render the full app.
-  // Use session.user.id as `key` so MainApp fully remounts when user changes.
-  return <MainApp key={session?.user?.id || (guestMode?"guest":"anon")} authProfile={profile} setAuthProfile={setProfile} isGuest={!session && guestMode} onExitGuest={()=>{try{window.localStorage.removeItem("guest_mode");}catch(e){};setGuestMode(false);}}/>;
+  // Not authenticated AND not guest AND no buyer profile → show signup/login screen
+  if (supabase && !session && !guestMode && !hasBuyerAccount) return <AuthScreen onGuest={enterGuestMode}/>;
+  // Prioridad de identidad: session Supabase > buyerProfile > null
+  const effectiveProfile = profile || (hasBuyerAccount ? {
+    id: buyerProfile.id,
+    name: buyerProfile.name,
+    wa: buyerProfile.wa,
+    verified: false,
+    is_buyer_quick: true,
+  } : null);
+  return <MainApp
+    key={session?.user?.id || buyerProfile?.id || (guestMode?"guest":"anon")}
+    authProfile={effectiveProfile}
+    setAuthProfile={setProfile}
+    isGuest={effectiveIsGuest}
+    onExitGuest={()=>{
+      try { window.localStorage.removeItem("guest_mode"); } catch(e) {}
+      setGuestMode(false);
+    }}
+    onLogout={()=>{
+      try {
+        window.localStorage.removeItem("guest_mode");
+        window.localStorage.removeItem("c2c_buyer_profile");
+        window.localStorage.removeItem("c2c_guest_owner_id");
+      } catch(e) {}
+      setGuestMode(false);
+      setBuyerProfile(null);
+    }}
+  />;
 }
 
 function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
@@ -5003,9 +5051,10 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
       setGuestPromptFor(null);
       setSignupName(""); setSignupWa(""); setSignupCode(""); setSignupLoading(false);
       showToast("Cuenta creada ✓");
-      // Redirigir a lo que el usuario intentaba hacer
+      // El App.tsx tiene un polling que detecta c2c_buyer_profile en localStorage
+      // y actualiza el state global. Mientras tanto, navegamos al tab correcto.
       setTimeout(() => {
-        if (target && target.includes("perfil")) window.location.reload();
+        if (target && target.includes("perfil")) setTab("profile");
         else if (target && target.includes("guardados")) setTab("saved");
         else if (target && target.includes("publicar")) setTab("sell");
       }, 300);
