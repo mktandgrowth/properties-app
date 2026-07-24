@@ -3956,7 +3956,8 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
   ];
   // Si el usuario tenía "chats" en state (viene de link viejo), redirigir a saved
   if (tab === "chats") { setTab && setTab("saved"); }
-  const current = TABS.find(t=>t.id===tab);
+  // Fallback defensivo: si por algún motivo `tab` no matchea ningún TAB, usar el primero
+  const current = TABS.find(t=>t.id===tab) || TABS[0];
 
   const RankDot = ({rank,color,active=false,size=20}) => (
     <div style={{width:size,height:size,borderRadius:"50%",background:active?C.surface:color,border:active?`1.5px solid ${C.surface}`:"none",color:active?color:C.surface,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.52,fontWeight:600,fontFamily:Fb,flexShrink:0,letterSpacing:"-0.02em"}}>{rank}</div>
@@ -4236,12 +4237,23 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
             <Icon name="pencil" size={11} color={C.surface} stroke={2}/>
           </span>
         </button>
-        <h3 onClick={()=>setEditProfile(true)} style={{fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 3px",letterSpacing:"-0.01em",cursor:"pointer"}}>{me?.name||SELLER.name}</h3>
-        <p style={{fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 8px",letterSpacing:"0.02em"}}>{me?.email||"valentina@mktandgrowth.com"} · {me?.city||"Santiago"}</p>
-        <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 11px",borderRadius:999,background:C.mintWash,border:`1px solid #CDDBCE`}}>
-          <Icon name="check" size={10} color={C.forest} stroke={2.5}/>
-          <span style={{fontSize:10,fontWeight:500,color:C.forest,fontFamily:Fb,letterSpacing:"0.08em",textTransform:"uppercase"}}>Cuenta verificada</span>
-        </div>
+        <h3 onClick={()=>setEditProfile(true)} style={{fontSize:20,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"0 0 3px",letterSpacing:"-0.01em",cursor:"pointer"}}>{me?.name||"Tu perfil"}</h3>
+        <p style={{fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 8px",letterSpacing:"0.02em"}}>
+          {me?.email
+            ? `${me.email} · ${me.city||"Chile"}`
+            : (me?.wa ? `WhatsApp +${me.wa} · ${me?.city||"Chile"}` : (me?.city||"Chile"))}
+        </p>
+        {me?.verified ? (
+          <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 11px",borderRadius:999,background:C.mintWash,border:`1px solid #CDDBCE`}}>
+            <Icon name="check" size={10} color={C.forest} stroke={2.5}/>
+            <span style={{fontSize:10,fontWeight:500,color:C.forest,fontFamily:Fb,letterSpacing:"0.08em",textTransform:"uppercase"}}>Cuenta verificada</span>
+          </div>
+        ) : (
+          <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 11px",borderRadius:999,background:C.brandWash,border:`1px solid ${C.line}`}}>
+            <Icon name="sparkle" size={10} color={C.brand} stroke={2}/>
+            <span style={{fontSize:10,fontWeight:500,color:C.brand,fontFamily:Fb,letterSpacing:"0.08em",textTransform:"uppercase"}}>Cuenta sin verificar</span>
+          </div>
+        )}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
         {stats.map(s=>(
@@ -4840,7 +4852,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [tab,setTab]=useState(initialTab);
   const [view,setView]=useState(null);
   const [reelStart,setReelStart]=useState(null);
-  const [savedSubTab,setSavedSubTab]=useState("chats");
+  const [savedSubTab,setSavedSubTab]=useState("saved");
   const [profileSubTab,setProfileSubTab]=useState("pub");
   const [openProfilePanel,setOpenProfilePanel]=useState(null);
   const [selectedChat,setSelectedChat]=useState(null);
