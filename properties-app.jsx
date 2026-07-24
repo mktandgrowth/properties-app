@@ -1812,44 +1812,48 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   const startIdx = startPropId ? Math.max(0, reelFeed.findIndex(r=>r.propId===startPropId)) : 0;
   const [idx,setIdx]=useState(startIdx);
   const [muted, setMuted] = useState(true); // global mute for all reels (must start muted for autoplay)
-  const [commentsOpenFor,setCommentsOpenFor]=useState(null); // propId of property whose comments are open
-  // Touch tracking — startY anchors first touch; deltaY tracks live finger movement for real-time slide
-  const [startY,setStartY]=useState(null);
-  const [deltaY,setDeltaY]=useState(0);
-  const wheelLockRef = useRef(0);
-  const dragging = startY !== null;
+  // Comentar removido — solo like + save + whatsapp
 
-  // Navigation helpers
-  const goNext = () => setIdx(i => Math.min(reelFeed.length-1, i+1));
-  const goPrev = () => setIdx(i => Math.max(0, i-1));
+  // Scroll container + refs a cada slide para IntersectionObserver
+  const scrollRef = useRef(null);
+  const slideRefs = useRef([]);
+  slideRefs.current = [];
+  const registerSlide = (el, i) => { if (el) slideRefs.current[i] = el; };
 
-  // Swipe (mobile) — real-time finger tracking
-  const onTS = e => { setStartY(e.touches[0].clientY); setDeltaY(0); };
-  const onTM = e => {
-    if (startY===null) return;
-    const dy = e.touches[0].clientY - startY; // positive = swipe down (prev), negative = swipe up (next)
-    // Rubber-band effect at edges
-    if ((idx===0 && dy>0) || (idx===reelFeed.length-1 && dy<0)) setDeltaY(dy * 0.25);
-    else setDeltaY(dy);
+  // Navigation helpers — scroll suave hacia el slide destino
+  const scrollToIdx = (i) => {
+    const el = slideRefs.current[i];
+    if (el && scrollRef.current) el.scrollIntoView({behavior:"smooth", block:"start"});
   };
-  const onTE = () => {
-    if (startY===null) return;
-    const threshold = 70;
-    if (deltaY < -threshold && idx < reelFeed.length-1) goNext();
-    else if (deltaY > threshold && idx > 0) goPrev();
-    setStartY(null);
-    setDeltaY(0);
-  };
-  // Wheel (desktop) — throttled
-  const onWheel = e => {
-    e.preventDefault();
-    const now = Date.now();
-    if (now - wheelLockRef.current < 500) return;
-    if (Math.abs(e.deltaY) < 20) return;
-    wheelLockRef.current = now;
-    (e.deltaY > 0 ? goNext : goPrev)();
-  };
-  // Keyboard arrows (desktop)
+  const goNext = () => { const next = Math.min(reelFeed.length-1, idx+1); scrollToIdx(next); };
+  const goPrev = () => { const prev = Math.max(0, idx-1); scrollToIdx(prev); };
+
+  // IntersectionObserver: detecta qué slide es el más visible y actualiza idx (para autoplay del video)
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const io = new IntersectionObserver((entries) => {
+      // Ordenar por más visible primero
+      const mostVisible = entries
+        .filter(e => e.isIntersecting)
+        .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (mostVisible) {
+        const i = Number(mostVisible.target.getAttribute('data-idx'));
+        if (!Number.isNaN(i)) setIdx(i);
+      }
+    }, { root: scrollRef.current, threshold: [0.6, 0.85, 1] });
+    slideRefs.current.forEach(el => el && io.observe(el));
+    return () => io.disconnect();
+  }, [reelFeed.length]);
+
+  // Al montar, si startPropId → posicionar el scroll en ese slide
+  useEffect(() => {
+    if (startIdx > 0) {
+      const el = slideRefs.current[startIdx];
+      if (el) el.scrollIntoView({behavior:"instant", block:"start"});
+    }
+  }, []);
+
+  // Keyboard arrows (desktop) — deslizar entre slides
   useEffect(()=>{
     const onKey = e => {
       if (e.key === "ArrowDown" || e.key === "PageDown") { e.preventDefault(); goNext(); }
@@ -1857,7 +1861,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [idx]);
 
   const Stat = ({icon,val}) => (
     <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12.5,color:C.surface,fontFamily:Fb,fontWeight:500,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>
@@ -1866,26 +1870,48 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   );
 
   return (
-    <div onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onWheel={onWheel} className="reels-frame" style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000",touchAction:"none"}}>
+    <div className="reels-frame" style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000"}}>
       <style>{`
         @keyframes reelInfoIn { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
+        .reels-scroll::-webkit-scrollbar { display: none; }
+        .reels-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* ─── Slide track: ALL reels stacked vertically as a single block ─── */}
-      <div style={{
-        position:"absolute",
-        top:0, left:0, right:0,
-        transform:`translateY(calc(${-idx*100}vh + ${deltaY}px))`,
-        transition: dragging ? "none" : "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
-        willChange:"transform"
-      }}>
+      {/* ─── Slide container: scroll-snap nativo (fluido tipo Instagram) ─── */}
+      <div
+        ref={scrollRef}
+        className="reels-scroll"
+        style={{
+          height:"100vh",
+          overflowY:"scroll",
+          scrollSnapType:"y mandatory",
+          scrollBehavior:"smooth",
+          overscrollBehavior:"contain",
+          WebkitOverflowScrolling:"touch",
+        }}
+      >
         {reelFeed.map((rl, i) => {
           const prop = props.find(x=>x.id===rl.propId);
           if (!prop) return null;
           const isActive = i === idx;
-          const reelVideoSrc = prop.videoFile || (prop.videoTakeFiles && prop.videoTakeFiles[1]) || null;
+          // Prioridad: video_url (Supabase Storage — reels publicados) > videoFile (blob local) > videoTakeFiles (draft)
+          const reelVideoSrc = prop.video_url || prop.videoFile || (prop.videoTakeFiles && prop.videoTakeFiles[1]) || null;
           return (
-            <div key={rl.id} style={{position:"absolute",top:`${i*100}vh`,left:0,right:0,height:"100vh",overflow:"hidden",background:"#000"}}>
+            <div
+              key={rl.id}
+              ref={(el)=>registerSlide(el,i)}
+              data-idx={i}
+              style={{
+                position:"relative",
+                width:"100%",
+                height:"100vh",
+                overflow:"hidden",
+                background:"#000",
+                scrollSnapAlign:"start",
+                scrollSnapStop:"always",
+                flexShrink:0,
+              }}
+            >
               {/* Background: user's video if available, else property image */}
               {reelVideoSrc ? (
                 <video src={reelVideoSrc} autoPlay={isActive} muted={muted} loop playsInline style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
@@ -1899,10 +1925,6 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
                 <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
                   <Icon name="heart" size={27} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
                   <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{rl.likes}</span>
-                </button>
-                <button onClick={()=>setCommentsOpenFor(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Icon name="chat" size={27} color={C.surface} stroke={1.6}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Comentar</span>
                 </button>
                 <button onClick={()=>onSave(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
                   <Icon name="bookmark" size={27} color={prop.saved?C.brandSoft:C.surface} stroke={1.6} fill={prop.saved?C.brandSoft:"none"}/>
@@ -1973,8 +1995,6 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         </button>
       </div>
 
-      {/* Comments sheet — Instagram-style public comments */}
-      {commentsOpenFor && <CommentsSheet propId={commentsOpenFor} prop={props.find(x=>x.id===commentsOpenFor)} onClose={()=>setCommentsOpenFor(null)}/>}
     </div>
   );
 }
