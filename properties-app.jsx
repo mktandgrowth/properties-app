@@ -1695,11 +1695,8 @@ function Detail({p,back,onLike,onSave}) {
           }} disabled={!p.wa} style={{flex:1,padding:14,borderRadius:12,background:p.wa?C.ink:C.line,border:"none",cursor:p.wa?"pointer":"default",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
             <Icon name="whatsapp" size={18} color={C.surface} stroke={1.6}/>WhatsApp
           </button>
-          <button onClick={()=>onLike(p.id)} style={{width:50,height:50,borderRadius:12,background:p.liked?C.brandWash:C.surface,border:`1px solid ${p.liked?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <button onClick={()=>onLike(p.id)} title={p.liked?"Quitar de guardados":"Guardar propiedad"} style={{width:50,height:50,borderRadius:12,background:p.liked?C.brandWash:C.surface,border:`1px solid ${p.liked?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
             <Icon name="heart" size={18} color={p.liked?C.terracotta:C.text} stroke={1.6} fill={p.liked?C.terracotta:"none"}/>
-          </button>
-          <button onClick={()=>onSave(p.id)} style={{width:50,height:50,borderRadius:12,background:p.saved?C.brandWash:C.surface,border:`1px solid ${p.saved?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <Icon name="bookmark" size={18} color={p.saved?C.brand:C.text} stroke={1.6} fill={p.saved?C.brand:"none"}/>
           </button>
         </div>
       </div>
@@ -1923,12 +1920,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
               {/* Action column — right side */}
               <div style={{position:"absolute",right:12,bottom:250,display:"flex",flexDirection:"column",gap:22,alignItems:"center",zIndex:10}}>
                 <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Icon name="heart" size={27} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{rl.likes}</span>
-                </button>
-                <button onClick={()=>onSave(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Icon name="bookmark" size={27} color={prop.saved?C.brandSoft:C.surface} stroke={1.6} fill={prop.saved?C.brandSoft:"none"}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Guardar</span>
+                  <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
+                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
                 </button>
                 <button onClick={()=>{
                   if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
@@ -3958,137 +3951,53 @@ function ChatPanel({convo,onBack}) {
 }
 
 function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) {
-  const tab = subTab || "chats";
-  const setTab = setSubTab || (()=>{});
-
-  // If a chat is selected, show ChatPanel
+  // Vale unificó Like = Guardado. Una sola lista con propiedades que te gustaron.
   if (selectedChat) {
     return <ChatPanel convo={selectedChat} onBack={()=>setSelectedChat(null)}/>;
   }
-
-  const liked=props.filter(p=>p.liked);const saved=props.filter(p=>p.saved);
-
-  // Chats internos deshabilitados — el contacto real vive en WhatsApp externo (wa.me).
-  // Cuando implementemos chat interno con Supabase, volver a sumar el tab acá.
-  const TABS = [
-    { id:"saved",    rank:1, label:"Guardados", count:saved.length,  color:C.brand,    wash:C.brandWash, desc:"Propiedades para revisitar" },
-    { id:"likes",    rank:2, label:"Likes",     count:liked.length,  color:C.muted,    wash:"#F1EBE1",   desc:"Primera impresión" },
-  ];
-  // Si el usuario tenía "chats" en state (viene de link viejo), redirigir a saved
-  if (tab === "chats") { setTab && setTab("saved"); }
-  // Fallback defensivo: si por algún motivo `tab` no matchea ningún TAB, usar el primero
-  const current = TABS.find(t=>t.id===tab) || TABS[0];
-
-  const RankDot = ({rank,color,active=false,size=20}) => (
-    <div style={{width:size,height:size,borderRadius:"50%",background:active?C.surface:color,border:active?`1.5px solid ${C.surface}`:"none",color:active?color:C.surface,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.52,fontWeight:600,fontFamily:Fb,flexShrink:0,letterSpacing:"-0.02em"}}>{rank}</div>
-  );
+  const items = props.filter(p=>p.liked);
 
   return (
     <div style={{padding:"0 14px",paddingBottom:86}}>
-      {/* Priority explainer */}
-      <div style={{display:"flex",alignItems:"center",gap:7,padding:"2px 4px 12px"}}>
-        <Icon name="sparkle" size={13} color={C.brand} stroke={1.6}/>
-        <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.04em"}}>
-          Ordenado por tu nivel de interés
-        </span>
-      </div>
-
-      {/* Priority tabs */}
-      <div style={{display:"flex",gap:6,marginBottom:6}}>
-        {TABS.map(t=>{
-          const active = tab===t.id;
-          return (
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"10px 6px",borderRadius:14,border:`1px solid ${active?t.color:C.line}`,background:active?t.color:C.surface,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all 0.15s"}}>
-              <RankDot rank={t.rank} color={t.color} active={active} size={22}/>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-                <span style={{fontSize:11.5,fontWeight:500,color:active?C.surface:C.ink,fontFamily:Fb,letterSpacing:"0.01em"}}>{t.label}</span>
-                <span style={{fontSize:9.5,fontWeight:400,color:active?"rgba(255,255,255,0.75)":C.muted,fontFamily:Fb,letterSpacing:"0.04em"}}>{t.count} {t.count===1?"ítem":"ítems"}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Current tab subtitle */}
-      <div style={{display:"flex",alignItems:"center",gap:8,padding:"14px 4px 12px"}}>
-        <div style={{width:5,height:5,borderRadius:"50%",background:current.color}}/>
-        <span style={{fontSize:10,color:current.color,fontFamily:Fb,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase"}}>
-          Prioridad {current.rank}
-        </span>
-        <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400}}>· {current.desc}</span>
-      </div>
-
-      {/* CHATS (Priority 1) */}
-      {tab==="chats"&&(
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {CONVOS.map(c=>(
-            <div key={c.id} onClick={()=>setSelectedChat&&setSelectedChat(c)} style={{padding:14,borderRadius:12,display:"flex",gap:12,alignItems:"center",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",position:"relative"}}>
-              {/* Left rank stripe */}
-              <div style={{position:"absolute",left:0,top:14,bottom:14,width:3,borderRadius:"0 3px 3px 0",background:C.forest}}/>
-              <div style={{position:"relative",flexShrink:0}}>
-                <Avatar initials={c.av} size={42} verified/>
-                {/* WhatsApp green badge on avatar */}
-                <div style={{position:"absolute",bottom:-2,right:-2,width:18,height:18,borderRadius:"50%",background:"#25D366",border:`2.5px solid ${C.surface}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <Icon name="whatsapp" size={9} color={C.surface} stroke={2}/>
-                </div>
-              </div>
-              <div style={{flex:1,overflow:"hidden"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>{c.name}</span>
-                  <span style={{fontSize:10,color:C.subtle,fontFamily:Fb,fontWeight:400}}>{c.time}</span>
-                </div>
-                <p style={{margin:"2px 0 0",fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.prop} — {c.last}</p>
-                {c.sched&&<div style={{marginTop:6,padding:"4px 10px",borderRadius:999,background:C.mintWash,display:"inline-flex",alignItems:"center",gap:6}}>
-                  <Icon name="calendar" size={11} color={C.forest} stroke={1.5}/>
-                  <span style={{fontSize:10.5,color:C.forest,fontFamily:Fb,fontWeight:500,letterSpacing:"0.02em"}}>Visita — {c.days.join(", ")} · {c.hrs}</span>
-                </div>}
-              </div>
-              {c.unread>0&&<div style={{width:18,height:18,borderRadius:"50%",background:C.forest,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9.5,fontWeight:500,color:C.surface,fontFamily:Fb}}>{c.unread}</div>}
-            </div>
-          ))}
-          <div style={{marginTop:6,padding:14,borderRadius:12,background:C.mintWash,border:`1px solid #CDDBCE`,display:"flex",gap:10}}>
-            <Icon name="whatsapp" size={18} color={C.forest} stroke={1.5}/>
-            <p style={{margin:0,fontSize:11.5,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>
-              <strong style={{color:C.forest,fontWeight:500}}>Chats por WhatsApp.</strong> Cuando alguien te contacta desde una propiedad, la conversación queda registrada acá para que tengas todo en un solo lugar.
-            </p>
+      {/* Header explicativo */}
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"4px 4px 16px"}}>
+        <Icon name="heart" size={16} color={C.terracotta} stroke={1.6} fill={C.terracotta}/>
+        <div>
+          <div style={{fontSize:13,fontWeight:500,color:C.ink,fontFamily:Fb}}>Tus guardados</div>
+          <div style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:400,marginTop:1}}>
+            {items.length} {items.length===1?"propiedad guardada":"propiedades guardadas"}
           </div>
         </div>
-      )}
+      </div>
 
-      {/* GUARDADOS (Priority 2) / LIKES (Priority 3) — grid with rank dot on each card */}
-      {tab!=="chats"&&(()=>{
-        const items = tab==="likes"?liked:saved;
-        const rank = current.rank;
-        const rankColor = current.color;
-        return (
-          <>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {items.map(p=>(
-                <div key={p.id} onClick={()=>onTap(p)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",background:C.surface,border:`1px solid ${C.line}`,position:"relative"}}>
-                  <div style={{position:"relative"}}>
-                    <img src={p.img} alt="" style={{width:"100%",height:110,objectFit:"cover",display:"block"}} />
-                    {/* Rank badge top-left on image */}
-                    <div style={{position:"absolute",top:6,left:6,padding:"3px 7px",borderRadius:999,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(8px)",display:"inline-flex",alignItems:"center",gap:4}}>
-                      <div style={{width:4,height:4,borderRadius:"50%",background:rankColor}}/>
-                      <span style={{fontSize:8.5,fontWeight:600,color:rankColor,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>P{rank}</span>
-                    </div>
-                  </div>
-                  <div style={{padding:10}}>
-                    <p style={{margin:0,fontSize:11,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{p.title}</p>
-                    <p style={{margin:"5px 0 0",fontSize:14,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{p.cur} {fmt(p.price)}</p>
-                  </div>
+      {/* Grid de propiedades guardadas */}
+      {items.length>0 ? (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {items.map(p=>(
+            <div key={p.id} onClick={()=>onTap(p)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",background:C.surface,border:`1px solid ${C.line}`,position:"relative"}}>
+              <div style={{position:"relative"}}>
+                <img src={p.img} alt="" style={{width:"100%",height:110,objectFit:"cover",display:"block"}} />
+                <div style={{position:"absolute",top:6,right:6,width:28,height:28,borderRadius:"50%",background:"rgba(255,255,255,0.92)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <Icon name="heart" size={13} color={C.terracotta} stroke={1.6} fill={C.terracotta}/>
                 </div>
-              ))}
-            </div>
-            {!items.length&&<div style={{textAlign:"center",padding:"48px 0",color:C.muted}}>
-              <div style={{margin:"0 auto 10px",width:44,height:44,borderRadius:"50%",background:current.wash,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <Icon name={tab==="likes"?"heart":"bookmark"} size={20} color={rankColor} stroke={1.5}/>
               </div>
-              <p style={{fontFamily:Fb,fontSize:12.5,fontWeight:400,margin:0}}>{tab==="likes"?"Dale like para guardar":"Guarda propiedades para verlas después"}</p>
-            </div>}
-          </>
-        );
-      })()}
+              <div style={{padding:10}}>
+                <p style={{margin:0,fontSize:11,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{p.title}</p>
+                <p style={{margin:"5px 0 0",fontSize:14,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{p.cur} {fmt(p.price)}</p>
+                {p.comuna && <p style={{margin:"3px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>{p.comuna}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{textAlign:"center",padding:"56px 20px",color:C.muted}}>
+          <div style={{margin:"0 auto 12px",width:56,height:56,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Icon name="heart" size={24} color={C.brand} stroke={1.5}/>
+          </div>
+          <p style={{fontFamily:Fs,fontSize:16,fontWeight:400,color:C.ink,margin:"0 0 4px"}}>Sin guardados todavía</p>
+          <p style={{fontFamily:Fb,fontSize:12.5,fontWeight:400,margin:0,lineHeight:1.5}}>Dale ❤️ a las propiedades que te gustan para volver a verlas acá.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -4148,10 +4057,8 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
     {id:"logout",icon:"logout",l:"Cerrar sesión"},
   ];
   const liked = props.filter(p=>p.liked).length;
-  const savedC = props.filter(p=>p.saved).length;
   const stats=[
-    {n:String(liked),l:"Likes",icon:"heart",onClick:()=>onGoTo&&onGoTo("saved",{savedSub:"likes"})},
-    {n:String(savedC),l:"Guardados",icon:"bookmark",onClick:()=>onGoTo&&onGoTo("saved",{savedSub:"saved"})},
+    {n:String(liked),l:"Guardados",icon:"heart",onClick:()=>onGoTo&&onGoTo("saved")},
     {n:String(props.length),l:"Publicados",icon:"house",onClick:()=>setTab("pub")},
   ];
   return (
@@ -4275,7 +4182,7 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
           </div>
         )}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
         {stats.map(s=>(
           <button key={s.l} onClick={s.onClick} style={{padding:"14px 6px",borderRadius:12,textAlign:"center",background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",transition:"all 0.15s",fontFamily:"inherit"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.brand;e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.line;e.currentTarget.style.transform="translateY(0)";}}>
             <div style={{display:"flex",justifyContent:"center",marginBottom:4}}>
