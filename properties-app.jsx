@@ -798,7 +798,7 @@ function AddressAutocomplete({ value, onChange, onSelect, placeholder, style }) 
 // ── Nav ──
 // ── Botón flotante "Mi asistente IA" — siempre visible en properties ──
 // Click → abre asistente Isidora en el shell C2C (/tasar?view=comprador)
-const SHELL_URL = import.meta.env.VITE_SHELL_URL || "https://greatdeal-platform.vercel.app";
+const SHELL_URL = import.meta.env.VITE_SHELL_URL || "https://c2cprops.com";
 function FloatingAssistant() {
   return (
     <a
@@ -895,7 +895,7 @@ function Header({sub,onNotif}) {
   const [open,setOpen]=useState(false);
   const [aiOpen,setAiOpen]=useState(false);
   const unreadCount = NOTIFS.filter(n=>n.unread).length;
-  const SHELL = (typeof window !== "undefined" && (import.meta.env.VITE_SHELL_URL || "https://greatdeal-platform.vercel.app")) || "";
+  const SHELL = (typeof window !== "undefined" && (import.meta.env.VITE_SHELL_URL || "https://c2cprops.com")) || "";
   return (
     <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(10,10,11,0.88)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"12px 18px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
       <a href={SHELL || "/"} style={{display:"flex",alignItems:"center",gap:8,textDecoration:"none",color:"inherit"}} title="Volver al inicio C2C">
@@ -4384,29 +4384,29 @@ function TopBarDesktop({active,go,onNotif}) {
   return (
     <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:120,background:"rgba(10,10,11,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
       {/* Logo C2C (clickable → home C2C) */}
-      <a href="https://greatdeal-platform.vercel.app" style={{display:"flex",flexDirection:"column",textDecoration:"none",lineHeight:1}} title="Volver al inicio C2C">
+      <a href="https://c2cprops.com" style={{display:"flex",flexDirection:"column",textDecoration:"none",lineHeight:1}} title="Volver al inicio C2C">
         <span style={{fontSize:26,fontWeight:500,fontFamily:Fs,color:C.ink,letterSpacing:"-0.5px"}}>C<em style={{fontStyle:"italic",color:C.brand,fontWeight:400}}>2</em>C</span>
         <span style={{fontSize:9.5,color:C.muted,fontFamily:Fb,letterSpacing:"0.2em",textTransform:"lowercase",marginTop:4,fontWeight:300}}>property market</span>
       </a>
 
       {/* Nav C2C unificado: Comprar / Vender / Mi asistente IA */}
       <nav style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
-        <a href="https://greatdeal-platform.vercel.app/comprar" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Comprar</a>
-        <a href="https://greatdeal-platform.vercel.app/vender" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Vender</a>
+        <a href="https://c2cprops.com/comprar" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Comprar</a>
+        <a href="https://c2cprops.com/vender" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Vender</a>
         <button onClick={(e)=>{e.stopPropagation();setAiOpen(!aiOpen)}} style={{display:"inline-flex",alignItems:"center",gap:6,color:C.text,background:`rgba(201,168,106,0.08)`,border:`1px solid ${C.brand}40`,padding:"7px 14px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",cursor:"pointer",fontFamily:Fb}}>
           <span style={{color:C.brand,fontSize:12}}>✦</span> Mi asistente IA <span style={{fontSize:10,transform:aiOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
         </button>
         {aiOpen && <>
           <div onClick={()=>setAiOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
           <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:280,background:"#0f0f10",border:`1px solid ${C.line}`,borderRadius:14,padding:8,boxShadow:`0 20px 50px rgba(0,0,0,0.8)`,zIndex:300}}>
-            <a href="https://greatdeal-platform.vercel.app/tasar?view=comprador" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
+            <a href="https://c2cprops.com/tasar?view=comprador" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
               <span style={{fontSize:20,lineHeight:1}}>🔍</span>
               <div>
                 <div style={{fontFamily:Fs,fontSize:16,fontWeight:500,color:C.ink}}>Ayuda en tu compra</div>
                 <div style={{fontSize:11,color:C.muted,fontFamily:Fb,marginTop:2}}>Isidora te encuentra la propiedad perfecta</div>
               </div>
             </a>
-            <a href="https://greatdeal-platform.vercel.app/tasar?view=vendedor" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
+            <a href="https://c2cprops.com/tasar?view=vendedor" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
               <span style={{fontSize:20,lineHeight:1}}>🏡</span>
               <div>
                 <div style={{fontFamily:Fs,fontSize:16,fontWeight:500,color:C.ink}}>Ayuda en tu venta</div>
