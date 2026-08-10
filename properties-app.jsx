@@ -906,7 +906,7 @@ function Header({sub,onNotif}) {
       </a>
       <nav style={{display:"flex",alignItems:"center",gap:4,position:"relative"}}>
         <a href={`${SHELL}/comprar`} style={{color:C.text,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Comprar</a>
-        <a href={`${SHELL}/vender`} style={{color:C.text,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Vender</a>
+        <a href={`${SHELL}/vender`} style={{color:C.text,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Publicar</a>
         <button onClick={(e)=>{e.stopPropagation();setAiOpen(!aiOpen)}} style={{display:"inline-flex",alignItems:"center",gap:5,color:C.text,background:`rgba(74,49,34,0.04)`,border:`1px solid rgba(74,49,34,0.18)`,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",cursor:"pointer",fontFamily:Fb}}>
           <span style={{color:C.brand,fontSize:11}}>✦</span> Mi asistente IA <span style={{fontSize:9,transform:aiOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
         </button>
@@ -4131,7 +4131,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
 
       {panel==="ayuda" && <Sheet title="Centro de ayuda" onClose={()=>setPanel(null)}>
         {[
-          {q:"¿Cómo publico una propiedad?",a:"Toca el botón '+' al centro de la barra inferior y completa los 6 pasos del flujo Vender. Te guiamos foto por foto y video por video."},
+          {q:"¿Cómo publico una propiedad?",a:"Andá a Publicar en el menú superior y completá los 3 pasos: datos, video y precio. Te guiamos foto por foto y video por video."},
           {q:"¿Es gratis publicar?",a:"Sí. El plan Gratis te permite hasta 3 publicaciones activas. Próximamente lanzamos el plan Premium con más funcionalidades."},
           {q:"¿Cómo funciona la coordinación de visitas?",a:"En tu perfil defines tus días y horarios disponibles. Cuando un comprador interesado quiere visitar, cruzamos las dos agendas automáticamente."},
           {q:"¿Mis datos están seguros?",a:"Sí. Tu información personal solo se comparte con interesados verificados. Tu número de WhatsApp solo aparece cuando confirmas el contacto."},
@@ -4407,7 +4407,7 @@ function TopBarDesktop({active,go,onNotif}) {
       {/* Nav C2C unificado: Comprar / Vender / Mi asistente IA */}
       <nav style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
         <a href="https://c2cprops.com/comprar" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Comprar</a>
-        <a href="https://c2cprops.com/vender" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Vender</a>
+        <a href="https://c2cprops.com/vender" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Publicar</a>
         <button onClick={(e)=>{e.stopPropagation();setAiOpen(!aiOpen)}} style={{display:"inline-flex",alignItems:"center",gap:6,color:C.text,background:`rgba(201,168,106,0.08)`,border:`1px solid ${C.brand}40`,padding:"7px 14px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",cursor:"pointer",fontFamily:Fb}}>
           <span style={{color:C.brand,fontSize:12}}>✦</span> Mi asistente IA <span style={{fontSize:10,transform:aiOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
         </button>
@@ -5189,7 +5189,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
               <div style={{width:48,height:48,borderRadius:"50%",background:"#FCEEDC",border:"1px solid #E8B996",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12}}>
                 <Icon name="sparkle" size={22} color="#A6601C" stroke={1.7}/>
               </div>
-              <h3 style={{margin:"0 0 6px",fontSize:17,fontWeight:500,color:C.ink,fontFamily:Fb}}>¿Salir de Vender?</h3>
+              <h3 style={{margin:"0 0 6px",fontSize:17,fontWeight:500,color:C.ink,fontFamily:Fb}}>¿Salir de Publicar?</h3>
               <p style={{margin:"0 0 14px",fontSize:13,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.5}}>Tienes una propiedad en proceso. Tu <strong style={{color:C.forest}}>borrador queda guardado</strong> automáticamente — podés volver cuando quieras y seguir donde dejaste.</p>
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>setNavConfirm(null)} style={{flex:1,padding:12,borderRadius:11,background:C.surface,border:`1px solid ${C.line}`,color:C.text,fontSize:12.5,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Seguir editando</button>
