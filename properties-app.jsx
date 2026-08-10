@@ -799,10 +799,12 @@ function AddressAutocomplete({ value, onChange, onSelect, placeholder, style }) 
 // ── Botón flotante "Mi asistente IA" — siempre visible en properties ──
 // Click → abre asistente Isidora en el shell C2C (/tasar?view=comprador)
 const SHELL_URL = import.meta.env.VITE_SHELL_URL || "https://c2cprops.com";
-function FloatingAssistant() {
+// Botón flotante que abre el chat de Isidora inline (sin sacar de la página).
+// Estilo tipo widget WhatsApp/Joinchat: pill dorada abajo derecha, click abre chat popup.
+function FloatingAssistant({ onOpen }) {
   return (
-    <a
-      href={`${SHELL_URL}/tasar?view=comprador`}
+    <button
+      onClick={onOpen}
       title="Asesor de compra — Isidora te ayuda"
       style={{
         position: "fixed",
@@ -818,7 +820,8 @@ function FloatingAssistant() {
         alignItems: "center",
         gap: 9,
         cursor: "pointer",
-        textDecoration: "none",
+        border: "none",
+        fontFamily: "inherit",
         transition: "transform 0.2s, box-shadow 0.2s",
       }}
       onMouseEnter={(e) => {
@@ -861,8 +864,291 @@ function FloatingAssistant() {
           50% { transform: scale(1.15); opacity: 0.85; }
         }
       `}</style>
-    </a>
+    </button>
   );
+}
+
+// ─── Chat popup inline con Isidora (asesora de compra IA) ───────────────
+// Estilo tipo widget WhatsApp/Joinchat: header dorado, mensajes en burbujas,
+// preguntas guiadas con botones. Al terminar aplica filtros al feed o abre WhatsApp.
+function IsidoraChat({ onClose, onApplyFilters }) {
+  const [step, setStep] = React.useState(0);
+  const [answers, setAnswers] = React.useState({});
+  const [msgs, setMsgs] = React.useState([
+    { from: "isi", text: "¡Hola! Soy Isidora 👋 tu asesora de compra de C2C." },
+    { from: "isi", text: "Contame en 30 segundos qué buscás y te muestro las mejores opciones." },
+  ]);
+  const listRef = React.useRef(null);
+  React.useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [msgs]);
+
+  const pushIsi  = (t) => setMsgs(m => [...m, { from: "isi", text: t }]);
+  const pushUser = (t) => setMsgs(m => [...m, { from: "user", text: t }]);
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const askNext = async (userText, isiTexts, nextStep, patch = {}) => {
+    pushUser(userText);
+    setAnswers(a => ({ ...a, ...patch }));
+    await sleep(400);
+    for (const t of isiTexts) { pushIsi(t); await sleep(500); }
+    setStep(nextStep);
+  };
+
+  // Preguntas guiadas
+  const questions = [
+    {
+      key: "operacion",
+      text: "¿Buscás para comprar o para arrendar?",
+      options: [
+        { label: "🏷️ Comprar", value: "venta" },
+        { label: "🔑 Arrendar", value: "arriendo" },
+      ],
+    },
+    {
+      key: "tipo",
+      text: "¿Qué tipo de propiedad?",
+      options: [
+        { label: "🏠 Casa", value: "Casa" },
+        { label: "🏢 Departamento", value: "Departamento" },
+        { label: "🌾 Parcela", value: "Parcela" },
+        { label: "🏬 Sitio", value: "Sitio" },
+        { label: "🤔 No lo sé aún", value: "" },
+      ],
+    },
+    {
+      key: "comuna",
+      text: "¿En qué comuna te interesa?",
+      type: "text",
+      placeholder: "Ej: Vitacura, Las Condes",
+    },
+    {
+      key: "presupuesto",
+      text: "¿Cuál es tu presupuesto máximo?",
+      options: [
+        { label: "Hasta UF 3.000", value: 3000 },
+        { label: "UF 3.000 – 6.000", value: 6000 },
+        { label: "UF 6.000 – 10.000", value: 10000 },
+        { label: "Más de UF 10.000", value: 25000 },
+        { label: "Sin límite", value: 0 },
+      ],
+    },
+    {
+      key: "beds",
+      text: "¿Cuántos dormitorios mínimo?",
+      options: [
+        { label: "Indiferente", value: 0 },
+        { label: "1+", value: 1 },
+        { label: "2+", value: 2 },
+        { label: "3+", value: 3 },
+        { label: "4+", value: 4 },
+      ],
+    },
+  ];
+
+  const q = questions[step];
+  const isDone = step >= questions.length;
+
+  // Cuando termina, aplicar filtros y mostrar resumen
+  React.useEffect(() => {
+    if (isDone && !answers._applied) {
+      const a = answers;
+      const summary = [
+        a.tipo && `Tipo: ${a.tipo}`,
+        a.comuna && `Comuna: ${a.comuna}`,
+        a.presupuesto ? `Hasta UF ${a.presupuesto.toLocaleString('es-CL')}` : "Sin límite de precio",
+        a.beds ? `${a.beds}+ dormitorios` : "Cualquier cantidad de dorms",
+      ].filter(Boolean).join(" · ");
+      setTimeout(() => {
+        pushIsi(`Listo, buscando ${a.operacion === 'arriendo' ? 'para arriendo' : 'para comprar'}: ${summary}`);
+        setTimeout(() => pushIsi("Filtré el feed con tus preferencias. Deslizá abajo para ver las propiedades que coinciden 👇"), 700);
+      }, 300);
+      setAnswers(a => ({ ...a, _applied: true }));
+      // Aplicar los filtros al feed en el componente padre
+      if (onApplyFilters) {
+        onApplyFilters({
+          operacion: a.operacion || "venta",
+          tipo: a.tipo || "",
+          comuna: a.comuna || "",
+          presupuestoMax: a.presupuesto || 0,
+          beds: a.beds || 0,
+        });
+      }
+    }
+  }, [isDone]);
+
+  return (
+    <div style={{
+      position: "fixed",
+      bottom: 140,
+      right: 18,
+      width: 380,
+      maxWidth: "calc(100vw - 24px)",
+      height: 540,
+      maxHeight: "calc(100vh - 160px)",
+      background: C.surface,
+      borderRadius: 18,
+      boxShadow: `0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px ${C.line}`,
+      zIndex: 300,
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      animation: "chatSlideIn 0.25s ease",
+    }}>
+      <style>{`
+        @keyframes chatSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes bubbleIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      {/* Header */}
+      <div style={{
+        background: `linear-gradient(135deg, ${C.brand} 0%, ${C.brandSoft} 100%)`,
+        padding: "14px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+      }}>
+        <div style={{
+          width: 42, height: 42, borderRadius: "50%",
+          background: C.surface,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: Fs, fontSize: 20, fontWeight: 500, color: C.brand,
+          flexShrink: 0,
+        }}>I</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: Fs, fontSize: 16, fontWeight: 500, color: C.surface, letterSpacing: "-0.01em" }}>Isidora</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.85)", fontFamily: Fb, display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }}/>
+            En línea · Asesora de compra
+          </div>
+        </div>
+        <button onClick={onClose} style={{
+          width: 32, height: 32, borderRadius: "50%",
+          background: "rgba(255,255,255,0.2)",
+          border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: C.surface, fontSize: 18, fontWeight: 400,
+        }}>×</button>
+      </div>
+
+      {/* Mensajes */}
+      <div ref={listRef} style={{
+        flex: 1,
+        overflowY: "auto",
+        padding: "16px 14px",
+        background: C.bg,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}>
+        {msgs.map((m, i) => (
+          <div key={i} style={{
+            alignSelf: m.from === "isi" ? "flex-start" : "flex-end",
+            maxWidth: "82%",
+            padding: "9px 13px",
+            borderRadius: m.from === "isi" ? "14px 14px 14px 4px" : "14px 14px 4px 14px",
+            background: m.from === "isi" ? C.surface : C.brand,
+            color: m.from === "isi" ? C.ink : C.surface,
+            fontSize: 13.5,
+            fontFamily: Fb,
+            lineHeight: 1.4,
+            boxShadow: `0 1px 2px rgba(0,0,0,0.06)`,
+            animation: "bubbleIn 0.25s ease",
+          }}>{m.text}</div>
+        ))}
+      </div>
+
+      {/* Área de input / botones de pregunta */}
+      <div style={{
+        padding: "10px 12px",
+        background: C.surface,
+        borderTop: `1px solid ${C.line}`,
+      }}>
+        {!isDone && q && q.type !== "text" && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {q.options.map(opt => (
+              <button key={String(opt.value)} onClick={() => askNext(opt.label, [], step + 1, { [q.key]: opt.value }).then(() => {
+                const nq = questions[step + 1];
+                if (nq) setTimeout(() => pushIsi(nq.text), 500);
+              })} style={{
+                padding: "8px 14px", borderRadius: 999,
+                background: C.brandWash, border: `1px solid ${C.line}`,
+                color: C.ink, fontSize: 12.5, fontWeight: 500,
+                fontFamily: Fb, cursor: "pointer",
+              }}>{opt.label}</button>
+            ))}
+          </div>
+        )}
+        {!isDone && q && q.type === "text" && (
+          <ChatTextInput placeholder={q.placeholder} onSend={(val) => {
+            if (!val.trim()) return;
+            askNext(val, [], step + 1, { [q.key]: val.trim() }).then(() => {
+              const nq = questions[step + 1];
+              if (nq) setTimeout(() => pushIsi(nq.text), 500);
+            });
+          }} />
+        )}
+        {isDone && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <button onClick={onClose} style={{
+              padding: "10px 14px", borderRadius: 10,
+              background: C.brand, border: "none", color: C.surface,
+              fontSize: 13, fontWeight: 600, fontFamily: Fb, cursor: "pointer",
+            }}>Ver propiedades →</button>
+            <a href={`https://wa.me/56986420055?text=${encodeURIComponent("Hola, vengo de C2C props y quiero más ayuda para buscar propiedad")}`} target="_blank" rel="noreferrer" style={{
+              padding: "9px 14px", borderRadius: 10,
+              background: "transparent", border: `1px solid ${C.line}`, color: C.text,
+              fontSize: 12.5, fontWeight: 500, fontFamily: Fb, cursor: "pointer",
+              textDecoration: "none", textAlign: "center",
+            }}>💬 Prefiero hablar por WhatsApp</a>
+          </div>
+        )}
+        <div style={{ fontSize: 9.5, color: C.muted, fontFamily: Fb, marginTop: 8, textAlign: "center", letterSpacing: "0.06em", textTransform: "uppercase" }}>Powered by C2C · Asistente IA</div>
+      </div>
+
+      {/* Trigger inicial: cuando se abre el chat, mostrar la primera pregunta */}
+      <FirstQuestionTrigger step={step} q={q} pushIsi={pushIsi} msgs={msgs} />
+    </div>
+  );
+}
+
+// Small helper: input de texto para preguntas tipo texto
+function ChatTextInput({ placeholder, onSend }) {
+  const [val, setVal] = React.useState("");
+  return (
+    <div style={{ display: "flex", gap: 6 }}>
+      <input
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") { onSend(val); setVal(""); } }}
+        placeholder={placeholder || "Escribí tu respuesta…"}
+        style={{
+          flex: 1, padding: "10px 12px", borderRadius: 999,
+          background: C.brandWash, border: `1px solid ${C.line}`,
+          color: C.ink, fontSize: 13, fontFamily: Fb, outline: "none",
+        }}
+      />
+      <button onClick={() => { onSend(val); setVal(""); }} disabled={!val.trim()} style={{
+        width: 40, height: 40, borderRadius: "50%",
+        background: val.trim() ? C.brand : C.line,
+        border: "none", cursor: val.trim() ? "pointer" : "default",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: C.surface, fontSize: 16,
+      }}>→</button>
+    </div>
+  );
+}
+
+// Efecto: cuando cambia el step, si es la primera vez que se pide una pregunta, mostrarla
+function FirstQuestionTrigger({ step, q, pushIsi, msgs }) {
+  React.useEffect(() => {
+    if (!q) return;
+    // Solo pushear la pregunta si aún no está en los mensajes
+    const alreadyAsked = msgs.some(m => m.from === "isi" && m.text === q.text);
+    if (!alreadyAsked && step === 0) {
+      setTimeout(() => pushIsi(q.text), 800);
+    }
+  }, [step]);
+  return null;
 }
 
 function Nav({active,go}) {
@@ -4978,6 +5264,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [sellHasDraft,setSellHasDraft]=useState(false);
   const [navConfirm,setNavConfirm]=useState(null); // pending tab to navigate to
   const [guestPromptFor,setGuestPromptFor]=useState(null); // texto a mostrar cuando un invitado intenta hacer algo de auth
+  const [isidoraOpen,setIsidoraOpen]=useState(false); // chat popup inline de Isidora (asesora de compra)
   // ─── Signup rápido (nombre + WA + código skippable) ───
   const [signupName,setSignupName]=useState("");
   const [signupWa,setSignupWa]=useState("");
@@ -5176,7 +5463,23 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         )}
         </div>
         <div className="mob-nav"><Nav active={tab} go={go} /></div>
-        <FloatingAssistant />
+        {!isidoraOpen && <FloatingAssistant onOpen={()=>setIsidoraOpen(true)} />}
+        {isidoraOpen && <IsidoraChat
+          onClose={()=>setIsidoraOpen(false)}
+          onApplyFilters={(prefs)=>{
+            // Aplicar filtros al feed + navegar a Explorar
+            if (prefs.operacion) setFOperacion(prefs.operacion);
+            if (prefs.tipo) setFType(prefs.tipo);
+            setFilters(f => ({
+              ...f,
+              priceMax: prefs.presupuestoMax ? String(prefs.presupuestoMax) : "",
+              beds: prefs.beds ? String(prefs.beds) : "",
+              currency: "UF",
+            }));
+            setQ(prefs.comuna || "");
+            setTab("feed");
+          }}
+        />}
         <UserCornerBadge me={me} onClick={()=>go("profile")} />
 
         {/* Toast feedback */}
