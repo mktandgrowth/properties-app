@@ -927,6 +927,13 @@ function Header({sub,onNotif}) {
                 <div style={{fontSize:10.5,color:C.muted,fontFamily:Fb,marginTop:2}}>Valentina tasa gratis</div>
               </div>
             </a>
+            <a href="https://vender.c2cprops.com/?mode=editor" style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:10,textDecoration:"none",color:C.text}}>
+              <span style={{fontSize:18,lineHeight:1}}>🎬</span>
+              <div>
+                <div style={{fontFamily:Fs,fontSize:14,fontWeight:500,color:C.ink}}>Editor de videos</div>
+                <div style={{fontSize:10.5,color:C.muted,fontFamily:Fb,marginTop:2}}>Armá tu reel y descargalo</div>
+              </div>
+            </a>
           </div>
         </>}
       </nav>
@@ -2483,13 +2490,17 @@ function mapDbPropToUi(row) {
     beds: row.beds || 0,
     suites: row.suites || 0,
     baths: row.baths || 0,
-    parks: row.parks || 0,
+    // Compat: nombres nuevos (parking) desde publish backend + viejos (parks) del sell interno
+    parks: Number(row.parking ?? row.parks) || 0,
     area: Number(row.area) || 0,
-    areaTerreno: Number(row.area_terreno) || 0,
+    areaTerreno: Number(row.terreno_m2 ?? row.area_terreno) || 0,
     areaTotal: Number(row.area_total) || 0,
     hectareas: Number(row.hectareas) || 0,
-    nuevo: !!row.nuevo,
-    amenities: row.amenities || [],
+    // "nuevo": ahora unificamos con `condition` (nuevo|usado) — retrocompatible con boolean `nuevo`
+    nuevo: row.condition ? row.condition === "nuevo" : !!row.nuevo,
+    condition: row.condition || (row.nuevo === true ? "nuevo" : row.nuevo === false ? "usado" : null),
+    // Amenities/features: unificamos — publish nuevo escribe `features`, sell interno viejo `amenities`
+    amenities: Array.isArray(row.features) && row.features.length ? row.features : (row.amenities || []),
     title: row.title || "",
     desc: row.description || "",
     img: row.thumbnail_url || (row.photo_urls && row.photo_urls[0]) || null,
@@ -2498,7 +2509,7 @@ function mapDbPropToUi(row) {
     liked: false,
     saved: false,
     wa: row.contact_wa || row.owner?.wa || "",
-    tags: (row.amenities || []).slice(0,3),
+    tags: (Array.isArray(row.features) && row.features.length ? row.features : (row.amenities || [])).slice(0,3),
     photos: (row.photo_urls || []).length,
     hasVideo: !!row.video_url || (row.video_take_urls && Object.keys(row.video_take_urls).length > 0),
     videoFile: row.video_url || null,
@@ -4021,7 +4032,10 @@ function Sheet({title,onClose,children}){
 }
 
 // ═══ PROFILE ═══
-function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe,onOpenProp,onEditProp,onDeleteProp}) {
+function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe,onOpenProp,onEditProp,onDeleteProp}) {
+  // props = propiedades PUBLICADAS por este usuario (para el tab Publicaciones)
+  // allProps = TODAS las propiedades del feed (para contar likes/guardados del user en propiedades ajenas)
+  const _allProps = allProps || props;
   const [gear,setGear]=useState(false);
   const [editProfile,setEditProfile]=useState(false);
   const [propMenu,setPropMenu]=useState(null); // prop being shown 3-dot menu
@@ -4056,7 +4070,8 @@ function Profile({props,subTab,setSubTab,onGoTo,initialPanel,clearPanel,me,setMe
     {id:"ayuda", icon:"help", l:"Centro de ayuda"},
     {id:"logout",icon:"logout",l:"Cerrar sesión"},
   ];
-  const liked = props.filter(p=>p.liked).length;
+  // Guardados = TODAS las propiedades con like (independiente de quien las publicó)
+  const liked = _allProps.filter(p=>p.liked).length;
   const stats=[
     {n:String(liked),l:"Guardados",icon:"heart",onClick:()=>onGoTo&&onGoTo("saved")},
     {n:String(props.length),l:"Publicados",icon:"house",onClick:()=>setTab("pub")},
@@ -4411,6 +4426,13 @@ function TopBarDesktop({active,go,onNotif}) {
               <div>
                 <div style={{fontFamily:Fs,fontSize:16,fontWeight:500,color:C.ink}}>Ayuda en tu venta</div>
                 <div style={{fontSize:11,color:C.muted,fontFamily:Fb,marginTop:2}}>Valentina tasa y te asesora gratis</div>
+              </div>
+            </a>
+            <a href="https://vender.c2cprops.com/?mode=editor" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
+              <span style={{fontSize:20,lineHeight:1}}>🎬</span>
+              <div>
+                <div style={{fontFamily:Fs,fontSize:16,fontWeight:500,color:C.ink}}>Editor de videos</div>
+                <div style={{fontSize:11,color:C.muted,fontFamily:Fb,marginTop:2}}>Armá tu reel con IA y descargalo</div>
               </div>
             </a>
           </div>
@@ -5105,13 +5127,12 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile
               props={(function() {
-                // Filtrar solo las propiedades del owner actual:
-                //  - Si hay auth user (me.id), filtrar por _ownerId === me.id
-                //  - Si es guest pero tiene guestOwnerId (viene de greatdeal-app), usar ese
+                // "props" en Profile = publicaciones del owner actual (para el tab Publicaciones)
                 const ownerId = me?.id || guestOwnerId;
-                if (!ownerId) return props; // fallback: mostrar todas (no debería pasar)
+                if (!ownerId) return props;
                 return props.filter(p => p._ownerId === ownerId);
               })()}
+              allProps={props}
               subTab={profileSubTab}
               setSubTab={setProfileSubTab}
               onGoTo={goTo}
