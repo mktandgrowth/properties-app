@@ -4964,7 +4964,16 @@ export default function App() {
   const { session, profile, setProfile, loading: authLoading } = useAuth();
   // Guest mode — explorar la app sin crear cuenta
   const [guestMode, setGuestMode] = useState(() => {
-    try { return window.localStorage.getItem("guest_mode") === "1"; } catch(e) { return false; }
+    try {
+      // Llegada desde "publicar" (vender.c2cprops.com) o link con ?guest=1:
+      // entrar como invitado de inmediato, sin interponer el login.
+      const qs = new URLSearchParams(window.location.search);
+      if (qs.get("guest") === "1" || qs.get("justPublished")) {
+        window.localStorage.setItem("guest_mode", "1");
+        return true;
+      }
+      return window.localStorage.getItem("guest_mode") === "1";
+    } catch(e) { return false; }
   });
   // Buyer profile — quick signup (nombre + WA), sin Supabase Auth
   const [buyerProfile, setBuyerProfile] = useState(() => {
