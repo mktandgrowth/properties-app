@@ -2212,10 +2212,6 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
 
               {/* Action column — right side */}
               <div style={{position:"absolute",right:12,bottom:250,display:"flex",flexDirection:"column",gap:22,alignItems:"center",zIndex:10}}>
-                <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
-                </button>
                 <button onClick={()=>{
                   if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
                   window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
@@ -2227,26 +2223,14 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
 
               {/* Bottom info panel */}
               <div key={isActive?`info-${idx}`:`info-static-${i}`} style={{position:"absolute",bottom:80,left:0,right:0,zIndex:10,padding:"0 16px",animation:isActive?"reelInfoIn 0.45s ease 0.1s both":"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <Avatar initials={prop.avatar} size={28} bg="rgba(255,255,255,0.22)"/>
-                  <span style={{fontSize:12,fontWeight:500,color:C.surface,fontFamily:Fb,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.user}</span>
-                  <span style={{width:3,height:3,borderRadius:"50%",background:"rgba(255,255,255,0.4)"}}/>
-                  <span style={{fontSize:10.5,color:"rgba(255,255,255,0.7)",fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{rl.views} vistas</span>
+                <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>
+                  {prop.price>0
+                    ? (<>{prop.cur} {fmt(prop.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {prop.vanityLocation||prop.comuna}</span></>)
+                    : (<span style={{fontSize:18}}>{prop.vanityLocation||prop.comuna}</span>)}
                 </div>
-                <div style={{display:"inline-flex",alignItems:"center",padding:"4px 10px",borderRadius:999,background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.2)`,marginBottom:7}}>
-                  <span style={{fontSize:9,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>{prop.type}</span>
-                </div>
-                <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>{prop.cur} {fmt(prop.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {prop.comuna}</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:16,marginTop:10}}>
-                  {prop.beds>0&&<Stat icon="bed" val={prop.beds}/>}
-                  {prop.baths>0&&<Stat icon="bath" val={prop.baths}/>}
-                  <Stat icon="ruler" val={`${prop.area} m² útil`}/>
-                  {(prop.areaTotal || prop.areaTerreno) > 0 && <Stat icon="terrace" val={`${prop.areaTotal||prop.areaTerreno} m² tot`}/>}
-                </div>
-                <p style={{fontSize:12.5,color:"rgba(255,255,255,0.9)",fontFamily:Fb,fontWeight:400,margin:"10px 0 0",lineHeight:1.45,textShadow:"0 1px 6px rgba(0,0,0,0.6)"}}>{rl.caption}</p>
-                <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:12,padding:"13px 18px",borderRadius:12,background:C.surface,border:"none",cursor:"pointer",color:C.ink,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:"0 6px 20px rgba(0,0,0,0.35)"}}>
+                <button onClick={()=>onOpen&&onOpen(prop)} style={{marginTop:10,padding:"8px 14px",borderRadius:999,background:"rgba(0,0,0,0.35)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,0.25)",cursor:"pointer",color:"rgba(255,255,255,0.92)",fontSize:12,fontWeight:500,fontFamily:Fb,display:"inline-flex",alignItems:"center",gap:6}}>
                   Ver ficha completa
-                  <Icon name="arrowRight" size={15} color={C.ink} stroke={1.8}/>
+                  <Icon name="arrowRight" size={13} color="rgba(255,255,255,0.92)" stroke={1.8}/>
                 </button>
               </div>
             </div>
@@ -2266,20 +2250,6 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         <Icon name={muted?"volumeOff":"volume"} size={18} color={C.surface} stroke={1.8}/>
       </button>
 
-      {/* Pager indicator + arrows on the LEFT side, vertically centered (fixed) */}
-      <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:20}}>
-        <button onClick={()=>goPrev()} disabled={idx===0} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.3:1}}>
-          <Icon name="chevronUp" size={16} color={C.surface} stroke={1.8}/>
-        </button>
-        <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
-          {reelFeed.map((_,i)=>(
-            <div key={i} style={{width:3,height:i===idx?16:6,borderRadius:2,background:i===idx?C.surface:"rgba(255,255,255,0.4)",transition:"all 0.2s"}}/>
-          ))}
-        </div>
-        <button onClick={()=>goNext()} disabled={idx===reelFeed.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===reelFeed.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===reelFeed.length-1?0.3:1}}>
-          <Icon name="chevronDown" size={16} color={C.surface} stroke={1.8}/>
-        </button>
-      </div>
 
     </div>
   );
@@ -5472,7 +5442,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         )}
         </div>
         <div className="mob-nav"><Nav active={tab} go={go} /></div>
-        {!isidoraOpen && <FloatingAssistant onOpen={()=>setIsidoraOpen(true)} />}
+        {!isidoraOpen && tab !== "reels" && <FloatingAssistant onOpen={()=>setIsidoraOpen(true)} />}
         {isidoraOpen && <IsidoraChat
           onClose={()=>setIsidoraOpen(false)}
           onApplyFilters={(prefs)=>{
