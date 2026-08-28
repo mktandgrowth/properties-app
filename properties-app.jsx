@@ -326,6 +326,44 @@ const AMENITIES = [
 // Format precios — siempre número completo con puntos (no más "25K")
 const fmt = n => (n||0).toLocaleString("es-CL");
 
+// ── Privacidad de ubicación ──
+// El formulario de publicación le promete al vendedor que la dirección exacta
+// no se publica. `p.loc` (calle + número), `p.street`, `p.number` y el par
+// lat/lng exacto son datos del dueño: NUNCA se muestran en vistas públicas
+// (tarjetas, ficha, reels, mapa). Lo público es el "vanityLocation" que el
+// vendedor eligió y, si no puso ninguno, la comuna a secas.
+function publicLocation(p) {
+  if (!p) return "";
+  const vanity = String(p.vanityLocation || "").trim();
+  if (vanity) return vanity;
+  const comuna = String(p.comuna || "").trim();
+  if (comuna) return comuna;
+  // Sin comuna guardada: `loc` viene como "Calle 123, Comuna" — nos quedamos
+  // solo con el último tramo. Si no hay coma no arriesgamos y no mostramos nada.
+  const parts = String(p.loc || "").split(",").map(s => s.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : "";
+}
+
+// Radio (m) del círculo aproximado que reemplaza al pin exacto en mapas públicos.
+const APPROX_RADIUS_M = 500;
+
+// Centro aproximado para el mapa público: desplaza el punto real una distancia
+// fija en un ángulo derivado del id (determinístico — el mismo aviso siempre cae
+// en el mismo lugar) para que el centro del círculo no delate la dirección.
+function approxLatLng(p, radiusM = APPROX_RADIUS_M) {
+  if (!p || typeof p.lat !== "number" || typeof p.lng !== "number") return null;
+  const seed = String(p.id ?? "");
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  const angle = (h % 360) * Math.PI / 180;
+  const dist = radiusM * 0.5;
+  const cosLat = Math.cos(p.lat * Math.PI / 180) || 1;
+  return {
+    lat: p.lat + (dist * Math.cos(angle)) / 111320,
+    lng: p.lng + (dist * Math.sin(angle)) / (111320 * cosLat),
+  };
+}
+
 // ── Brand Logo (refined) ──
 const Logo = ({size=24,color=C.brand}) => (
   <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
@@ -397,6 +435,7 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
     volume: <><path d="M3 10v4a1 1 0 001 1h4l5 5V4l-5 5H4a1 1 0 00-1 1z"/><path d="M16 7a5 5 0 010 10M19 3a9 9 0 010 18"/></>,
     volumeOff: <><path d="M3 10v4a1 1 0 001 1h4l5 5V4l-5 5H4a1 1 0 00-1 1z"/><path d="M22 9l-5 5M22 14l-5-5"/></>,
     trash: <><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>,
+    share: <><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1"/></>,
     dots: <><circle cx="12" cy="6" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="12" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="18" r="1.4" fill={color} stroke="none"/></>,
   };
   return <svg {...s} style={{display:"block",flexShrink:0}}>{paths[name]}</svg>;
@@ -451,7 +490,10 @@ const MAP_STYLE = [
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#C4D9E0" }] },
 ];
 
-function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
+// `approximate`: dibuja un círculo de `radius` metros en vez del pin exacto y
+// limita el zoom, para no revelar la dirección. Es el modo obligatorio en las
+// vistas públicas; el pin exacto queda solo para el dueño (wizard de publicar).
+function MapView({ lat, lng, zoom = 15, height = 200, address = "", approximate = false, radius = APPROX_RADIUS_M }) {
   const ref = useRef(null);
   const loaded = useGoogleMaps();
   useEffect(() => {
@@ -463,7 +505,22 @@ function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
       zoomControl: true,
       styles: MAP_STYLE,
       gestureHandling: "cooperative",
+      ...(approximate ? { maxZoom: 15 } : {}),
     });
+    if (approximate) {
+      new window.google.maps.Circle({
+        map,
+        center: { lat, lng },
+        radius,
+        fillColor: "#4A3122",
+        fillOpacity: 0.16,
+        strokeColor: "#4A3122",
+        strokeOpacity: 0.55,
+        strokeWeight: 1.5,
+        clickable: false,
+      });
+      return;
+    }
     // Custom branded pin
     new window.google.maps.Marker({
       position: { lat, lng },
@@ -479,7 +536,7 @@ function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
       },
       title: address,
     });
-  }, [loaded, lat, lng, zoom, address]);
+  }, [loaded, lat, lng, zoom, address, approximate, radius]);
 
   if (!GMAPS_KEY) {
     return (
@@ -690,7 +747,10 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const loaded = useGoogleMaps();
-  const validProps = properties.filter(p => typeof p.lat === "number" && typeof p.lng === "number");
+  // Mapa público: cada aviso se ubica en su centro APROXIMADO, nunca en el pin real.
+  const validProps = properties
+    .map(p => { const c = approxLatLng(p); return c ? { ...p, lat: c.lat, lng: c.lng } : null; })
+    .filter(Boolean);
 
   useEffect(() => {
     if (!loaded || !ref.current || mapRef.current) return;
@@ -703,6 +763,7 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
       styles: MAP_STYLE,
       gestureHandling: "greedy",
       clickableIcons: false,
+      maxZoom: 15, // sin zoom de calle: el punto es aproximado
     });
     mapRef.current = map;
   }, [loaded]);
@@ -732,12 +793,25 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
       });
       marker.addListener("click", () => onSelectProperty && onSelectProperty(p));
       markersRef.current.push(marker);
+      // Halo de privacidad: comunica que la ubicación es aproximada.
+      const halo = new window.google.maps.Circle({
+        map: mapRef.current,
+        center: { lat: p.lat, lng: p.lng },
+        radius: APPROX_RADIUS_M,
+        fillColor: "#4A3122",
+        fillOpacity: 0.12,
+        strokeColor: "#4A3122",
+        strokeOpacity: 0.4,
+        strokeWeight: 1,
+        clickable: false,
+      });
+      markersRef.current.push(halo);
       bounds.extend({ lat: p.lat, lng: p.lng });
     });
     // Fit map to all markers
     if (validProps.length === 1) {
       mapRef.current.setCenter({ lat: validProps[0].lat, lng: validProps[0].lng });
-      mapRef.current.setZoom(14);
+      mapRef.current.setZoom(13);
     } else {
       mapRef.current.fitBounds(bounds, { top:40, left:40, right:40, bottom:40 });
     }
@@ -1466,7 +1540,7 @@ const initialFilters = () => ({
   nuevo:"", // "", "nuevo", "usado"
 });
 
-function Feed({props,onTap,onOpenReel}) {
+function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied}) {
   const [q,setQ]=useState("");
   const [fType,setFType]=useState("");
   const [fOperacion,setFOperacion]=useState("venta");
@@ -1477,6 +1551,23 @@ function Feed({props,onTap,onOpenReel}) {
   const [mapInfo,setMapInfo]=useState(false);
   const [filters,setFilters]=useState(initialFilters());
   const [draft,setDraft]=useState(initialFilters());
+
+  // Preferencias que llegan desde el chat de Isidora. El estado de los filtros
+  // vive acá adentro, así que MainApp las pasa como prop y las aplicamos con un
+  // efecto (antes MainApp llamaba a estos setters directo y tiraba ReferenceError).
+  useEffect(() => {
+    if (!applyPrefs) return;
+    if (applyPrefs.operacion) setFOperacion(applyPrefs.operacion);
+    if (applyPrefs.tipo) setFType(applyPrefs.tipo);
+    setFilters(f => ({
+      ...f,
+      priceMax: applyPrefs.presupuestoMax ? String(applyPrefs.presupuestoMax) : "",
+      beds: applyPrefs.beds ? String(applyPrefs.beds) : "",
+      currency: "UF",
+    }));
+    setQ(applyPrefs.comuna || "");
+    onPrefsApplied && onPrefsApplied();
+  }, [applyPrefs]);
 
   // Autocomplete suggestions for comuna
   const comunaSugs = q.length >= 1
@@ -1525,7 +1616,9 @@ function Feed({props,onTap,onOpenReel}) {
     if(fType&&p.type!==fType)return false;
     if(q){
       const s=q.toLowerCase();
-      if(!p.comuna.toLowerCase().includes(s)&&!p.loc.toLowerCase().includes(s)&&!p.title.toLowerCase().includes(s))return false;
+      // Nunca buscamos dentro de `p.loc`: la dirección exacta no es pública.
+      const hay = `${publicLocation(p)} ${p.comuna||""} ${p.region||""} ${p.vanityLocation||""} ${p.title||""}`.toLowerCase();
+      if(!hay.includes(s))return false;
     }
     // Price (in selected currency)
     const pp = priceIn(p,filters.currency);
@@ -1864,7 +1957,7 @@ function Feed({props,onTap,onOpenReel}) {
               <div style={{position:"absolute",bottom:0,left:0,right:0,padding:big?"14px 12px 10px":"10px 8px 7px",background:"linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.75) 100%)",color:C.surface}}>
                 <div style={{fontSize:big?9:8,fontWeight:500,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase",opacity:0.85,marginBottom:2}}>{p.type}</div>
                 <div style={{fontSize:big?16:12,fontWeight:400,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.15}}>{p.cur} {fmt(p.price)}</div>
-                <div style={{fontSize:big?10:9,fontFamily:Fb,fontWeight:400,opacity:0.85,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.comuna}</div>
+                <div style={{fontSize:big?10:9,fontFamily:Fb,fontWeight:400,opacity:0.85,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{publicLocation(p)}</div>
               </div>
             </div>
           );
@@ -1894,7 +1987,7 @@ function Feed({props,onTap,onOpenReel}) {
                 </div>
                 <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"10px 9px 8px",background:"linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.8) 100%)",color:C.surface}}>
                   <div style={{fontSize:11,fontWeight:500,fontFamily:Fs,letterSpacing:"-0.01em"}}>{p.cur} {fmt(p.price)}</div>
-                  <div style={{fontSize:9,fontFamily:Fb,fontWeight:400,opacity:0.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.comuna}</div>
+                  <div style={{fontSize:9,fontFamily:Fb,fontWeight:400,opacity:0.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{publicLocation(p)}</div>
                 </div>
               </div>
             ))}
@@ -1908,7 +2001,7 @@ function Feed({props,onTap,onOpenReel}) {
 }
 
 // ═══ DETAIL ═══
-function Detail({p,back,onLike,onSave}) {
+function Detail({p,back,onLike,onSave,onShare}) {
   const hasUploadedVideo = !!p.videoFile;
   const has4Takes = p.videoTakeFiles && Object.keys(p.videoTakeFiles).length > 0;
   return (
@@ -1943,7 +2036,7 @@ function Detail({p,back,onLike,onSave}) {
         <h2 style={{margin:"8px 0 4px",fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,lineHeight:1.2,letterSpacing:"-0.01em"}}>{p.title}</h2>
         <div style={{fontSize:30,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"10px 0 4px",letterSpacing:"-0.02em"}}>{p.cur} <span style={{fontWeight:500}}>{p.price.toLocaleString("es-CL")}</span></div>
         <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 16px"}}>
-          <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>{p.loc}
+          <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>{publicLocation(p)}
         </div>
         <div style={{display:"flex",gap:6,padding:"14px 0",borderTop:`1px solid ${C.line}`,borderBottom:`1px solid ${C.line}`,marginBottom:18}}>
           {p.beds>0&&<div style={{textAlign:"center",flex:1}}>
@@ -1966,9 +2059,19 @@ function Detail({p,back,onLike,onSave}) {
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:18}}>
           {p.tags.map(t=><span key={t} style={{fontSize:10.5,padding:"5px 12px",borderRadius:999,background:"transparent",border:`1px solid ${C.line}`,color:C.text,fontFamily:Fb,fontWeight:400}}>{t}</span>)}
         </div>
-        <div style={{borderRadius:12,overflow:"hidden",marginBottom:18,border:`1px solid ${C.line}`}}>
-          <MapView lat={p.lat} lng={p.lng} address={p.loc} height={180} zoom={15}/>
-        </div>
+        {(() => {
+          // Mapa público: círculo aproximado, nunca el pin de la dirección.
+          const c = approxLatLng(p);
+          if (!c) return null;
+          return (
+            <div style={{marginBottom:18}}>
+              <div style={{borderRadius:12,overflow:"hidden",border:`1px solid ${C.line}`}}>
+                <MapView lat={c.lat} lng={c.lng} address={publicLocation(p)} height={180} zoom={14} approximate/>
+              </div>
+              <p style={{margin:"7px 2px 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic",lineHeight:1.4}}>Ubicación aproximada — la dirección exacta se comparte al coordinar la visita.</p>
+            </div>
+          );
+        })()}
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`}}>
           <Avatar initials={p.avatar} size={42} verified/>
           <div style={{flex:1}}>
@@ -1987,6 +2090,9 @@ function Detail({p,back,onLike,onSave}) {
             window.open(waUrl(p.wa,`Hola ${p.user}, vi tu publicación "${p.title}" en properties. Me interesa coordinar una visita.`),"_blank");
           }} disabled={!p.wa} style={{flex:1,padding:14,borderRadius:12,background:p.wa?C.ink:C.line,border:"none",cursor:p.wa?"pointer":"default",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
             <Icon name="whatsapp" size={18} color={C.surface} stroke={1.6}/>WhatsApp
+          </button>
+          <button onClick={()=>onShare&&onShare(p)} title="Copiar el link de esta publicación" style={{width:50,height:50,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Icon name="share" size={17} color={C.text} stroke={1.6}/>
           </button>
           <button onClick={()=>onLike(p.id)} title={p.liked?"Quitar de guardados":"Guardar propiedad"} style={{width:50,height:50,borderRadius:12,background:p.liked?C.brandWash:C.surface,border:`1px solid ${p.liked?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
             <Icon name="heart" size={18} color={p.liked?C.terracotta:C.text} stroke={1.6} fill={p.liked?C.terracotta:"none"}/>
@@ -2069,7 +2175,7 @@ function CommentsSheet({propId, prop, onClose}) {
   );
 }
 
-function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
+function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
   // Dynamic reel feed: user-published props with video first + hardcoded REELS, dedup
   const reelFeed = (() => {
     const seenPropIds = new Set();
@@ -2154,8 +2260,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   }, [idx]);
 
   const Stat = ({icon,val}) => (
-    <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12.5,color:C.surface,fontFamily:Fb,fontWeight:500,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>
-      <Icon name={icon} size={15} color={C.surface} stroke={1.7}/>{val}
+    <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:C.text,fontFamily:Fb,fontWeight:400}}>
+      <Icon name={icon} size={14} color={C.brand} stroke={1.7}/>{val}
     </div>
   );
 
@@ -2172,7 +2278,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         ref={scrollRef}
         className="reels-scroll"
         style={{
-          height:"100vh",
+          height:"100%",
           overflowY:"scroll",
           scrollSnapType:"y mandatory",
           scrollBehavior:"smooth",
@@ -2194,59 +2300,75 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
               style={{
                 position:"relative",
                 width:"100%",
-                height:"100vh",
+                height:"100%",
                 overflow:"hidden",
                 background:"#000",
+                display:"flex",
+                flexDirection:"column",
                 scrollSnapAlign:"start",
                 scrollSnapStop:"always",
                 flexShrink:0,
               }}
             >
-              {/* Background: user's video if available, else property image */}
-              {reelVideoSrc ? (
-                <video src={reelVideoSrc} autoPlay={isActive} muted={muted} loop playsInline style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
-              ) : (
-                <img src={prop.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>
-              )}
-              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
+              {/* ── Marco del video ──
+                  object-fit: contain sobre negro: el video se ve entero, nunca
+                  se recorta ni desborda la pantalla. La info de la propiedad va
+                  en la franja de abajo, fuera de este marco, porque el video ya
+                  trae su propio texto quemado. */}
+              <div style={{position:"relative",flex:1,minHeight:0,background:"#000",overflow:"hidden"}}>
+                {reelVideoSrc ? (
+                  <video src={reelVideoSrc} poster={prop.img||undefined} autoPlay={isActive} muted={muted} loop playsInline style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
+                ) : (
+                  <img src={prop.img} alt="" style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
+                )}
+                {/* Scrim solo arriba, para que se lean el logo y el botón de mute */}
+                <div style={{position:"absolute",top:0,left:0,right:0,height:96,background:"linear-gradient(180deg,rgba(0,0,0,0.45) 0%,rgba(0,0,0,0) 100%)",pointerEvents:"none"}}/>
 
-              {/* Action column — right side */}
-              <div style={{position:"absolute",right:12,bottom:250,display:"flex",flexDirection:"column",gap:22,alignItems:"center",zIndex:10}}>
-                <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
-                </button>
-                <button onClick={()=>{
-                  if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
-                  window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
-                }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
-                  <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
-                </button>
+                {/* Action column — sobre el marco del video, a la derecha */}
+                <div style={{position:"absolute",right:12,bottom:16,display:"flex",flexDirection:"column",gap:20,alignItems:"center",zIndex:10}}>
+                  <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
+                  </button>
+                  <button onClick={()=>{
+                    if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
+                    window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
+                  }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
+                    <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
+                  </button>
+                  <button onClick={()=>onShare&&onShare(prop)} title="Copiar el link de esta publicación" style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <Icon name="share" size={27} color={C.surface} stroke={1.6}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Compartir</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Bottom info panel */}
-              <div key={isActive?`info-${idx}`:`info-static-${i}`} style={{position:"absolute",bottom:80,left:0,right:0,zIndex:10,padding:"0 16px",animation:isActive?"reelInfoIn 0.45s ease 0.1s both":"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <Avatar initials={prop.avatar} size={28} bg="rgba(255,255,255,0.22)"/>
-                  <span style={{fontSize:12,fontWeight:500,color:C.surface,fontFamily:Fb,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.user}</span>
-                  <span style={{width:3,height:3,borderRadius:"50%",background:"rgba(255,255,255,0.4)"}}/>
-                  <span style={{fontSize:10.5,color:"rgba(255,255,255,0.7)",fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{rl.views} vistas</span>
+              {/* ── Franja de info — FUERA del área del video ──
+                  El padding inferior deja libre la barra de navegación fija. */}
+              <div key={isActive?`info-${idx}`:`info-static-${i}`} style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.line}`,padding:"12px 16px calc(12px + 66px + env(safe-area-inset-bottom, 0px))",animation:isActive?"reelInfoIn 0.35s ease both":"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <Avatar initials={prop.avatar} size={24} bg={C.surface2}/>
+                  <span style={{fontSize:11.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{prop.user}</span>
+                  <span style={{width:3,height:3,borderRadius:"50%",background:C.subtle}}/>
+                  <span style={{fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{rl.views} vistas</span>
+                  <span style={{marginLeft:"auto",fontSize:9,fontWeight:500,color:C.muted,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase",padding:"3px 9px",borderRadius:999,border:`1px solid ${C.line}`}}>{prop.type}</span>
                 </div>
-                <div style={{display:"inline-flex",alignItems:"center",padding:"4px 10px",borderRadius:999,background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.2)`,marginBottom:7}}>
-                  <span style={{fontSize:9,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>{prop.type}</span>
+                <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1}}>{prop.cur} {fmt(prop.price)}</span>
+                  <span style={{fontSize:12.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{publicLocation(prop)}</span>
                 </div>
-                <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>{prop.cur} {fmt(prop.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {prop.comuna}</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:16,marginTop:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:14,marginTop:8,flexWrap:"wrap"}}>
                   {prop.beds>0&&<Stat icon="bed" val={prop.beds}/>}
                   {prop.baths>0&&<Stat icon="bath" val={prop.baths}/>}
                   <Stat icon="ruler" val={`${prop.area} m² útil`}/>
                   {(prop.areaTotal || prop.areaTerreno) > 0 && <Stat icon="terrace" val={`${prop.areaTotal||prop.areaTerreno} m² tot`}/>}
                 </div>
-                <p style={{fontSize:12.5,color:"rgba(255,255,255,0.9)",fontFamily:Fb,fontWeight:400,margin:"10px 0 0",lineHeight:1.45,textShadow:"0 1px 6px rgba(0,0,0,0.6)"}}>{rl.caption}</p>
-                <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:12,padding:"13px 18px",borderRadius:12,background:C.surface,border:"none",cursor:"pointer",color:C.ink,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:"0 6px 20px rgba(0,0,0,0.35)"}}>
+                {/* Una sola línea de texto: el video ya lleva su título quemado */}
+                <p style={{fontSize:12.5,color:C.text,fontFamily:Fb,fontWeight:400,margin:"8px 0 0",lineHeight:1.4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{prop.title || rl.caption}</p>
+                <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:10,padding:"12px 18px",borderRadius:12,background:C.ink,border:"none",cursor:"pointer",color:C.bg,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em"}}>
                   Ver ficha completa
-                  <Icon name="arrowRight" size={15} color={C.ink} stroke={1.8}/>
+                  <Icon name="arrowRight" size={15} color={C.bg} stroke={1.8}/>
                 </button>
               </div>
             </div>
@@ -4281,7 +4403,7 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
               <div style={{padding:10}}>
                 <p style={{margin:0,fontSize:11,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{p.title}</p>
                 <p style={{margin:"5px 0 0",fontSize:14,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{p.cur} {fmt(p.price)}</p>
-                {p.comuna && <p style={{margin:"3px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>{p.comuna}</p>}
+                {publicLocation(p) && <p style={{margin:"3px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>{publicLocation(p)}</p>}
               </div>
             </div>
           ))}
@@ -4517,7 +4639,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
                 <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.title}</p>
                 <p style={{margin:"3px 0 0",fontSize:13,color:C.ink,fontFamily:Fs,fontWeight:400}}>{p.cur} {fmt(p.price)}</p>
                 <div style={{display:"flex",gap:12,marginTop:6,fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>
-                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>{p.comuna||p.loc.split(",")[0]}</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>{p.loc || publicLocation(p)}</span>
                   <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="eye" size={11} color={C.muted} stroke={1.5}/>{p.nuevo?"Nueva":"1.2K"}</span>
                 </div>
               </div>
@@ -5080,6 +5202,12 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
       return p || null;
     } catch(e) { return null; }
   })();
+  // ?prop=<id> → link directo a un aviso. Se lee al cargar para abrir la ficha
+  // y se mantiene sincronizado con history.replaceState mientras esté abierta.
+  const initialPropId = (() => {
+    try { return new URLSearchParams(window.location.search).get("prop") || null; }
+    catch(e) { return null; }
+  })();
   // Owner ID viene de greatdeal-app (?owner=<uuid>) cuando publica sin login.
   // Lo guardamos en localStorage para que la app reconozca al vendedor sin auth
   // formal — todas las propiedades con ese owner_id son "suyas".
@@ -5204,6 +5332,56 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
 
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2000); };
 
+  // ─── Link por aviso (?prop=<id>) ───────────────────────────────────────────
+  // Al cargar con ?prop=<id>, abrimos esa ficha apenas la propiedad esté en
+  // `props` (los avisos de Supabase llegan después del primer render).
+  const deepLinkDone = useRef(false);
+  useEffect(() => {
+    if (deepLinkDone.current || !initialPropId) return;
+    const p = props.find(x => String(x.id) === String(initialPropId));
+    if (!p) return;
+    deepLinkDone.current = true;
+    setView({t:"d", p});
+  }, [props, initialPropId]);
+  // Mientras haya una ficha abierta, la URL apunta a ese aviso (link compartible).
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (view?.t === "d" && view.p?.id != null) url.searchParams.set("prop", String(view.p.id));
+      else url.searchParams.delete("prop");
+      if (url.toString() !== window.location.href) {
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
+    } catch(e) {}
+  }, [view]);
+  // URL canónica de un aviso: origen + path actual + ?prop=<id>.
+  const propUrl = (id) => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = ""; url.hash = "";
+      url.searchParams.set("prop", String(id));
+      return url.toString();
+    } catch(e) { return ""; }
+  };
+  const shareProp = async (p) => {
+    const link = p && p.id != null ? propUrl(p.id) : "";
+    if (!link) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        // Fallback para contextos sin clipboard API (http, WebViews viejos)
+        const ta = document.createElement("textarea");
+        ta.value = link; ta.setAttribute("readonly", "");
+        ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      showToast("Link copiado");
+    } catch(e) { showToast("No se pudo copiar el link"); }
+  };
+
   // ─── Cargar likes/saved del user autenticado desde Supabase ─────────────
   // Tabla `user_actions` (user_id text, prop_id uuid, action text, created_at)
   // Al montar (o cuando cambia el user), traemos sus acciones y marcamos las props.
@@ -5274,6 +5452,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [navConfirm,setNavConfirm]=useState(null); // pending tab to navigate to
   const [guestPromptFor,setGuestPromptFor]=useState(null); // texto a mostrar cuando un invitado intenta hacer algo de auth
   const [isidoraOpen,setIsidoraOpen]=useState(false); // chat popup inline de Isidora (asesora de compra)
+  const [feedPrefs,setFeedPrefs]=useState(null); // filtros que Isidora manda al Feed (se limpian al aplicarse)
   // ─── Signup rápido (nombre + WA + código skippable) ───
   const [signupName,setSignupName]=useState("");
   const [signupWa,setSignupWa]=useState("");
@@ -5415,10 +5594,10 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
           {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} />}
         </div>
         <div className="pc-content">
-        {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} />:(
+        {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} onShare={shareProp} />:(
           <>
-            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
-            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
+            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} applyPrefs={feedPrefs} onPrefsApplied={()=>setFeedPrefs(null)} />}
+            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} onShare={shareProp} startPropId={reelStart} />}
             {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps.filter(x=>x.id!==p.id)]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft} me={me}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile
@@ -5476,16 +5655,9 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         {isidoraOpen && <IsidoraChat
           onClose={()=>setIsidoraOpen(false)}
           onApplyFilters={(prefs)=>{
-            // Aplicar filtros al feed + navegar a Explorar
-            if (prefs.operacion) setFOperacion(prefs.operacion);
-            if (prefs.tipo) setFType(prefs.tipo);
-            setFilters(f => ({
-              ...f,
-              priceMax: prefs.presupuestoMax ? String(prefs.presupuestoMax) : "",
-              beds: prefs.beds ? String(prefs.beds) : "",
-              currency: "UF",
-            }));
-            setQ(prefs.comuna || "");
+            // Los filtros viven en Feed: le pasamos las prefs y navegamos a Explorar.
+            // Objeto nuevo en cada llamada para que el efecto del Feed vuelva a correr.
+            setFeedPrefs({...prefs});
             setTab("feed");
           }}
         />}
