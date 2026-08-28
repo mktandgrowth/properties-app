@@ -1540,7 +1540,7 @@ const initialFilters = () => ({
   nuevo:"", // "", "nuevo", "usado"
 });
 
-function Feed({props,onTap,onOpenReel}) {
+function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied}) {
   const [q,setQ]=useState("");
   const [fType,setFType]=useState("");
   const [fOperacion,setFOperacion]=useState("venta");
@@ -1551,6 +1551,23 @@ function Feed({props,onTap,onOpenReel}) {
   const [mapInfo,setMapInfo]=useState(false);
   const [filters,setFilters]=useState(initialFilters());
   const [draft,setDraft]=useState(initialFilters());
+
+  // Preferencias que llegan desde el chat de Isidora. El estado de los filtros
+  // vive acá adentro, así que MainApp las pasa como prop y las aplicamos con un
+  // efecto (antes MainApp llamaba a estos setters directo y tiraba ReferenceError).
+  useEffect(() => {
+    if (!applyPrefs) return;
+    if (applyPrefs.operacion) setFOperacion(applyPrefs.operacion);
+    if (applyPrefs.tipo) setFType(applyPrefs.tipo);
+    setFilters(f => ({
+      ...f,
+      priceMax: applyPrefs.presupuestoMax ? String(applyPrefs.presupuestoMax) : "",
+      beds: applyPrefs.beds ? String(applyPrefs.beds) : "",
+      currency: "UF",
+    }));
+    setQ(applyPrefs.comuna || "");
+    onPrefsApplied && onPrefsApplied();
+  }, [applyPrefs]);
 
   // Autocomplete suggestions for comuna
   const comunaSugs = q.length >= 1
@@ -1600,7 +1617,7 @@ function Feed({props,onTap,onOpenReel}) {
     if(q){
       const s=q.toLowerCase();
       // Nunca buscamos dentro de `p.loc`: la dirección exacta no es pública.
-      const hay = `${p.comuna||""} ${p.region||""} ${p.vanityLocation||""} ${p.title||""}`.toLowerCase();
+      const hay = `${publicLocation(p)} ${p.comuna||""} ${p.region||""} ${p.vanityLocation||""} ${p.title||""}`.toLowerCase();
       if(!hay.includes(s))return false;
     }
     // Price (in selected currency)
@@ -5435,6 +5452,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [navConfirm,setNavConfirm]=useState(null); // pending tab to navigate to
   const [guestPromptFor,setGuestPromptFor]=useState(null); // texto a mostrar cuando un invitado intenta hacer algo de auth
   const [isidoraOpen,setIsidoraOpen]=useState(false); // chat popup inline de Isidora (asesora de compra)
+  const [feedPrefs,setFeedPrefs]=useState(null); // filtros que Isidora manda al Feed (se limpian al aplicarse)
   // ─── Signup rápido (nombre + WA + código skippable) ───
   const [signupName,setSignupName]=useState("");
   const [signupWa,setSignupWa]=useState("");
@@ -5578,7 +5596,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         <div className="pc-content">
         {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} onShare={shareProp} />:(
           <>
-            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
+            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} applyPrefs={feedPrefs} onPrefsApplied={()=>setFeedPrefs(null)} />}
             {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} onShare={shareProp} startPropId={reelStart} />}
             {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps.filter(x=>x.id!==p.id)]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft} me={me}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
@@ -5637,16 +5655,9 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         {isidoraOpen && <IsidoraChat
           onClose={()=>setIsidoraOpen(false)}
           onApplyFilters={(prefs)=>{
-            // Aplicar filtros al feed + navegar a Explorar
-            if (prefs.operacion) setFOperacion(prefs.operacion);
-            if (prefs.tipo) setFType(prefs.tipo);
-            setFilters(f => ({
-              ...f,
-              priceMax: prefs.presupuestoMax ? String(prefs.presupuestoMax) : "",
-              beds: prefs.beds ? String(prefs.beds) : "",
-              currency: "UF",
-            }));
-            setQ(prefs.comuna || "");
+            // Los filtros viven en Feed: le pasamos las prefs y navegamos a Explorar.
+            // Objeto nuevo en cada llamada para que el efecto del Feed vuelva a correr.
+            setFeedPrefs({...prefs});
             setTab("feed");
           }}
         />}
