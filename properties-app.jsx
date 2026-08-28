@@ -2285,6 +2285,20 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
     });
   }, [idx, muted, reelFeed.length]);
 
+  // Alternar sonido. iOS Safari solo permite salir de mute si play() se llama
+  // sincrónicamente dentro del handler del toque; desde el efecto de abajo
+  // (que corre después del re-render) lo bloquea y el botón no haría nada.
+  // Por eso tocamos el <video> acá y recién después actualizamos el estado.
+  const toggleSound = () => {
+    const next = !muted;
+    const v = videoRefs.current[idx];
+    if (v) {
+      v.muted = next;
+      if (!next) { const played = v.play(); if (played && played.catch) played.catch(() => {}); }
+    }
+    setMuted(next);
+  };
+
   // Navigation helpers — scroll suave hacia el slide destino
   const scrollToIdx = (i) => {
     const el = slideRefs.current[i];
@@ -2397,7 +2411,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
                 {/* Tocar el video alterna el sonido (el primer toque lo activa).
                     zIndex 5 la deja debajo de la columna de acciones (zIndex 10). */}
                 <button
-                  onClick={()=>setMuted(m=>!m)}
+                  onClick={toggleSound}
                   aria-label={muted?"Activar sonido":"Silenciar"}
                   style={{position:"absolute",inset:0,zIndex:5,background:"transparent",border:"none",padding:0,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}
                 />
@@ -2465,7 +2479,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
           silencio lleva la palabra "Sonido" al lado: sin eso nadie descubre que
           el reel tiene audio, porque el autoplay obliga a partir muteado. */}
       <button
-        onClick={()=>setMuted(m=>!m)}
+        onClick={toggleSound}
         aria-label={muted?"Activar sonido":"Silenciar"}
         title={muted?"Activar sonido":"Silenciar"}
         style={{position:"absolute",top:14,right:14,zIndex:30,minWidth:48,height:48,padding:muted?"0 17px 0 14px":0,borderRadius:999,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.25)`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}
