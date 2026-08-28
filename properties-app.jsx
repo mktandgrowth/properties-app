@@ -344,6 +344,26 @@ function publicLocation(p) {
   return parts.length > 1 ? parts[parts.length - 1] : "";
 }
 
+// Icono de fallback según el tipo de propiedad.
+function typeIcon(type) {
+  if (type === "Departamento") return "building";
+  if (type === "Parcela") return "mountain";
+  if (type === "Oficina") return "briefcase";
+  if (type === "Sitio") return "land";
+  return "house";
+}
+
+// Fuente de video de un aviso, en el mismo orden de prioridad que usa el
+// reproductor de reels: video publicado > blob local > primer take del borrador.
+function propVideoSrc(p) {
+  if (!p) return null;
+  if (p.video_url) return p.video_url;
+  if (p.videoFile) return p.videoFile;
+  const takes = p.videoTakeFiles;
+  if (takes) return takes[1] || Object.values(takes).find(Boolean) || null;
+  return null;
+}
+
 // Radio (m) del círculo aproximado que reemplaza al pin exacto en mapas públicos.
 const APPROX_RADIUS_M = 500;
 
@@ -439,6 +459,36 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
     dots: <><circle cx="12" cy="6" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="12" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="18" r="1.4" fill={color} stroke="none"/></>,
   };
   return <svg {...s} style={{display:"block",flexShrink:0}}>{paths[name]}</svg>;
+};
+
+// ── Portada de tarjeta ──
+// Casi todo lo que llega del publicador trae video pero ninguna foto. En vez de
+// mostrar "Sin portada", usamos el primer cuadro del propio video: el fragmento
+// #t=0.5 con preload="metadata" baja solo ese frame, no el clip entero.
+// El placeholder queda solo para avisos sin foto NI video.
+const CoverMedia = ({ p, alt = "", iconSize = 28, labelSize = 8.5, showLabel = true }) => {
+  const fit = { width:"100%", height:"100%", objectFit:"cover", display:"block" };
+  if (p?.img) return <img src={p.img} alt={alt} loading="lazy" style={fit}/>;
+  const video = propVideoSrc(p);
+  if (video) {
+    return (
+      <video
+        src={`${video}#t=0.5`}
+        preload="metadata"
+        muted
+        playsInline
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{...fit, background:"#000", pointerEvents:"none"}}
+      />
+    );
+  }
+  return (
+    <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg, ${C.brandWash} 0%, ${C.surface} 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
+      <Icon name={typeIcon(p?.type)} size={iconSize} color={C.brand} stroke={1.3}/>
+      {showLabel && <span style={{fontSize:labelSize,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Sin portada</span>}
+    </div>
+  );
 };
 
 // ── Google Maps loader hook + components ──
@@ -1931,14 +1981,7 @@ function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied}) {
           const isReel = p.hasVideo;
           return (
             <div key={p.id} onClick={()=>isReel?onOpenReel(p.id):onTap(p)} style={{...style,position:"relative",overflow:"hidden",cursor:"pointer",background:C.brandWash}}>
-              {p.img ? (
-                <img src={p.img} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
-              ) : (
-                <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg, ${C.brandWash} 0%, ${C.surface} 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
-                  <Icon name={p.type==="Departamento"?"building":p.type==="Parcela"?"mountain":p.type==="Oficina"?"briefcase":p.type==="Sitio"?"land":"house"} size={big?44:28} color={C.brand} stroke={1.3}/>
-                  <span style={{fontSize:big?10:8.5,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Sin portada</span>
-                </div>
-              )}
+              <CoverMedia p={p} alt={p.title} iconSize={big?44:28} labelSize={big?10:8.5}/>
 
               {/* Corner indicator: reel (play) or gallery */}
               <div style={{position:"absolute",top:6,right:6,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1981,7 +2024,7 @@ function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied}) {
           <div style={{display:"flex",gap:8,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>
             {filtered.filter(p=>p.hasVideo).map(p=>(
               <div key={p.id} onClick={()=>onOpenReel(p.id)} style={{flexShrink:0,width:118,aspectRatio:"9/16",borderRadius:12,overflow:"hidden",position:"relative",cursor:"pointer",background:"#000"}}>
-                <img src={p.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                <CoverMedia p={p} iconSize={26} labelSize={8}/>
                 <div style={{position:"absolute",top:6,right:6,width:22,height:22,borderRadius:"50%",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   <Icon name="play" size={10} color={C.surface}/>
                 </div>
@@ -2002,20 +2045,20 @@ function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied}) {
 
 // ═══ DETAIL ═══
 function Detail({p,back,onLike,onSave,onShare}) {
-  const hasUploadedVideo = !!p.videoFile;
+  const uploadedVideo = p.video_url || p.videoFile || null;
   const has4Takes = p.videoTakeFiles && Object.keys(p.videoTakeFiles).length > 0;
   return (
     <div style={{paddingBottom:92,background:C.bg}}>
       <div style={{position:"relative",background:"#000",height:280,overflow:"hidden"}}>
-        {hasUploadedVideo ? (
-          <video src={p.videoFile} controls poster={p.img||undefined} playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block",background:"#000"}}/>
+        {uploadedVideo ? (
+          <video src={uploadedVideo} controls poster={p.img||undefined} playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block",background:"#000"}}/>
         ) : has4Takes ? (
           <ReelPlayer takeFiles={p.videoTakeFiles||{}} takeOrder={p.takeOrder||[0,1,2,3]} takeSpeeds={p.takeSpeeds||[1,2,2,1]} takeDurations={p.takeDurations||[5,5,5,5]} title={p.reelTitle||""} subtitle={p.reelSubtitle||""} titleStyle={p.titleStyle||"editorial"} musicTrack={p.musicTrack||""} autoplay={false} height={280}/>
         ) : p.img ? (
           <img src={p.img} alt="" style={{width:"100%",height:280,objectFit:"cover",display:"block"}} />
         ) : (
           <div style={{width:"100%",height:280,background:C.brandWash,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}}>
-            <Icon name={p.type==="Departamento"?"building":p.type==="Parcela"?"mountain":p.type==="Oficina"?"briefcase":"house"} size={48} color={C.brand} stroke={1.3}/>
+            <Icon name={typeIcon(p.type)} size={48} color={C.brand} stroke={1.3}/>
             <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.08em",textTransform:"uppercase"}}>Sin portada</span>
           </div>
         )}
@@ -2215,12 +2258,53 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
   const slideRefs = useRef([]);
   slideRefs.current = [];
   const registerSlide = (el, i) => { if (el) slideRefs.current[i] = el; };
+  // Refs a los <video> para manejar sonido y play/pause de forma imperativa.
+  const videoRefs = useRef([]);
+  videoRefs.current = [];
+  const registerVideo = (el, i) => { if (el) videoRefs.current[i] = el; };
+
+  // Sonido + reproducción del slide activo.
+  // Dos motivos para hacerlo a mano en vez de confiar en los atributos:
+  //   - el prop `muted` de React no siempre se refleja en el elemento real;
+  //   - cambiar `autoPlay` sobre un video ya cargado no lo hace arrancar, así
+  //     que al deslizar a otro reel el video quedaba pausado.
+  useEffect(() => {
+    videoRefs.current.forEach((v, i) => {
+      if (!v) return;
+      v.muted = muted;
+      if (i !== idx) { if (!v.paused) v.pause(); return; }
+      const played = v.play();
+      if (played && played.catch) {
+        played.catch(() => {
+          // El navegador bloqueó el autoplay con sonido (falta un gesto del
+          // usuario). Volvemos a silencio para que al menos se reproduzca, y
+          // sincronizamos el botón para que no mienta.
+          if (!v.muted) { v.muted = true; setMuted(true); v.play().catch(() => {}); }
+        });
+      }
+    });
+  }, [idx, muted, reelFeed.length]);
+
+  // Alternar sonido. iOS Safari solo permite salir de mute si play() se llama
+  // sincrónicamente dentro del handler del toque; desde el efecto de abajo
+  // (que corre después del re-render) lo bloquea y el botón no haría nada.
+  // Por eso tocamos el <video> acá y recién después actualizamos el estado.
+  const toggleSound = () => {
+    const next = !muted;
+    const v = videoRefs.current[idx];
+    if (v) {
+      v.muted = next;
+      if (!next) { const played = v.play(); if (played && played.catch) played.catch(() => {}); }
+    }
+    setMuted(next);
+  };
 
   // Navigation helpers — scroll suave hacia el slide destino
   const scrollToIdx = (i) => {
     const el = slideRefs.current[i];
     if (el && scrollRef.current) el.scrollIntoView({behavior:"smooth", block:"start"});
   };
+  // Sin botones en pantalla: los usa el atajo de teclado (flechas arriba/abajo).
   const goNext = () => { const next = Math.min(reelFeed.length-1, idx+1); scrollToIdx(next); };
   const goPrev = () => { const prev = Math.max(0, idx-1); scrollToIdx(prev); };
 
@@ -2317,12 +2401,20 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
                   trae su propio texto quemado. */}
               <div style={{position:"relative",flex:1,minHeight:0,background:"#000",overflow:"hidden"}}>
                 {reelVideoSrc ? (
-                  <video src={reelVideoSrc} poster={prop.img||undefined} autoPlay={isActive} muted={muted} loop playsInline style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
+                  <video ref={(el)=>registerVideo(el,i)} src={reelVideoSrc} poster={prop.img||undefined} autoPlay={isActive} muted={muted} loop playsInline style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
                 ) : (
                   <img src={prop.img} alt="" style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
                 )}
                 {/* Scrim solo arriba, para que se lean el logo y el botón de mute */}
                 <div style={{position:"absolute",top:0,left:0,right:0,height:96,background:"linear-gradient(180deg,rgba(0,0,0,0.45) 0%,rgba(0,0,0,0) 100%)",pointerEvents:"none"}}/>
+
+                {/* Tocar el video alterna el sonido (el primer toque lo activa).
+                    zIndex 5 la deja debajo de la columna de acciones (zIndex 10). */}
+                <button
+                  onClick={toggleSound}
+                  aria-label={muted?"Activar sonido":"Silenciar"}
+                  style={{position:"absolute",inset:0,zIndex:5,background:"transparent",border:"none",padding:0,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}
+                />
 
                 {/* Action column — sobre el marco del video, a la derecha */}
                 <div style={{position:"absolute",right:12,bottom:16,display:"flex",flexDirection:"column",gap:20,alignItems:"center",zIndex:10}}>
@@ -2383,25 +2475,21 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
         <span style={{fontSize:17,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em"}}>C<em style={{fontStyle:"italic",color:C.brandSoft,fontWeight:400}}>2</em>C <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
       </div>
 
-      {/* Mute / unmute button (top right) */}
-      <button onClick={()=>setMuted(m=>!m)} style={{position:"absolute",top:18,right:18,zIndex:20,width:40,height:40,borderRadius:"50%",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}} title={muted?"Activar sonido":"Silenciar"}>
-        <Icon name={muted?"volumeOff":"volume"} size={18} color={C.surface} stroke={1.8}/>
+      {/* Altavoz (arriba a la derecha). 48px de target táctil. Mientras esté en
+          silencio lleva la palabra "Sonido" al lado: sin eso nadie descubre que
+          el reel tiene audio, porque el autoplay obliga a partir muteado. */}
+      <button
+        onClick={toggleSound}
+        aria-label={muted?"Activar sonido":"Silenciar"}
+        title={muted?"Activar sonido":"Silenciar"}
+        style={{position:"absolute",top:14,right:14,zIndex:30,minWidth:48,height:48,padding:muted?"0 17px 0 14px":0,borderRadius:999,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.25)`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}
+      >
+        <Icon name={muted?"volumeOff":"volume"} size={19} color={C.surface} stroke={1.8}/>
+        {muted && <span style={{fontSize:11.5,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.02em"}}>Sonido</span>}
       </button>
 
-      {/* Pager indicator + arrows on the LEFT side, vertically centered (fixed) */}
-      <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:20}}>
-        <button onClick={()=>goPrev()} disabled={idx===0} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.3:1}}>
-          <Icon name="chevronUp" size={16} color={C.surface} stroke={1.8}/>
-        </button>
-        <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
-          {reelFeed.map((_,i)=>(
-            <div key={i} style={{width:3,height:i===idx?16:6,borderRadius:2,background:i===idx?C.surface:"rgba(255,255,255,0.4)",transition:"all 0.2s"}}/>
-          ))}
-        </div>
-        <button onClick={()=>goNext()} disabled={idx===reelFeed.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===reelFeed.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===reelFeed.length-1?0.3:1}}>
-          <Icon name="chevronDown" size={16} color={C.surface} stroke={1.8}/>
-        </button>
-      </div>
+      {/* Sin controles de paginado sobre el video: la navegación es scroll /
+          swipe y las flechas del teclado (ver el listener de keydown arriba). */}
 
     </div>
   );
@@ -4395,7 +4483,7 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
           {items.map(p=>(
             <div key={p.id} onClick={()=>onTap(p)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",background:C.surface,border:`1px solid ${C.line}`,position:"relative"}}>
               <div style={{position:"relative"}}>
-                <img src={p.img} alt="" style={{width:"100%",height:110,objectFit:"cover",display:"block"}} />
+                <div style={{height:110}}><CoverMedia p={p} iconSize={26} labelSize={8}/></div>
                 <div style={{position:"absolute",top:6,right:6,width:28,height:28,borderRadius:"50%",background:"rgba(255,255,255,0.92)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   <Icon name="heart" size={13} color={C.terracotta} stroke={1.6} fill={C.terracotta}/>
                 </div>
@@ -4634,7 +4722,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
             <div key={p.id} style={{position:"relative",display:"flex",gap:12,padding:12,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",transition:"all 0.15s"}}
               onMouseEnter={e=>e.currentTarget.style.borderColor=C.brand} onMouseLeave={e=>e.currentTarget.style.borderColor=C.line}
               onClick={()=>onOpenProp&&onOpenProp(p)}>
-              <img src={p.img} alt="" style={{width:66,height:66,borderRadius:10,objectFit:"cover"}} />
+              <div style={{width:66,height:66,flexShrink:0,borderRadius:10,overflow:"hidden"}}><CoverMedia p={p} iconSize={22} showLabel={false}/></div>
               <div style={{flex:1,minWidth:0}}>
                 <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.title}</p>
                 <p style={{margin:"3px 0 0",fontSize:13,color:C.ink,fontFamily:Fs,fontWeight:400}}>{p.cur} {fmt(p.price)}</p>
