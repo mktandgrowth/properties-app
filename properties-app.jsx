@@ -326,6 +326,44 @@ const AMENITIES = [
 // Format precios — siempre número completo con puntos (no más "25K")
 const fmt = n => (n||0).toLocaleString("es-CL");
 
+// ── Privacidad de ubicación ──
+// El formulario de publicación le promete al vendedor que la dirección exacta
+// no se publica. `p.loc` (calle + número), `p.street`, `p.number` y el par
+// lat/lng exacto son datos del dueño: NUNCA se muestran en vistas públicas
+// (tarjetas, ficha, reels, mapa). Lo público es el "vanityLocation" que el
+// vendedor eligió y, si no puso ninguno, la comuna a secas.
+function publicLocation(p) {
+  if (!p) return "";
+  const vanity = String(p.vanityLocation || "").trim();
+  if (vanity) return vanity;
+  const comuna = String(p.comuna || "").trim();
+  if (comuna) return comuna;
+  // Sin comuna guardada: `loc` viene como "Calle 123, Comuna" — nos quedamos
+  // solo con el último tramo. Si no hay coma no arriesgamos y no mostramos nada.
+  const parts = String(p.loc || "").split(",").map(s => s.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : "";
+}
+
+// Radio (m) del círculo aproximado que reemplaza al pin exacto en mapas públicos.
+const APPROX_RADIUS_M = 500;
+
+// Centro aproximado para el mapa público: desplaza el punto real una distancia
+// fija en un ángulo derivado del id (determinístico — el mismo aviso siempre cae
+// en el mismo lugar) para que el centro del círculo no delate la dirección.
+function approxLatLng(p, radiusM = APPROX_RADIUS_M) {
+  if (!p || typeof p.lat !== "number" || typeof p.lng !== "number") return null;
+  const seed = String(p.id ?? "");
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  const angle = (h % 360) * Math.PI / 180;
+  const dist = radiusM * 0.5;
+  const cosLat = Math.cos(p.lat * Math.PI / 180) || 1;
+  return {
+    lat: p.lat + (dist * Math.cos(angle)) / 111320,
+    lng: p.lng + (dist * Math.sin(angle)) / (111320 * cosLat),
+  };
+}
+
 // ── Brand Logo (refined) ──
 const Logo = ({size=24,color=C.brand}) => (
   <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
@@ -451,7 +489,10 @@ const MAP_STYLE = [
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#C4D9E0" }] },
 ];
 
-function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
+// `approximate`: dibuja un círculo de `radius` metros en vez del pin exacto y
+// limita el zoom, para no revelar la dirección. Es el modo obligatorio en las
+// vistas públicas; el pin exacto queda solo para el dueño (wizard de publicar).
+function MapView({ lat, lng, zoom = 15, height = 200, address = "", approximate = false, radius = APPROX_RADIUS_M }) {
   const ref = useRef(null);
   const loaded = useGoogleMaps();
   useEffect(() => {
@@ -463,7 +504,22 @@ function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
       zoomControl: true,
       styles: MAP_STYLE,
       gestureHandling: "cooperative",
+      ...(approximate ? { maxZoom: 15 } : {}),
     });
+    if (approximate) {
+      new window.google.maps.Circle({
+        map,
+        center: { lat, lng },
+        radius,
+        fillColor: "#4A3122",
+        fillOpacity: 0.16,
+        strokeColor: "#4A3122",
+        strokeOpacity: 0.55,
+        strokeWeight: 1.5,
+        clickable: false,
+      });
+      return;
+    }
     // Custom branded pin
     new window.google.maps.Marker({
       position: { lat, lng },
@@ -479,7 +535,7 @@ function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
       },
       title: address,
     });
-  }, [loaded, lat, lng, zoom, address]);
+  }, [loaded, lat, lng, zoom, address, approximate, radius]);
 
   if (!GMAPS_KEY) {
     return (
@@ -690,7 +746,10 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const loaded = useGoogleMaps();
-  const validProps = properties.filter(p => typeof p.lat === "number" && typeof p.lng === "number");
+  // Mapa público: cada aviso se ubica en su centro APROXIMADO, nunca en el pin real.
+  const validProps = properties
+    .map(p => { const c = approxLatLng(p); return c ? { ...p, lat: c.lat, lng: c.lng } : null; })
+    .filter(Boolean);
 
   useEffect(() => {
     if (!loaded || !ref.current || mapRef.current) return;
@@ -703,6 +762,7 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
       styles: MAP_STYLE,
       gestureHandling: "greedy",
       clickableIcons: false,
+      maxZoom: 15, // sin zoom de calle: el punto es aproximado
     });
     mapRef.current = map;
   }, [loaded]);
@@ -732,12 +792,25 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
       });
       marker.addListener("click", () => onSelectProperty && onSelectProperty(p));
       markersRef.current.push(marker);
+      // Halo de privacidad: comunica que la ubicación es aproximada.
+      const halo = new window.google.maps.Circle({
+        map: mapRef.current,
+        center: { lat: p.lat, lng: p.lng },
+        radius: APPROX_RADIUS_M,
+        fillColor: "#4A3122",
+        fillOpacity: 0.12,
+        strokeColor: "#4A3122",
+        strokeOpacity: 0.4,
+        strokeWeight: 1,
+        clickable: false,
+      });
+      markersRef.current.push(halo);
       bounds.extend({ lat: p.lat, lng: p.lng });
     });
     // Fit map to all markers
     if (validProps.length === 1) {
       mapRef.current.setCenter({ lat: validProps[0].lat, lng: validProps[0].lng });
-      mapRef.current.setZoom(14);
+      mapRef.current.setZoom(13);
     } else {
       mapRef.current.fitBounds(bounds, { top:40, left:40, right:40, bottom:40 });
     }
@@ -1525,7 +1598,9 @@ function Feed({props,onTap,onOpenReel}) {
     if(fType&&p.type!==fType)return false;
     if(q){
       const s=q.toLowerCase();
-      if(!p.comuna.toLowerCase().includes(s)&&!p.loc.toLowerCase().includes(s)&&!p.title.toLowerCase().includes(s))return false;
+      // Nunca buscamos dentro de `p.loc`: la dirección exacta no es pública.
+      const hay = `${p.comuna||""} ${p.region||""} ${p.vanityLocation||""} ${p.title||""}`.toLowerCase();
+      if(!hay.includes(s))return false;
     }
     // Price (in selected currency)
     const pp = priceIn(p,filters.currency);
@@ -1864,7 +1939,7 @@ function Feed({props,onTap,onOpenReel}) {
               <div style={{position:"absolute",bottom:0,left:0,right:0,padding:big?"14px 12px 10px":"10px 8px 7px",background:"linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.75) 100%)",color:C.surface}}>
                 <div style={{fontSize:big?9:8,fontWeight:500,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase",opacity:0.85,marginBottom:2}}>{p.type}</div>
                 <div style={{fontSize:big?16:12,fontWeight:400,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.15}}>{p.cur} {fmt(p.price)}</div>
-                <div style={{fontSize:big?10:9,fontFamily:Fb,fontWeight:400,opacity:0.85,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.comuna}</div>
+                <div style={{fontSize:big?10:9,fontFamily:Fb,fontWeight:400,opacity:0.85,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{publicLocation(p)}</div>
               </div>
             </div>
           );
@@ -1894,7 +1969,7 @@ function Feed({props,onTap,onOpenReel}) {
                 </div>
                 <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"10px 9px 8px",background:"linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.8) 100%)",color:C.surface}}>
                   <div style={{fontSize:11,fontWeight:500,fontFamily:Fs,letterSpacing:"-0.01em"}}>{p.cur} {fmt(p.price)}</div>
-                  <div style={{fontSize:9,fontFamily:Fb,fontWeight:400,opacity:0.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.comuna}</div>
+                  <div style={{fontSize:9,fontFamily:Fb,fontWeight:400,opacity:0.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{publicLocation(p)}</div>
                 </div>
               </div>
             ))}
@@ -1943,7 +2018,7 @@ function Detail({p,back,onLike,onSave}) {
         <h2 style={{margin:"8px 0 4px",fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,lineHeight:1.2,letterSpacing:"-0.01em"}}>{p.title}</h2>
         <div style={{fontSize:30,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"10px 0 4px",letterSpacing:"-0.02em"}}>{p.cur} <span style={{fontWeight:500}}>{p.price.toLocaleString("es-CL")}</span></div>
         <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 16px"}}>
-          <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>{p.loc}
+          <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>{publicLocation(p)}
         </div>
         <div style={{display:"flex",gap:6,padding:"14px 0",borderTop:`1px solid ${C.line}`,borderBottom:`1px solid ${C.line}`,marginBottom:18}}>
           {p.beds>0&&<div style={{textAlign:"center",flex:1}}>
@@ -1966,9 +2041,19 @@ function Detail({p,back,onLike,onSave}) {
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:18}}>
           {p.tags.map(t=><span key={t} style={{fontSize:10.5,padding:"5px 12px",borderRadius:999,background:"transparent",border:`1px solid ${C.line}`,color:C.text,fontFamily:Fb,fontWeight:400}}>{t}</span>)}
         </div>
-        <div style={{borderRadius:12,overflow:"hidden",marginBottom:18,border:`1px solid ${C.line}`}}>
-          <MapView lat={p.lat} lng={p.lng} address={p.loc} height={180} zoom={15}/>
-        </div>
+        {(() => {
+          // Mapa público: círculo aproximado, nunca el pin de la dirección.
+          const c = approxLatLng(p);
+          if (!c) return null;
+          return (
+            <div style={{marginBottom:18}}>
+              <div style={{borderRadius:12,overflow:"hidden",border:`1px solid ${C.line}`}}>
+                <MapView lat={c.lat} lng={c.lng} address={publicLocation(p)} height={180} zoom={14} approximate/>
+              </div>
+              <p style={{margin:"7px 2px 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic",lineHeight:1.4}}>Ubicación aproximada — la dirección exacta se comparte al coordinar la visita.</p>
+            </div>
+          );
+        })()}
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`}}>
           <Avatar initials={p.avatar} size={42} verified/>
           <div style={{flex:1}}>
@@ -2236,7 +2321,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
                 <div style={{display:"inline-flex",alignItems:"center",padding:"4px 10px",borderRadius:999,background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.2)`,marginBottom:7}}>
                   <span style={{fontSize:9,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>{prop.type}</span>
                 </div>
-                <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>{prop.cur} {fmt(prop.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {prop.comuna}</span></div>
+                <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>{prop.cur} {fmt(prop.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {publicLocation(prop)}</span></div>
                 <div style={{display:"flex",alignItems:"center",gap:16,marginTop:10}}>
                   {prop.beds>0&&<Stat icon="bed" val={prop.beds}/>}
                   {prop.baths>0&&<Stat icon="bath" val={prop.baths}/>}
@@ -4281,7 +4366,7 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
               <div style={{padding:10}}>
                 <p style={{margin:0,fontSize:11,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{p.title}</p>
                 <p style={{margin:"5px 0 0",fontSize:14,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{p.cur} {fmt(p.price)}</p>
-                {p.comuna && <p style={{margin:"3px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>{p.comuna}</p>}
+                {publicLocation(p) && <p style={{margin:"3px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>{publicLocation(p)}</p>}
               </div>
             </div>
           ))}
@@ -4517,7 +4602,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
                 <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.title}</p>
                 <p style={{margin:"3px 0 0",fontSize:13,color:C.ink,fontFamily:Fs,fontWeight:400}}>{p.cur} {fmt(p.price)}</p>
                 <div style={{display:"flex",gap:12,marginTop:6,fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>
-                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>{p.comuna||p.loc.split(",")[0]}</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>{p.loc || publicLocation(p)}</span>
                   <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="eye" size={11} color={C.muted} stroke={1.5}/>{p.nuevo?"Nueva":"1.2K"}</span>
                 </div>
               </div>
