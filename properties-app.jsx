@@ -2243,8 +2243,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
   }, [idx]);
 
   const Stat = ({icon,val}) => (
-    <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12.5,color:C.surface,fontFamily:Fb,fontWeight:500,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>
-      <Icon name={icon} size={15} color={C.surface} stroke={1.7}/>{val}
+    <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:C.text,fontFamily:Fb,fontWeight:400}}>
+      <Icon name={icon} size={14} color={C.brand} stroke={1.7}/>{val}
     </div>
   );
 
@@ -2261,7 +2261,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
         ref={scrollRef}
         className="reels-scroll"
         style={{
-          height:"100vh",
+          height:"100%",
           overflowY:"scroll",
           scrollSnapType:"y mandatory",
           scrollBehavior:"smooth",
@@ -2283,63 +2283,75 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
               style={{
                 position:"relative",
                 width:"100%",
-                height:"100vh",
+                height:"100%",
                 overflow:"hidden",
                 background:"#000",
+                display:"flex",
+                flexDirection:"column",
                 scrollSnapAlign:"start",
                 scrollSnapStop:"always",
                 flexShrink:0,
               }}
             >
-              {/* Background: user's video if available, else property image */}
-              {reelVideoSrc ? (
-                <video src={reelVideoSrc} autoPlay={isActive} muted={muted} loop playsInline style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
-              ) : (
-                <img src={prop.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>
-              )}
-              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
+              {/* ── Marco del video ──
+                  object-fit: contain sobre negro: el video se ve entero, nunca
+                  se recorta ni desborda la pantalla. La info de la propiedad va
+                  en la franja de abajo, fuera de este marco, porque el video ya
+                  trae su propio texto quemado. */}
+              <div style={{position:"relative",flex:1,minHeight:0,background:"#000",overflow:"hidden"}}>
+                {reelVideoSrc ? (
+                  <video src={reelVideoSrc} poster={prop.img||undefined} autoPlay={isActive} muted={muted} loop playsInline style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
+                ) : (
+                  <img src={prop.img} alt="" style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
+                )}
+                {/* Scrim solo arriba, para que se lean el logo y el botón de mute */}
+                <div style={{position:"absolute",top:0,left:0,right:0,height:96,background:"linear-gradient(180deg,rgba(0,0,0,0.45) 0%,rgba(0,0,0,0) 100%)",pointerEvents:"none"}}/>
 
-              {/* Action column — right side */}
-              <div style={{position:"absolute",right:12,bottom:250,display:"flex",flexDirection:"column",gap:22,alignItems:"center",zIndex:10}}>
-                <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
-                </button>
-                <button onClick={()=>{
-                  if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
-                  window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
-                }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
-                  <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
-                </button>
-                <button onClick={()=>onShare&&onShare(prop)} title="Copiar el link de esta publicación" style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Icon name="share" size={27} color={C.surface} stroke={1.6}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Compartir</span>
-                </button>
+                {/* Action column — sobre el marco del video, a la derecha */}
+                <div style={{position:"absolute",right:12,bottom:16,display:"flex",flexDirection:"column",gap:20,alignItems:"center",zIndex:10}}>
+                  <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
+                  </button>
+                  <button onClick={()=>{
+                    if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
+                    window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
+                  }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
+                    <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
+                  </button>
+                  <button onClick={()=>onShare&&onShare(prop)} title="Copiar el link de esta publicación" style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <Icon name="share" size={27} color={C.surface} stroke={1.6}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Compartir</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Bottom info panel */}
-              <div key={isActive?`info-${idx}`:`info-static-${i}`} style={{position:"absolute",bottom:80,left:0,right:0,zIndex:10,padding:"0 16px",animation:isActive?"reelInfoIn 0.45s ease 0.1s both":"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <Avatar initials={prop.avatar} size={28} bg="rgba(255,255,255,0.22)"/>
-                  <span style={{fontSize:12,fontWeight:500,color:C.surface,fontFamily:Fb,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.user}</span>
-                  <span style={{width:3,height:3,borderRadius:"50%",background:"rgba(255,255,255,0.4)"}}/>
-                  <span style={{fontSize:10.5,color:"rgba(255,255,255,0.7)",fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{rl.views} vistas</span>
+              {/* ── Franja de info — FUERA del área del video ──
+                  El padding inferior deja libre la barra de navegación fija. */}
+              <div key={isActive?`info-${idx}`:`info-static-${i}`} style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.line}`,padding:"12px 16px calc(12px + 66px + env(safe-area-inset-bottom, 0px))",animation:isActive?"reelInfoIn 0.35s ease both":"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <Avatar initials={prop.avatar} size={24} bg={C.surface2}/>
+                  <span style={{fontSize:11.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{prop.user}</span>
+                  <span style={{width:3,height:3,borderRadius:"50%",background:C.subtle}}/>
+                  <span style={{fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{rl.views} vistas</span>
+                  <span style={{marginLeft:"auto",fontSize:9,fontWeight:500,color:C.muted,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase",padding:"3px 9px",borderRadius:999,border:`1px solid ${C.line}`}}>{prop.type}</span>
                 </div>
-                <div style={{display:"inline-flex",alignItems:"center",padding:"4px 10px",borderRadius:999,background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.2)`,marginBottom:7}}>
-                  <span style={{fontSize:9,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>{prop.type}</span>
+                <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1}}>{prop.cur} {fmt(prop.price)}</span>
+                  <span style={{fontSize:12.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{publicLocation(prop)}</span>
                 </div>
-                <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>{prop.cur} {fmt(prop.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {publicLocation(prop)}</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:16,marginTop:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:14,marginTop:8,flexWrap:"wrap"}}>
                   {prop.beds>0&&<Stat icon="bed" val={prop.beds}/>}
                   {prop.baths>0&&<Stat icon="bath" val={prop.baths}/>}
                   <Stat icon="ruler" val={`${prop.area} m² útil`}/>
                   {(prop.areaTotal || prop.areaTerreno) > 0 && <Stat icon="terrace" val={`${prop.areaTotal||prop.areaTerreno} m² tot`}/>}
                 </div>
-                <p style={{fontSize:12.5,color:"rgba(255,255,255,0.9)",fontFamily:Fb,fontWeight:400,margin:"10px 0 0",lineHeight:1.45,textShadow:"0 1px 6px rgba(0,0,0,0.6)"}}>{rl.caption}</p>
-                <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:12,padding:"13px 18px",borderRadius:12,background:C.surface,border:"none",cursor:"pointer",color:C.ink,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:"0 6px 20px rgba(0,0,0,0.35)"}}>
+                {/* Una sola línea de texto: el video ya lleva su título quemado */}
+                <p style={{fontSize:12.5,color:C.text,fontFamily:Fb,fontWeight:400,margin:"8px 0 0",lineHeight:1.4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{prop.title || rl.caption}</p>
+                <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:10,padding:"12px 18px",borderRadius:12,background:C.ink,border:"none",cursor:"pointer",color:C.bg,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em"}}>
                   Ver ficha completa
-                  <Icon name="arrowRight" size={15} color={C.ink} stroke={1.8}/>
+                  <Icon name="arrowRight" size={15} color={C.bg} stroke={1.8}/>
                 </button>
               </div>
             </div>
