@@ -435,6 +435,7 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
     volume: <><path d="M3 10v4a1 1 0 001 1h4l5 5V4l-5 5H4a1 1 0 00-1 1z"/><path d="M16 7a5 5 0 010 10M19 3a9 9 0 010 18"/></>,
     volumeOff: <><path d="M3 10v4a1 1 0 001 1h4l5 5V4l-5 5H4a1 1 0 00-1 1z"/><path d="M22 9l-5 5M22 14l-5-5"/></>,
     trash: <><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>,
+    share: <><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1"/></>,
     dots: <><circle cx="12" cy="6" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="12" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="18" r="1.4" fill={color} stroke="none"/></>,
   };
   return <svg {...s} style={{display:"block",flexShrink:0}}>{paths[name]}</svg>;
@@ -1983,7 +1984,7 @@ function Feed({props,onTap,onOpenReel}) {
 }
 
 // ═══ DETAIL ═══
-function Detail({p,back,onLike,onSave}) {
+function Detail({p,back,onLike,onSave,onShare}) {
   const hasUploadedVideo = !!p.videoFile;
   const has4Takes = p.videoTakeFiles && Object.keys(p.videoTakeFiles).length > 0;
   return (
@@ -2073,6 +2074,9 @@ function Detail({p,back,onLike,onSave}) {
           }} disabled={!p.wa} style={{flex:1,padding:14,borderRadius:12,background:p.wa?C.ink:C.line,border:"none",cursor:p.wa?"pointer":"default",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
             <Icon name="whatsapp" size={18} color={C.surface} stroke={1.6}/>WhatsApp
           </button>
+          <button onClick={()=>onShare&&onShare(p)} title="Copiar el link de esta publicación" style={{width:50,height:50,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Icon name="share" size={17} color={C.text} stroke={1.6}/>
+          </button>
           <button onClick={()=>onLike(p.id)} title={p.liked?"Quitar de guardados":"Guardar propiedad"} style={{width:50,height:50,borderRadius:12,background:p.liked?C.brandWash:C.surface,border:`1px solid ${p.liked?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
             <Icon name="heart" size={18} color={p.liked?C.terracotta:C.text} stroke={1.6} fill={p.liked?C.terracotta:"none"}/>
           </button>
@@ -2154,7 +2158,7 @@ function CommentsSheet({propId, prop, onClose}) {
   );
 }
 
-function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
+function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
   // Dynamic reel feed: user-published props with video first + hardcoded REELS, dedup
   const reelFeed = (() => {
     const seenPropIds = new Set();
@@ -2307,6 +2311,10 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
                 }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
                   <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
                   <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
+                </button>
+                <button onClick={()=>onShare&&onShare(prop)} title="Copiar el link de esta publicación" style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <Icon name="share" size={27} color={C.surface} stroke={1.6}/>
+                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Compartir</span>
                 </button>
               </div>
 
@@ -5165,6 +5173,12 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
       return p || null;
     } catch(e) { return null; }
   })();
+  // ?prop=<id> → link directo a un aviso. Se lee al cargar para abrir la ficha
+  // y se mantiene sincronizado con history.replaceState mientras esté abierta.
+  const initialPropId = (() => {
+    try { return new URLSearchParams(window.location.search).get("prop") || null; }
+    catch(e) { return null; }
+  })();
   // Owner ID viene de greatdeal-app (?owner=<uuid>) cuando publica sin login.
   // Lo guardamos en localStorage para que la app reconozca al vendedor sin auth
   // formal — todas las propiedades con ese owner_id son "suyas".
@@ -5288,6 +5302,56 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   }, [view, selectedChat]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2000); };
+
+  // ─── Link por aviso (?prop=<id>) ───────────────────────────────────────────
+  // Al cargar con ?prop=<id>, abrimos esa ficha apenas la propiedad esté en
+  // `props` (los avisos de Supabase llegan después del primer render).
+  const deepLinkDone = useRef(false);
+  useEffect(() => {
+    if (deepLinkDone.current || !initialPropId) return;
+    const p = props.find(x => String(x.id) === String(initialPropId));
+    if (!p) return;
+    deepLinkDone.current = true;
+    setView({t:"d", p});
+  }, [props, initialPropId]);
+  // Mientras haya una ficha abierta, la URL apunta a ese aviso (link compartible).
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (view?.t === "d" && view.p?.id != null) url.searchParams.set("prop", String(view.p.id));
+      else url.searchParams.delete("prop");
+      if (url.toString() !== window.location.href) {
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
+    } catch(e) {}
+  }, [view]);
+  // URL canónica de un aviso: origen + path actual + ?prop=<id>.
+  const propUrl = (id) => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = ""; url.hash = "";
+      url.searchParams.set("prop", String(id));
+      return url.toString();
+    } catch(e) { return ""; }
+  };
+  const shareProp = async (p) => {
+    const link = p && p.id != null ? propUrl(p.id) : "";
+    if (!link) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        // Fallback para contextos sin clipboard API (http, WebViews viejos)
+        const ta = document.createElement("textarea");
+        ta.value = link; ta.setAttribute("readonly", "");
+        ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      showToast("Link copiado");
+    } catch(e) { showToast("No se pudo copiar el link"); }
+  };
 
   // ─── Cargar likes/saved del user autenticado desde Supabase ─────────────
   // Tabla `user_actions` (user_id text, prop_id uuid, action text, created_at)
@@ -5500,10 +5564,10 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
           {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} />}
         </div>
         <div className="pc-content">
-        {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} />:(
+        {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} onShare={shareProp} />:(
           <>
             {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
-            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
+            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} onShare={shareProp} startPropId={reelStart} />}
             {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps.filter(x=>x.id!==p.id)]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft} me={me}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile
