@@ -2290,6 +2290,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
     const el = slideRefs.current[i];
     if (el && scrollRef.current) el.scrollIntoView({behavior:"smooth", block:"start"});
   };
+  // Sin botones en pantalla: los usa el atajo de teclado (flechas arriba/abajo).
   const goNext = () => { const next = Math.min(reelFeed.length-1, idx+1); scrollToIdx(next); };
   const goPrev = () => { const prev = Math.max(0, idx-1); scrollToIdx(prev); };
 
@@ -2473,20 +2474,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
         {muted && <span style={{fontSize:11.5,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.02em"}}>Sonido</span>}
       </button>
 
-      {/* Pager indicator + arrows on the LEFT side, vertically centered (fixed) */}
-      <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:20}}>
-        <button onClick={()=>goPrev()} disabled={idx===0} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.3:1}}>
-          <Icon name="chevronUp" size={16} color={C.surface} stroke={1.8}/>
-        </button>
-        <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
-          {reelFeed.map((_,i)=>(
-            <div key={i} style={{width:3,height:i===idx?16:6,borderRadius:2,background:i===idx?C.surface:"rgba(255,255,255,0.4)",transition:"all 0.2s"}}/>
-          ))}
-        </div>
-        <button onClick={()=>goNext()} disabled={idx===reelFeed.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===reelFeed.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===reelFeed.length-1?0.3:1}}>
-          <Icon name="chevronDown" size={16} color={C.surface} stroke={1.8}/>
-        </button>
-      </div>
+      {/* Sin controles de paginado sobre el video: la navegación es scroll /
+          swipe y las flechas del teclado (ver el listener de keydown arriba). */}
 
     </div>
   );
