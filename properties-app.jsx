@@ -2374,6 +2374,13 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
           const prop = props.find(x=>x.id===rl.propId);
           if (!prop) return null;
           const isActive = i === idx;
+          // Ventana de precarga. Sin esto los N videos del feed bajaban datos a
+          // la vez (el default del browser es "metadata", y Chrome desktop llega
+          // a usar "auto"). Solo el reel visible baja de verdad; sus dos vecinos
+          // se quedan en metadata para que el swipe siga arrancando al toque; el
+          // resto no pide nada hasta acercarse.
+          const dist = Math.abs(i - idx);
+          const preload = dist === 0 ? "auto" : dist === 1 ? "metadata" : "none";
           // Prioridad: video_url (Supabase Storage — reels publicados) > videoFile (blob local) > videoTakeFiles (draft)
           const reelVideoSrc = prop.video_url || prop.videoFile || (prop.videoTakeFiles && prop.videoTakeFiles[1]) || null;
           return (
@@ -2401,7 +2408,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
                   trae su propio texto quemado. */}
               <div style={{position:"relative",flex:1,minHeight:0,background:"#000",overflow:"hidden"}}>
                 {reelVideoSrc ? (
-                  <video ref={(el)=>registerVideo(el,i)} src={reelVideoSrc} poster={prop.img||undefined} autoPlay={isActive} muted={muted} loop playsInline style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
+                  <video ref={(el)=>registerVideo(el,i)} src={reelVideoSrc} poster={prop.img||undefined} preload={preload} autoPlay={isActive} muted={muted} loop playsInline style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
                 ) : (
                   <img src={prop.img} alt="" style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
                 )}
