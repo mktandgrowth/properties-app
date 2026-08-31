@@ -3031,9 +3031,13 @@ function mapDbPropToUi(row) {
 // Fetch all published properties from the database (newest first)
 async function fetchProperties() {
   if (!supabase) return [];
+  // Columnas explícitas SIN la dirección exacta (loc, street, numero): esas
+  // columnas están revocadas para el rol anónimo a nivel de base, así que
+  // pedirlas rompería la consulta. El público ve vanity_location/comuna.
+  const PUBLIC_COLS = "id, owner_id, type, types, operacion, rol, pais, region, comuna, sector, vanity_location, lat, lng, price, currency, beds, suites, baths, parks, area, area_terreno, area_total, hectareas, privados, title, description, amenities, thumbnail_url, video_url, video_take_urls, photo_urls, music_track, reel_title, reel_subtitle, title_style, take_speeds, take_order, take_durations, views, likes_count, status, nuevo, created_at, updated_at, contact_wa, condition, parking, terreno_m2, features, contact_method, terraza_m2";
   const { data, error } = await supabase
     .from("properties")
-    .select("*, owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
+    .select(PUBLIC_COLS + ", owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
     .eq("status", "published")
     .order("created_at", { ascending: false });
   if (error) { console.warn("fetchProperties error", error); return []; }
