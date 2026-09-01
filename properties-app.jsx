@@ -3031,12 +3031,19 @@ function mapDbPropToUi(row) {
 // Fetch all published properties from the database (newest first)
 async function fetchProperties() {
   if (!supabase) return [];
+  // Columnas explícitas SIN la dirección exacta (loc, street, numero): esas
+  // columnas están revocadas para el rol anónimo a nivel de base, así que
+  // pedirlas rompería la consulta. El público ve vanity_location/comuna.
+  const PUBLIC_COLS = "id, owner_id, type, types, operacion, rol, pais, region, comuna, sector, vanity_location, lat, lng, price, currency, beds, suites, baths, parks, area, area_terreno, area_total, hectareas, privados, title, description, amenities, thumbnail_url, video_url, video_take_urls, photo_urls, music_track, reel_title, reel_subtitle, title_style, take_speeds, take_order, take_durations, views, likes_count, status, nuevo, created_at, updated_at, contact_wa, condition, parking, terreno_m2, features, contact_method, terraza_m2";
   const { data, error } = await supabase
     .from("properties")
-    .select("*, owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
+    .select(PUBLIC_COLS + ", owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
     .eq("status", "published")
     .order("created_at", { ascending: false });
-  if (error) { console.warn("fetchProperties error", error); return []; }
+  // `null` (y no `[]`) para que el que llama distinga "falló la consulta" de
+  // "no hay publicaciones", y pueda avisarle al usuario en vez de dejarlo
+  // viendo los avisos de demo como si fueran reales.
+  if (error) { console.warn("fetchProperties error", error); return null; }
   return (data || []).map(mapDbPropToUi);
 }
 
@@ -4864,7 +4871,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
                 <input value={epf.title} onChange={e=>setEpf({...epf,title:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
               </div>
               <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ubicación</label>
-                <input value={epf.loc} onChange={e=>setEpf({...epf,loc:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+                <input value={epf.loc} onChange={e=>setEpf({...epf,loc:e.target.value})} placeholder="Dejala en blanco para no cambiarla" style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
                 <div style={{flex:0.4}}><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Moneda</label>
@@ -5325,6 +5332,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(PROPS);
+  const [loadError,setLoadError]=useState(false);
   // Toast de bienvenida: si llegaste desde greatdeal-app (?justPublished=<id>),
   // celebrá que la propiedad ya está publicada + abrir directo tu reel.
   useEffect(() => {
@@ -5352,8 +5360,10 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
       try {
         const rows = await fetchProperties();
         if (!active) return;
-        if (rows && rows.length > 0) setProps([...rows, ...PROPS]);
-      } catch(e) { console.warn("Fetch error", e); }
+        if (rows === null) { setLoadError(true); return; }
+        setLoadError(false);
+        if (rows.length > 0) setProps([...rows, ...PROPS]);
+      } catch(e) { console.warn("Fetch error", e); if (active) setLoadError(true); }
     };
     refresh();
     // Real-time: cuando alguien publica/edita/borra, todos refrescan el feed
@@ -5721,7 +5731,11 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
                   if (patch.price !== undefined) dbPatch.price = patch.price;
                   if (patch.cur !== undefined) dbPatch.currency = patch.cur;
                   if (patch.desc !== undefined) dbPatch.description = patch.desc;
-                  if (patch.loc !== undefined) dbPatch.loc = patch.loc;
+                  // El feed público ya no pide `loc`, así que el formulario de
+                  // edición lo abre vacío. Vacío significa "no la tocó", no
+                  // "borrala": si lo mandáramos tal cual, cualquier edición de
+                  // precio o título borraría la dirección guardada.
+                  if (patch.loc) dbPatch.loc = patch.loc;
                   const { error } = await supabase.from("properties").update(dbPatch).eq("id", id);
                   if (error) { console.error("Edit failed", error); showToast("Error al actualizar"); return; }
                 }
@@ -5759,6 +5773,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         <UserCornerBadge me={me} onClick={()=>go("profile")} />
 
         {/* Toast feedback */}
+        {loadError && <div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,padding:"10px 16px",background:C.terracotta,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,textAlign:"center",zIndex:500,boxSizing:"border-box",letterSpacing:"0.01em"}}>No pudimos cargar las propiedades, recargá la página</div>}
         {toast && <div style={{position:"fixed",bottom:96,left:"50%",transform:"translateX(-50%)",padding:"10px 18px",borderRadius:999,background:C.ink,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,boxShadow:"0 8px 24px rgba(28,26,23,0.3)",zIndex:400,animation:"toastIn 0.2s ease",letterSpacing:"0.01em",pointerEvents:"none"}}>{toast}</div>}
 
         {/* Sell draft navigation guard */}
