@@ -1590,7 +1590,7 @@ const initialFilters = () => ({
   nuevo:"", // "", "nuevo", "usado"
 });
 
-function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied}) {
+function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied,loading,loadError}) {
   const [q,setQ]=useState("");
   const [fType,setFType]=useState("");
   const [fOperacion,setFOperacion]=useState("venta");
@@ -2007,11 +2007,18 @@ function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied}) {
         })}
       </div>
 
-      {!filtered.length&&<div style={{textAlign:"center",padding:"60px 20px",color:C.muted}}>
+      {/* Tres estados distintos con cero tarjetas: todavía cargando, no hay
+          ninguna publicación, o los filtros dejaron todo afuera. Antes los
+          PROPS de demo tapaban los dos primeros y siempre se leía como
+          "no hay resultados", que le echaba la culpa a una búsqueda que el
+          visitante nunca hizo. */}
+      {!filtered.length&&!loadError&&<div style={{textAlign:"center",padding:"60px 20px",color:C.muted}}>
         <div style={{margin:"0 auto 12px",width:52,height:52,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <Icon name="search" size={22} color={C.brand} stroke={1.5}/>
+          <Icon name={loading?"house":(props.length===0?"house":"search")} size={22} color={C.brand} stroke={1.5}/>
         </div>
-        <p style={{fontFamily:Fb,fontSize:13,fontWeight:400,margin:0}}>No hay resultados para tu búsqueda</p>
+        <p style={{fontFamily:Fb,fontSize:13,fontWeight:400,margin:0}}>
+          {loading ? "Cargando propiedades…" : props.length===0 ? "Todavía no hay publicaciones" : "No hay resultados para tu búsqueda"}
+        </p>
       </div>}
 
       {/* Reels strip section (like IG Explore) */}
@@ -5333,6 +5340,9 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [toast,setToast]=useState(null);
   const [props,setProps]=useState(supabase ? [] : PROPS); // demos solo si no hay base configurada (dev local)
   const [loadError,setLoadError]=useState(false);
+  // Con Supabase el feed arranca vacío, así que hay que poder distinguir
+  // "todavía no llegó la respuesta" de "no hay nada publicado".
+  const [loadingProps,setLoadingProps]=useState(!!supabase);
   // Toast de bienvenida: si llegaste desde greatdeal-app (?justPublished=<id>),
   // celebrá que la propiedad ya está publicada + abrir directo tu reel.
   useEffect(() => {
@@ -5364,6 +5374,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         setLoadError(false);
         setProps(rows); // solo publicaciones reales: los PROPS de demo no se mezclan en producción
       } catch(e) { console.warn("Fetch error", e); if (active) setLoadError(true); }
+      finally { if (active) setLoadingProps(false); }
     };
     refresh();
     // Real-time: cuando alguien publica/edita/borra, todos refrescan el feed
@@ -5701,7 +5712,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         <div className="pc-content">
         {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} onShare={shareProp} />:(
           <>
-            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} applyPrefs={feedPrefs} onPrefsApplied={()=>setFeedPrefs(null)} />}
+            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} applyPrefs={feedPrefs} onPrefsApplied={()=>setFeedPrefs(null)} loading={loadingProps} loadError={loadError} />}
             {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} onShare={shareProp} startPropId={reelStart} />}
             {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps.filter(x=>x.id!==p.id)]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft} me={me}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
