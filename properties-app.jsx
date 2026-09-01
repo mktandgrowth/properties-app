@@ -5331,7 +5331,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [openProfilePanel,setOpenProfilePanel]=useState(null);
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
-  const [props,setProps]=useState(PROPS);
+  const [props,setProps]=useState(supabase ? [] : PROPS); // demos solo si no hay base configurada (dev local)
   const [loadError,setLoadError]=useState(false);
   // Toast de bienvenida: si llegaste desde greatdeal-app (?justPublished=<id>),
   // celebrá que la propiedad ya está publicada + abrir directo tu reel.
@@ -5362,7 +5362,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         if (!active) return;
         if (rows === null) { setLoadError(true); return; }
         setLoadError(false);
-        if (rows.length > 0) setProps([...rows, ...PROPS]);
+        setProps(rows); // solo publicaciones reales: los PROPS de demo no se mezclan en producción
       } catch(e) { console.warn("Fetch error", e); if (active) setLoadError(true); }
     };
     refresh();
