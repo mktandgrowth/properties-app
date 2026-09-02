@@ -214,7 +214,6 @@ const PROP_TYPES = [
   { t:"Sitio",         icon:"land" },
   { t:"Parcela",       icon:"mountain" },
   { t:"Oficina",       icon:"briefcase" },
-  { t:"Industrial",    icon:"storage" },
 ];
 
 const OPERACIONES = [
@@ -1375,17 +1374,8 @@ function FilterSheet({draft,setDraft,onApply,onClose,onClear,resultCount,fType,c
             </Section>
           )}
 
-          {/* URBANO / RURAL — Sitio */}
-          {catalog?.showUrbano && (
-            <Section title="Ubicación">
-              <div style={{display:"flex",gap:6}}>
-                {[{v:"",l:"Indiferente"},{v:"urbano",l:"Urbano"},{v:"rural",l:"Rural"}].map(o=>{
-                  const on=draft.urbano===o.v;
-                  return <button key={o.l} onClick={()=>setDraft({...draft,urbano:o.v})} style={{flex:1,padding:"10px 8px",borderRadius:10,background:on?C.ink:C.surface,border:`1px solid ${on?C.ink:C.line}`,color:on?C.surface:C.text,fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:Fb,letterSpacing:"0.01em"}}>{o.l}</button>;
-                })}
-              </div>
-            </Section>
-          )}
+          {/* URBANO / RURAL — Sitio: temporalmente oculto porque el publisher aún no guarda ese campo */}
+          {false && catalog?.showUrbano && null}
 
           {/* DORMITORIOS — Casa, Depto */}
           {(!catalog || catalog.showBeds) && (
@@ -1508,7 +1498,7 @@ function Feed({props,onTap,onOpenReel}) {
     (filters.totalMin||filters.totalMax?1:0) +
     (filters.hectMin||filters.hectMax?1:0) +
     filters.amenities.length +
-    (filters.urbano?1:0) +
+    // (filters.urbano se removió — UI temporal oculta hasta que el publisher lo guarde) +
     (filters.nuevo?1:0)
   );
 
@@ -1524,8 +1514,17 @@ function Feed({props,onTap,onOpenReel}) {
     if(fOperacion && (p.operacion||"venta")!==fOperacion) return false;
     if(fType&&p.type!==fType)return false;
     if(q){
-      const s=q.toLowerCase();
-      if(!p.comuna.toLowerCase().includes(s)&&!p.loc.toLowerCase().includes(s)&&!p.title.toLowerCase().includes(s))return false;
+      // Match estricto por comuna (case-insensitive) para evitar falsos positivos
+      // como "Colina" apareciendo al filtrar "Vitacura" solo porque el título mencionaba Vitacura.
+      // Si el user tipeó una comuna conocida, compare EXACTO. Si es texto libre, sigue buscando ancho.
+      const s = q.trim().toLowerCase();
+      const comunaLc = (p.comuna || "").toLowerCase();
+      const knownComuna = (typeof COMUNAS !== "undefined") && Array.isArray(COMUNAS) && COMUNAS.some(c => (Array.isArray(c) ? c[0] : c).toLowerCase() === s);
+      if (knownComuna) {
+        if (comunaLc !== s) return false;
+      } else {
+        if (!comunaLc.includes(s) && !(p.loc||"").toLowerCase().includes(s) && !(p.title||"").toLowerCase().includes(s)) return false;
+      }
     }
     // Price (in selected currency)
     const pp = priceIn(p,filters.currency);
@@ -1560,7 +1559,7 @@ function Feed({props,onTap,onOpenReel}) {
 
   // Pattern for grid: certain indices become 2x2 "featured" cells
   const bigAt = i => (i % 7 === 3);
-  const types = ["Todos","Casa","Departamento","Terreno","Parcela","Oficina"];
+  const types = ["Todos","Casa","Departamento","Sitio","Parcela","Oficina"];
 
   // Helper to remove single active filter
   const clearOne = key => {
@@ -2204,7 +2203,16 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
             >
               {/* Background: user's video if available, else property image */}
               {reelVideoSrc ? (
-                <video src={reelVideoSrc} autoPlay={isActive} muted={muted} loop playsInline style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+                <video
+                  src={reelVideoSrc}
+                  autoPlay={isActive}
+                  muted={muted}
+                  loop
+                  playsInline
+                  preload={isActive ? "auto" : "metadata"}
+                  poster={prop.thumbnail_url || prop.img || undefined}
+                  style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}
+                />
               ) : (
                 <img src={prop.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>
               )}
@@ -2814,11 +2822,16 @@ function mapDbPropToUi(row) {
 // Fetch all published properties from the database (newest first)
 async function fetchProperties() {
   if (!supabase) return [];
+  // Paginación: traemos las primeras 24 propiedades del feed (grid + carousel).
+  // Suficiente para renderizar sin scrollear más de 2 pantallas en desktop y
+  // ~4 pantallas en mobile. Cuando el user scrollee al fondo, agregamos infinite
+  // scroll con range(24, 47), (48, 71), etc. — TODO cuando pase 24 props reales.
   const { data, error } = await supabase
     .from("properties")
     .select("*, owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
     .eq("status", "published")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(0, 23);
   if (error) { console.warn("fetchProperties error", error); return []; }
   return (data || []).map(mapDbPropToUi);
 }

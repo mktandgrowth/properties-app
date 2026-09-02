@@ -12,7 +12,11 @@
     <title>C2C · property market</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Preconnect a Supabase (fetch + Storage) y al backend Render — ahorra ~200-400ms de handshake -->
+    <link rel="preconnect" href="https://mgspabnjipncsutpenge.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://greatdeal-api.onrender.com" crossorigin />
+    <!-- Fonts optimizadas: Cormorant solo 500 (headings) y 600 (destacados) | Inter 400 (body) y 600 (labels). Bajamos de ~9 variantes a 4 (-150KB) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;600&display=swap" rel="stylesheet" />
     <style>
       html, body, #root { margin: 0; padding: 0; height: 100%; background: #0a0a0b; color: #f5f0e6; }
       body { font-family: 'Inter', system-ui, -apple-system, sans-serif; overscroll-behavior: none; }
