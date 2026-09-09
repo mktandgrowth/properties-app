@@ -2430,21 +2430,29 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
                   style={{position:"absolute",inset:0,zIndex:5,background:"transparent",border:"none",padding:0,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}
                 />
 
-                {/* Action column — sobre el marco del video, a la derecha */}
-                <div style={{position:"absolute",right:12,bottom:16,display:"flex",flexDirection:"column",gap:20,alignItems:"center",zIndex:10}}>
+                {/* Action column — sobre el marco del video, a la derecha. Cada ícono lleva
+                    un fondo circular semi-transparente para que se lea siempre,
+                    sin importar si el video de fondo es claro u oscuro. */}
+                <div style={{position:"absolute",right:12,bottom:16,display:"flex",flexDirection:"column",gap:18,alignItems:"center",zIndex:10}}>
                   <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                    <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
+                    <div style={{width:40,height:40,borderRadius:999,background:"rgba(0,0,0,0.34)",backdropFilter:"blur(2px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <Icon name="heart" size={24} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
+                    </div>
                     <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
                   </button>
                   <button onClick={()=>{
                     if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
                     window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
                   }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
-                    <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
+                    <div style={{width:40,height:40,borderRadius:999,background:"rgba(0,0,0,0.34)",backdropFilter:"blur(2px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <Icon name="whatsapp" size={22} color={C.surface} stroke={1.6}/>
+                    </div>
                     <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
                   </button>
                   <button onClick={()=>onShare&&onShare(prop)} title="Copiar el link de esta publicación" style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                    <Icon name="share" size={27} color={C.surface} stroke={1.6}/>
+                    <div style={{width:40,height:40,borderRadius:999,background:"rgba(0,0,0,0.34)",backdropFilter:"blur(2px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <Icon name="share" size={22} color={C.surface} stroke={1.6}/>
+                    </div>
                     <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Compartir</span>
                   </button>
                 </div>
