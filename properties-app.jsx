@@ -2493,8 +2493,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
 
       {/* Logo header — fixed, on top of slide track */}
       <div style={{position:"absolute",top:18,left:18,zIndex:20,display:"flex",alignItems:"center",gap:8,pointerEvents:"none"}}>
-        <Logo size={22} color={C.surface} />
-        <span style={{fontSize:17,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em"}}>C<em style={{fontStyle:"italic",color:C.brandSoft,fontWeight:400}}>2</em>C <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
+        <Logo size={22} color={C.ink} />
+        <span style={{fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>C<em style={{fontStyle:"italic",color:C.brandSoft,fontWeight:400}}>2</em>C <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
       </div>
 
       {/* Altavoz (arriba a la derecha). 48px de target táctil. Mientras esté en
@@ -2506,8 +2506,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
         title={muted?"Activar sonido":"Silenciar"}
         style={{position:"absolute",top:14,right:14,zIndex:30,minWidth:48,height:48,padding:muted?"0 17px 0 14px":0,borderRadius:999,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.25)`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}
       >
-        <Icon name={muted?"volumeOff":"volume"} size={19} color={C.surface} stroke={1.8}/>
-        {muted && <span style={{fontSize:11.5,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.02em"}}>Sonido</span>}
+        <Icon name={muted?"volumeOff":"volume"} size={19} color={C.ink} stroke={1.8}/>
+        {muted && <span style={{fontSize:11.5,fontWeight:500,color:C.ink,fontFamily:Fb,letterSpacing:"0.02em"}}>Sonido</span>}
       </button>
 
       {/* Sin controles de paginado sobre el video: la navegación es scroll /
