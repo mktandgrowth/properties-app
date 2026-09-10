@@ -1295,7 +1295,7 @@ function Nav({active,go}) {
   const items=[
     {id:"feed",l:"Explorar",icon:"grid"},
     {id:"reels",l:"Reels",icon:"reels"},
-    {id:"saved",l:"Guardados",icon:"bookmark"},
+    {id:"saved",l:"Guardados",icon:"heart"},
     {id:"profile",l:"Perfil",icon:"user"},
   ];
   return (
@@ -1315,7 +1315,7 @@ function Nav({active,go}) {
 }
 
 // ── Header ──
-function Header({sub,onNotif}) {
+function Header({sub,onNotif,onOpenAsesor}) {
   const [open,setOpen]=useState(false);
   const [aiOpen,setAiOpen]=useState(false);
   const unreadCount = NOTIFS.filter(n=>n.unread).length;
@@ -1337,13 +1337,16 @@ function Header({sub,onNotif}) {
         {aiOpen && <>
           <div onClick={()=>setAiOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
           <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:240,background:C.surface,border:`1px solid ${C.line}`,borderRadius:14,padding:8,boxShadow:`0 16px 40px ${C.ink}25`,zIndex:201}}>
-            <a href={`${SHELL}/tasar?view=comprador`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:10,textDecoration:"none",color:C.text}}>
+            {/* "Ayuda en tu compra" abre el chat de Isidora acá mismo. Antes
+                mandaba a tasar.c2cprops.com: sacaba al visitante del catálogo
+                justo cuando estaba mirando propiedades, y volver era caro. */}
+            <button onClick={()=>{setAiOpen(false); onOpenAsesor && onOpenAsesor();}} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:10,color:C.text,width:"100%",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
               <span style={{fontSize:18,lineHeight:1}}>🔍</span>
               <div>
                 <div style={{fontFamily:Fs,fontSize:14,fontWeight:500,color:C.ink}}>Ayuda en tu compra</div>
                 <div style={{fontSize:10.5,color:C.muted,fontFamily:Fb,marginTop:2}}>Isidora te asesora</div>
               </div>
-            </a>
+            </button>
             <a href={`${SHELL}/tasar?view=vendedor`} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:10,textDecoration:"none",color:C.text}}>
               <span style={{fontSize:18,lineHeight:1}}>🏡</span>
               <div>
@@ -2158,7 +2161,7 @@ function Detail({p,back,onLike,onSave,onShare}) {
         <div style={{display:"flex",gap:8}}>
           <button onClick={()=>{
             if (!p.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
-            window.open(waUrl(p.wa,`Hola ${p.user}, vi tu publicación "${p.title}" en properties. Me interesa coordinar una visita.`),"_blank");
+            window.open(waUrl(p.wa,`Hola ${p.user}, vi tu publicación "${p.title}" en C2C. Me interesa coordinar una visita.`),"_blank");
           }} disabled={!p.wa} style={{flex:1,padding:14,borderRadius:12,background:p.wa?C.ink:C.line,border:"none",cursor:p.wa?"pointer":"default",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
             <Icon name="whatsapp" size={18} color={C.surface} stroke={1.6}/>WhatsApp
           </button>
@@ -2465,7 +2468,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
                   </button>
                   <button onClick={()=>{
                     if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
-                    window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
+                    window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en C2C. Me interesa.`),"_blank");
                   }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
                     <div style={{width:40,height:40,borderRadius:999,background:"rgba(0,0,0,0.34)",backdropFilter:"blur(2px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                       <Icon name="whatsapp" size={22} color={C.ink} stroke={1.6}/>
@@ -4443,7 +4446,7 @@ function ChatPanel({convo,onBack}) {
   const [msgs,setMsgs] = useState(() => {
     // Mock messages depending on the convo
     const base = [
-      {from:"them", t:"Hola Valentina, vi tu publicación de "+convo.prop+" en properties. Me interesa mucho.", time:"10:42"},
+      {from:"them", t:"Hola Valentina, vi tu publicación de "+convo.prop+" en C2C. Me interesa mucho.", time:"10:42"},
       {from:"me",   t:"¡Hola "+convo.name.split(" ")[0]+"! Gracias por escribir. Cuéntame, ¿qué te gustaría saber?", time:"10:45"},
       {from:"them", t:convo.last, time:convo.time},
     ];
@@ -4702,7 +4705,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
       </Sheet>}
 
       {panel==="logout" && <Sheet title="Cerrar sesión" onClose={()=>setPanel(null)}>
-        <p style={{margin:"0 0 22px",fontSize:14,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.55,textAlign:"center"}}>¿Estás segura que quieres cerrar tu sesión en properties?</p>
+        <p style={{margin:"0 0 22px",fontSize:14,color:C.text,fontFamily:Fb,fontWeight:400,lineHeight:1.55,textAlign:"center"}}>¿Estás segura que querés cerrar tu sesión en C2C?</p>
         <div style={{display:"flex",gap:10}}>
           <button onClick={()=>setPanel(null)} style={{flex:1,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Cancelar</button>
           <button onClick={async ()=>{setPanel(null); if(supabase){await supabase.auth.signOut();}}} style={{flex:1,padding:14,borderRadius:12,background:C.terracotta,border:"none",color:C.surface,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:Fb}}>Sí, salir</button>
@@ -4941,7 +4944,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
 // ═══ MAIN ═══
 // ─── Desktop sidebar nav ───
 // ─── Desktop TopBar — horizontal nav, replaces the sidebar on PC ───
-function TopBarDesktop({active,go,onNotif}) {
+function TopBarDesktop({active,go,onNotif,onOpenAsesor}) {
   const [aiOpen,setAiOpen]=useState(false);
   return (
     <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:120,background:"rgba(10,10,11,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
@@ -4961,13 +4964,15 @@ function TopBarDesktop({active,go,onNotif}) {
         {aiOpen && <>
           <div onClick={()=>setAiOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"transparent"}}/>
           <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:280,background:"#0f0f10",border:`1px solid ${C.line}`,borderRadius:14,padding:8,boxShadow:`0 20px 50px rgba(0,0,0,0.8)`,zIndex:300}}>
-            <a href="https://c2cprops.com/tasar?view=comprador" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
+            {/* Igual que en mobile: el asesor de compra se abre inline, no
+                saca al visitante del catálogo. */}
+            <button onClick={()=>{setAiOpen(false); onOpenAsesor && onOpenAsesor();}} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,color:C.text,width:"100%",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
               <span style={{fontSize:20,lineHeight:1}}>🔍</span>
               <div>
                 <div style={{fontFamily:Fs,fontSize:16,fontWeight:500,color:C.ink}}>Ayuda en tu compra</div>
                 <div style={{fontSize:11,color:C.muted,fontFamily:Fb,marginTop:2}}>Isidora te encuentra la propiedad perfecta</div>
               </div>
-            </a>
+            </button>
             <a href="https://c2cprops.com/tasar?view=vendedor" style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 14px",borderRadius:10,textDecoration:"none",color:C.text}}>
               <span style={{fontSize:20,lineHeight:1}}>🏡</span>
               <div>
@@ -5203,7 +5208,7 @@ function AuthScreen({ onAuthed, onGuest }) {
 
         <div style={{marginTop:18,paddingTop:14,borderTop:`1px solid ${C.lineSoft}`,textAlign:"center"}}>
           <p style={{margin:0,fontSize:11.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>
-            {mode==="signup" ? "¿Ya tenés cuenta?" : "¿Primera vez en properties?"}
+            {mode==="signup" ? "¿Ya tenés cuenta?" : "¿Primera vez en C2C?"}
             <button onClick={()=>{setMode(mode==="signup"?"login":"signup");setErr("");setInfo("");}} style={{marginLeft:5,background:"none",border:"none",cursor:"pointer",color:C.brand,fontFamily:Fb,fontWeight:600,fontSize:11.5}}>
               {mode==="signup" ? "Iniciá sesión" : "Crear cuenta"}
             </button>
@@ -5512,6 +5517,25 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const shareProp = async (p) => {
     const link = p && p.id != null ? propUrl(p.id) : "";
     if (!link) return;
+    // 1) Share nativo: en celular abre la hoja del sistema (WhatsApp, Instagram,
+    //    mail). Es lo que la gente espera al tocar "compartir" y, en Chile,
+    //    WhatsApp es el canal real. Antes solo copiábamos al portapapeles: el
+    //    usuario tocaba y "no pasaba nada" visible.
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: p.title || "Propiedad en C2C",
+          text: p.title ? `${p.title} — ${p.cur} ${fmt(p.price)}` : "Mirá esta propiedad en C2C",
+          url: link,
+        });
+        return;                     // compartido: sin toast, la hoja ya dio feedback
+      } catch (e) {
+        // El usuario canceló la hoja → no es un error, no molestamos con toast.
+        if (e && e.name === "AbortError") return;
+        // Cualquier otra falla (permisos, contexto inseguro) cae al portapapeles.
+      }
+    }
+    // 2) Fallback: copiar el link.
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(link);
@@ -5724,7 +5748,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         }
       `}</style>
 
-      <TopBarDesktop active={tab} go={go} onNotif={onNotifAction}/>
+      <TopBarDesktop active={tab} go={go} onNotif={onNotifAction} onOpenAsesor={()=>setIsidoraOpen(true)}/>
 
       {/* Banner de modo invitado — solo visible si entró sin cuenta */}
       {isGuest && (
@@ -5737,7 +5761,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
 
       <div className="main-app" style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,position:"relative"}}>
         <div className="mob-header">
-          {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} />}
+          {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} onOpenAsesor={()=>setIsidoraOpen(true)} />}
         </div>
         <div className="pc-content">
         {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} onShare={shareProp} />:(
