@@ -6,6 +6,16 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        // Separa las libs que no cambian entre deploys en chunks propios,
+        // así el navegador las cachea y no re-baja ~140KB en cada release.
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          supabase: ["@supabase/supabase-js"],
+        },
+      },
+    },
   },
   server: {
     port: 5173,
