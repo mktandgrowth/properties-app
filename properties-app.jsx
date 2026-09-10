@@ -325,6 +325,79 @@ const AMENITIES = [
 // Format precios — siempre número completo con puntos (no más "25K")
 const fmt = n => (n||0).toLocaleString("es-CL");
 
+// ── Privacidad de ubicación ──
+// El formulario de publicación le promete al vendedor que la dirección exacta
+// no se publica. `p.loc` (calle + número), `p.street`, `p.number` y el par
+// lat/lng exacto son datos del dueño: NUNCA se muestran en vistas públicas
+// (tarjetas, ficha, reels, mapa). Lo público es el "vanityLocation" que el
+// vendedor eligió y, si no puso ninguno, la comuna a secas.
+function publicLocation(p) {
+  if (!p) return "";
+  const vanity = String(p.vanityLocation || "").trim();
+  if (vanity) return vanity;
+  const comuna = String(p.comuna || "").trim();
+  if (comuna) return comuna;
+  // Sin comuna guardada: `loc` viene como "Calle 123, Comuna" — nos quedamos
+  // solo con el último tramo. Si no hay coma no arriesgamos y no mostramos nada.
+  const parts = String(p.loc || "").split(",").map(s => s.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : "";
+}
+
+// "3 dorm · 3 baños · 165 m²" para la card del feed. En la card chica el espacio
+// es de ~140px, así que abrevia. Omite cada dato que falte en vez de mostrar 0,
+// y devuelve "" si no hay ninguno (ej. un sitio sin construcción).
+function specLine(p, full = false) {
+  if (!p) return "";
+  const out = [];
+  const beds = Number(p.beds) || 0;
+  const baths = Number(p.baths) || 0;
+  const area = Number(p.area) || 0;
+  if (beds > 0) out.push(full ? `${beds} ${beds === 1 ? "dorm" : "dorms"}` : `${beds}d`);
+  if (baths > 0) out.push(full ? `${baths} ${baths === 1 ? "baño" : "baños"}` : `${baths}b`);
+  if (area > 0) out.push(`${area} m²`);
+  return out.join(" · ");
+}
+
+// Icono de fallback según el tipo de propiedad.
+function typeIcon(type) {
+  if (type === "Departamento") return "building";
+  if (type === "Parcela") return "mountain";
+  if (type === "Oficina") return "briefcase";
+  if (type === "Sitio") return "land";
+  return "house";
+}
+
+// Fuente de video de un aviso, en el mismo orden de prioridad que usa el
+// reproductor de reels: video publicado > blob local > primer take del borrador.
+function propVideoSrc(p) {
+  if (!p) return null;
+  if (p.video_url) return p.video_url;
+  if (p.videoFile) return p.videoFile;
+  const takes = p.videoTakeFiles;
+  if (takes) return takes[1] || Object.values(takes).find(Boolean) || null;
+  return null;
+}
+
+// Radio (m) del círculo aproximado que reemplaza al pin exacto en mapas públicos.
+const APPROX_RADIUS_M = 500;
+
+// Centro aproximado para el mapa público: desplaza el punto real una distancia
+// fija en un ángulo derivado del id (determinístico — el mismo aviso siempre cae
+// en el mismo lugar) para que el centro del círculo no delate la dirección.
+function approxLatLng(p, radiusM = APPROX_RADIUS_M) {
+  if (!p || typeof p.lat !== "number" || typeof p.lng !== "number") return null;
+  const seed = String(p.id ?? "");
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  const angle = (h % 360) * Math.PI / 180;
+  const dist = radiusM * 0.5;
+  const cosLat = Math.cos(p.lat * Math.PI / 180) || 1;
+  return {
+    lat: p.lat + (dist * Math.cos(angle)) / 111320,
+    lng: p.lng + (dist * Math.sin(angle)) / (111320 * cosLat),
+  };
+}
+
 // ── Brand Logo (refined) ──
 const Logo = ({size=24,color=C.brand}) => (
   <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
@@ -396,9 +469,40 @@ const Icon = ({ name, size = 18, color = "currentColor", stroke = 1.5, fill = "n
     volume: <><path d="M3 10v4a1 1 0 001 1h4l5 5V4l-5 5H4a1 1 0 00-1 1z"/><path d="M16 7a5 5 0 010 10M19 3a9 9 0 010 18"/></>,
     volumeOff: <><path d="M3 10v4a1 1 0 001 1h4l5 5V4l-5 5H4a1 1 0 00-1 1z"/><path d="M22 9l-5 5M22 14l-5-5"/></>,
     trash: <><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>,
+    share: <><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1"/></>,
     dots: <><circle cx="12" cy="6" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="12" r="1.4" fill={color} stroke="none"/><circle cx="12" cy="18" r="1.4" fill={color} stroke="none"/></>,
   };
   return <svg {...s} style={{display:"block",flexShrink:0}}>{paths[name]}</svg>;
+};
+
+// ── Portada de tarjeta ──
+// Casi todo lo que llega del publicador trae video pero ninguna foto. En vez de
+// mostrar "Sin portada", usamos el primer cuadro del propio video: el fragmento
+// #t=0.5 con preload="metadata" baja solo ese frame, no el clip entero.
+// El placeholder queda solo para avisos sin foto NI video.
+const CoverMedia = ({ p, alt = "", iconSize = 28, labelSize = 8.5, showLabel = true }) => {
+  const fit = { width:"100%", height:"100%", objectFit:"cover", display:"block" };
+  if (p?.img) return <img src={p.img} alt={alt} loading="lazy" style={fit}/>;
+  const video = propVideoSrc(p);
+  if (video) {
+    return (
+      <video
+        src={`${video}#t=0.5`}
+        preload="metadata"
+        muted
+        playsInline
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{...fit, background:"#000", pointerEvents:"none"}}
+      />
+    );
+  }
+  return (
+    <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg, ${C.brandWash} 0%, ${C.surface} 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
+      <Icon name={typeIcon(p?.type)} size={iconSize} color={C.brand} stroke={1.3}/>
+      {showLabel && <span style={{fontSize:labelSize,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Sin portada</span>}
+    </div>
+  );
 };
 
 // ── Google Maps loader hook + components ──
@@ -450,7 +554,10 @@ const MAP_STYLE = [
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#C4D9E0" }] },
 ];
 
-function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
+// `approximate`: dibuja un círculo de `radius` metros en vez del pin exacto y
+// limita el zoom, para no revelar la dirección. Es el modo obligatorio en las
+// vistas públicas; el pin exacto queda solo para el dueño (wizard de publicar).
+function MapView({ lat, lng, zoom = 15, height = 200, address = "", approximate = false, radius = APPROX_RADIUS_M }) {
   const ref = useRef(null);
   const loaded = useGoogleMaps();
   useEffect(() => {
@@ -462,7 +569,22 @@ function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
       zoomControl: true,
       styles: MAP_STYLE,
       gestureHandling: "cooperative",
+      ...(approximate ? { maxZoom: 15 } : {}),
     });
+    if (approximate) {
+      new window.google.maps.Circle({
+        map,
+        center: { lat, lng },
+        radius,
+        fillColor: "#4A3122",
+        fillOpacity: 0.16,
+        strokeColor: "#4A3122",
+        strokeOpacity: 0.55,
+        strokeWeight: 1.5,
+        clickable: false,
+      });
+      return;
+    }
     // Custom branded pin
     new window.google.maps.Marker({
       position: { lat, lng },
@@ -478,7 +600,7 @@ function MapView({ lat, lng, zoom = 15, height = 200, address = "" }) {
       },
       title: address,
     });
-  }, [loaded, lat, lng, zoom, address]);
+  }, [loaded, lat, lng, zoom, address, approximate, radius]);
 
   if (!GMAPS_KEY) {
     return (
@@ -689,7 +811,10 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const loaded = useGoogleMaps();
-  const validProps = properties.filter(p => typeof p.lat === "number" && typeof p.lng === "number");
+  // Mapa público: cada aviso se ubica en su centro APROXIMADO, nunca en el pin real.
+  const validProps = properties
+    .map(p => { const c = approxLatLng(p); return c ? { ...p, lat: c.lat, lng: c.lng } : null; })
+    .filter(Boolean);
 
   useEffect(() => {
     if (!loaded || !ref.current || mapRef.current) return;
@@ -702,6 +827,7 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
       styles: MAP_STYLE,
       gestureHandling: "greedy",
       clickableIcons: false,
+      maxZoom: 15, // sin zoom de calle: el punto es aproximado
     });
     mapRef.current = map;
   }, [loaded]);
@@ -731,12 +857,25 @@ function PropertiesMap({ properties = [], onSelectProperty, height = 380 }) {
       });
       marker.addListener("click", () => onSelectProperty && onSelectProperty(p));
       markersRef.current.push(marker);
+      // Halo de privacidad: comunica que la ubicación es aproximada.
+      const halo = new window.google.maps.Circle({
+        map: mapRef.current,
+        center: { lat: p.lat, lng: p.lng },
+        radius: APPROX_RADIUS_M,
+        fillColor: "#4A3122",
+        fillOpacity: 0.12,
+        strokeColor: "#4A3122",
+        strokeOpacity: 0.4,
+        strokeWeight: 1,
+        clickable: false,
+      });
+      markersRef.current.push(halo);
       bounds.extend({ lat: p.lat, lng: p.lng });
     });
     // Fit map to all markers
     if (validProps.length === 1) {
       mapRef.current.setCenter({ lat: validProps[0].lat, lng: validProps[0].lng });
-      mapRef.current.setZoom(14);
+      mapRef.current.setZoom(13);
     } else {
       mapRef.current.fitBounds(bounds, { top:40, left:40, right:40, bottom:40 });
     }
@@ -1456,7 +1595,7 @@ const initialFilters = () => ({
   nuevo:"", // "", "nuevo", "usado"
 });
 
-function Feed({props,onTap,onOpenReel}) {
+function Feed({props,onTap,onOpenReel,applyPrefs,onPrefsApplied,loading,loadError}) {
   const [q,setQ]=useState("");
   const [fType,setFType]=useState("");
   const [fOperacion,setFOperacion]=useState("venta");
@@ -1467,6 +1606,23 @@ function Feed({props,onTap,onOpenReel}) {
   const [mapInfo,setMapInfo]=useState(false);
   const [filters,setFilters]=useState(initialFilters());
   const [draft,setDraft]=useState(initialFilters());
+
+  // Preferencias que llegan desde el chat de Isidora. El estado de los filtros
+  // vive acá adentro, así que MainApp las pasa como prop y las aplicamos con un
+  // efecto (antes MainApp llamaba a estos setters directo y tiraba ReferenceError).
+  useEffect(() => {
+    if (!applyPrefs) return;
+    if (applyPrefs.operacion) setFOperacion(applyPrefs.operacion);
+    if (applyPrefs.tipo) setFType(applyPrefs.tipo);
+    setFilters(f => ({
+      ...f,
+      priceMax: applyPrefs.presupuestoMax ? String(applyPrefs.presupuestoMax) : "",
+      beds: applyPrefs.beds ? String(applyPrefs.beds) : "",
+      currency: "UF",
+    }));
+    setQ(applyPrefs.comuna || "");
+    onPrefsApplied && onPrefsApplied();
+  }, [applyPrefs]);
 
   // Autocomplete suggestions for comuna
   const comunaSugs = q.length >= 1
@@ -1514,16 +1670,18 @@ function Feed({props,onTap,onOpenReel}) {
     if(fOperacion && (p.operacion||"venta")!==fOperacion) return false;
     if(fType&&p.type!==fType)return false;
     if(q){
-      // Match estricto por comuna (case-insensitive) para evitar falsos positivos
-      // como "Colina" apareciendo al filtrar "Vitacura" solo porque el título mencionaba Vitacura.
-      // Si el user tipeó una comuna conocida, compare EXACTO. Si es texto libre, sigue buscando ancho.
+      // Privacidad (Foco): nunca buscar dentro de p.loc — la dirección exacta no es pública.
+      // Match estricto (Vale): si el usuario tipeó una COMUNA conocida (autocomplete),
+      // compare exacto por comuna para evitar que "Vitacura" traiga cards de Colina
+      // solo porque el título/publicLocation mencionaba Vitacura.
       const s = q.trim().toLowerCase();
-      const comunaLc = (p.comuna || "").toLowerCase();
       const knownComuna = (typeof COMUNAS !== "undefined") && Array.isArray(COMUNAS) && COMUNAS.some(c => (Array.isArray(c) ? c[0] : c).toLowerCase() === s);
       if (knownComuna) {
-        if (comunaLc !== s) return false;
+        if ((p.comuna || "").toLowerCase() !== s) return false;
       } else {
-        if (!comunaLc.includes(s) && !(p.loc||"").toLowerCase().includes(s) && !(p.title||"").toLowerCase().includes(s)) return false;
+        // Búsqueda libre: usa solo campos públicos (no p.loc).
+        const hay = `${publicLocation(p)} ${p.comuna||""} ${p.region||""} ${p.vanityLocation||""} ${p.title||""}`.toLowerCase();
+        if (!hay.includes(s)) return false;
       }
     }
     // Price (in selected currency)
@@ -1837,14 +1995,7 @@ function Feed({props,onTap,onOpenReel}) {
           const isReel = p.hasVideo;
           return (
             <div key={p.id} onClick={()=>isReel?onOpenReel(p.id):onTap(p)} style={{...style,position:"relative",overflow:"hidden",cursor:"pointer",background:C.brandWash}}>
-              {p.img ? (
-                <img src={p.img} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
-              ) : (
-                <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg, ${C.brandWash} 0%, ${C.surface} 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
-                  <Icon name={p.type==="Departamento"?"building":p.type==="Parcela"?"mountain":p.type==="Oficina"?"briefcase":p.type==="Sitio"?"land":"house"} size={big?44:28} color={C.brand} stroke={1.3}/>
-                  <span style={{fontSize:big?10:8.5,color:C.muted,fontFamily:Fb,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>Sin portada</span>
-                </div>
-              )}
+              <CoverMedia p={p} alt={p.title} iconSize={big?44:28} labelSize={big?10:8.5}/>
 
               {/* Corner indicator: reel (play) or gallery */}
               <div style={{position:"absolute",top:6,right:6,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1863,18 +2014,32 @@ function Feed({props,onTap,onOpenReel}) {
               <div style={{position:"absolute",bottom:0,left:0,right:0,padding:big?"14px 12px 10px":"10px 8px 7px",background:"linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.75) 100%)",color:C.surface}}>
                 <div style={{fontSize:big?9:8,fontWeight:500,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase",opacity:0.85,marginBottom:2}}>{p.type}</div>
                 <div style={{fontSize:big?16:12,fontWeight:400,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.15}}>{p.cur} {fmt(p.price)}</div>
-                <div style={{fontSize:big?10:9,fontFamily:Fb,fontWeight:400,opacity:0.85,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.comuna}</div>
+                <div style={{fontSize:big?10:9,fontFamily:Fb,fontWeight:400,opacity:0.85,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{publicLocation(p)}</div>
+                {/* Dorm · baños · m²: los datos ya estaban en la fila (beds/baths/
+                    area) pero la card no los mostraba, y es justo lo que decide
+                    el clic en un portal inmobiliario. Abreviado en la card chica
+                    para que entre en una línea. */}
+                {specLine(p, big) && (
+                  <div style={{fontSize:big?10:8.5,fontFamily:Fb,fontWeight:400,opacity:0.75,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{specLine(p, big)}</div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
 
-      {!filtered.length&&<div style={{textAlign:"center",padding:"60px 20px",color:C.muted}}>
+      {/* Tres estados distintos con cero tarjetas: todavía cargando, no hay
+          ninguna publicación, o los filtros dejaron todo afuera. Antes los
+          PROPS de demo tapaban los dos primeros y siempre se leía como
+          "no hay resultados", que le echaba la culpa a una búsqueda que el
+          visitante nunca hizo. */}
+      {!filtered.length&&!loadError&&<div style={{textAlign:"center",padding:"60px 20px",color:C.muted}}>
         <div style={{margin:"0 auto 12px",width:52,height:52,borderRadius:"50%",background:C.brandWash,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <Icon name="search" size={22} color={C.brand} stroke={1.5}/>
+          <Icon name={loading?"house":(props.length===0?"house":"search")} size={22} color={C.brand} stroke={1.5}/>
         </div>
-        <p style={{fontFamily:Fb,fontSize:13,fontWeight:400,margin:0}}>No hay resultados para tu búsqueda</p>
+        <p style={{fontFamily:Fb,fontSize:13,fontWeight:400,margin:0}}>
+          {loading ? "Cargando propiedades…" : props.length===0 ? "Todavía no hay publicaciones" : "No hay resultados para tu búsqueda"}
+        </p>
       </div>}
 
       {/* Reels strip section (like IG Explore) */}
@@ -1887,13 +2052,13 @@ function Feed({props,onTap,onOpenReel}) {
           <div style={{display:"flex",gap:8,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>
             {filtered.filter(p=>p.hasVideo).map(p=>(
               <div key={p.id} onClick={()=>onOpenReel(p.id)} style={{flexShrink:0,width:118,aspectRatio:"9/16",borderRadius:12,overflow:"hidden",position:"relative",cursor:"pointer",background:"#000"}}>
-                <img src={p.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                <CoverMedia p={p} iconSize={26} labelSize={8}/>
                 <div style={{position:"absolute",top:6,right:6,width:22,height:22,borderRadius:"50%",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   <Icon name="play" size={10} color={C.surface}/>
                 </div>
                 <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"10px 9px 8px",background:"linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.8) 100%)",color:C.surface}}>
                   <div style={{fontSize:11,fontWeight:500,fontFamily:Fs,letterSpacing:"-0.01em"}}>{p.cur} {fmt(p.price)}</div>
-                  <div style={{fontSize:9,fontFamily:Fb,fontWeight:400,opacity:0.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.comuna}</div>
+                  <div style={{fontSize:9,fontFamily:Fb,fontWeight:400,opacity:0.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{publicLocation(p)}</div>
                 </div>
               </div>
             ))}
@@ -1907,21 +2072,21 @@ function Feed({props,onTap,onOpenReel}) {
 }
 
 // ═══ DETAIL ═══
-function Detail({p,back,onLike,onSave}) {
-  const hasUploadedVideo = !!p.videoFile;
+function Detail({p,back,onLike,onSave,onShare}) {
+  const uploadedVideo = p.video_url || p.videoFile || null;
   const has4Takes = p.videoTakeFiles && Object.keys(p.videoTakeFiles).length > 0;
   return (
     <div style={{paddingBottom:92,background:C.bg}}>
       <div style={{position:"relative",background:"#000",height:280,overflow:"hidden"}}>
-        {hasUploadedVideo ? (
-          <video src={p.videoFile} controls poster={p.img||undefined} playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block",background:"#000"}}/>
+        {uploadedVideo ? (
+          <video src={uploadedVideo} controls poster={p.img||undefined} playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block",background:"#000"}}/>
         ) : has4Takes ? (
           <ReelPlayer takeFiles={p.videoTakeFiles||{}} takeOrder={p.takeOrder||[0,1,2,3]} takeSpeeds={p.takeSpeeds||[1,2,2,1]} takeDurations={p.takeDurations||[5,5,5,5]} title={p.reelTitle||""} subtitle={p.reelSubtitle||""} titleStyle={p.titleStyle||"editorial"} musicTrack={p.musicTrack||""} autoplay={false} height={280}/>
         ) : p.img ? (
           <img src={p.img} alt="" style={{width:"100%",height:280,objectFit:"cover",display:"block"}} />
         ) : (
           <div style={{width:"100%",height:280,background:C.brandWash,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}}>
-            <Icon name={p.type==="Departamento"?"building":p.type==="Parcela"?"mountain":p.type==="Oficina"?"briefcase":"house"} size={48} color={C.brand} stroke={1.3}/>
+            <Icon name={typeIcon(p.type)} size={48} color={C.brand} stroke={1.3}/>
             <span style={{fontSize:11,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.08em",textTransform:"uppercase"}}>Sin portada</span>
           </div>
         )}
@@ -1942,7 +2107,7 @@ function Detail({p,back,onLike,onSave}) {
         <h2 style={{margin:"8px 0 4px",fontSize:24,fontWeight:400,color:C.ink,fontFamily:Fs,lineHeight:1.2,letterSpacing:"-0.01em"}}>{p.title}</h2>
         <div style={{fontSize:30,fontWeight:400,color:C.ink,fontFamily:Fs,margin:"10px 0 4px",letterSpacing:"-0.02em"}}>{p.cur} <span style={{fontWeight:500}}>{p.price.toLocaleString("es-CL")}</span></div>
         <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:C.muted,fontFamily:Fb,fontWeight:400,margin:"0 0 16px"}}>
-          <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>{p.loc}
+          <Icon name="pin" size={13} color={C.muted} stroke={1.5}/>{publicLocation(p)}
         </div>
         <div style={{display:"flex",gap:6,padding:"14px 0",borderTop:`1px solid ${C.line}`,borderBottom:`1px solid ${C.line}`,marginBottom:18}}>
           {p.beds>0&&<div style={{textAlign:"center",flex:1}}>
@@ -1965,9 +2130,19 @@ function Detail({p,back,onLike,onSave}) {
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:18}}>
           {p.tags.map(t=><span key={t} style={{fontSize:10.5,padding:"5px 12px",borderRadius:999,background:"transparent",border:`1px solid ${C.line}`,color:C.text,fontFamily:Fb,fontWeight:400}}>{t}</span>)}
         </div>
-        <div style={{borderRadius:12,overflow:"hidden",marginBottom:18,border:`1px solid ${C.line}`}}>
-          <MapView lat={p.lat} lng={p.lng} address={p.loc} height={180} zoom={15}/>
-        </div>
+        {(() => {
+          // Mapa público: círculo aproximado, nunca el pin de la dirección.
+          const c = approxLatLng(p);
+          if (!c) return null;
+          return (
+            <div style={{marginBottom:18}}>
+              <div style={{borderRadius:12,overflow:"hidden",border:`1px solid ${C.line}`}}>
+                <MapView lat={c.lat} lng={c.lng} address={publicLocation(p)} height={180} zoom={14} approximate/>
+              </div>
+              <p style={{margin:"7px 2px 0",fontSize:10.5,color:C.subtle,fontFamily:Fb,fontWeight:400,fontStyle:"italic",lineHeight:1.4}}>Ubicación aproximada — la dirección exacta se comparte al coordinar la visita.</p>
+            </div>
+          );
+        })()}
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,padding:14,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`}}>
           <Avatar initials={p.avatar} size={42} verified/>
           <div style={{flex:1}}>
@@ -1986,6 +2161,9 @@ function Detail({p,back,onLike,onSave}) {
             window.open(waUrl(p.wa,`Hola ${p.user}, vi tu publicación "${p.title}" en properties. Me interesa coordinar una visita.`),"_blank");
           }} disabled={!p.wa} style={{flex:1,padding:14,borderRadius:12,background:p.wa?C.ink:C.line,border:"none",cursor:p.wa?"pointer":"default",fontSize:13.5,fontWeight:500,color:C.surface,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.01em"}}>
             <Icon name="whatsapp" size={18} color={C.surface} stroke={1.6}/>WhatsApp
+          </button>
+          <button onClick={()=>onShare&&onShare(p)} title="Copiar el link de esta publicación" style={{width:50,height:50,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Icon name="share" size={17} color={C.text} stroke={1.6}/>
           </button>
           <button onClick={()=>onLike(p.id)} title={p.liked?"Quitar de guardados":"Guardar propiedad"} style={{width:50,height:50,borderRadius:12,background:p.liked?C.brandWash:C.surface,border:`1px solid ${p.liked?C.brand:C.line}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
             <Icon name="heart" size={18} color={p.liked?C.terracotta:C.text} stroke={1.6} fill={p.liked?C.terracotta:"none"}/>
@@ -2068,7 +2246,7 @@ function CommentsSheet({propId, prop, onClose}) {
   );
 }
 
-function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
+function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
   // Dynamic reel feed: user-published props with video first + hardcoded REELS, dedup
   const reelFeed = (() => {
     const seenPropIds = new Set();
@@ -2108,12 +2286,53 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   const slideRefs = useRef([]);
   slideRefs.current = [];
   const registerSlide = (el, i) => { if (el) slideRefs.current[i] = el; };
+  // Refs a los <video> para manejar sonido y play/pause de forma imperativa.
+  const videoRefs = useRef([]);
+  videoRefs.current = [];
+  const registerVideo = (el, i) => { if (el) videoRefs.current[i] = el; };
+
+  // Sonido + reproducción del slide activo.
+  // Dos motivos para hacerlo a mano en vez de confiar en los atributos:
+  //   - el prop `muted` de React no siempre se refleja en el elemento real;
+  //   - cambiar `autoPlay` sobre un video ya cargado no lo hace arrancar, así
+  //     que al deslizar a otro reel el video quedaba pausado.
+  useEffect(() => {
+    videoRefs.current.forEach((v, i) => {
+      if (!v) return;
+      v.muted = muted;
+      if (i !== idx) { if (!v.paused) v.pause(); return; }
+      const played = v.play();
+      if (played && played.catch) {
+        played.catch(() => {
+          // El navegador bloqueó el autoplay con sonido (falta un gesto del
+          // usuario). Volvemos a silencio para que al menos se reproduzca, y
+          // sincronizamos el botón para que no mienta.
+          if (!v.muted) { v.muted = true; setMuted(true); v.play().catch(() => {}); }
+        });
+      }
+    });
+  }, [idx, muted, reelFeed.length]);
+
+  // Alternar sonido. iOS Safari solo permite salir de mute si play() se llama
+  // sincrónicamente dentro del handler del toque; desde el efecto de abajo
+  // (que corre después del re-render) lo bloquea y el botón no haría nada.
+  // Por eso tocamos el <video> acá y recién después actualizamos el estado.
+  const toggleSound = () => {
+    const next = !muted;
+    const v = videoRefs.current[idx];
+    if (v) {
+      v.muted = next;
+      if (!next) { const played = v.play(); if (played && played.catch) played.catch(() => {}); }
+    }
+    setMuted(next);
+  };
 
   // Navigation helpers — scroll suave hacia el slide destino
   const scrollToIdx = (i) => {
     const el = slideRefs.current[i];
     if (el && scrollRef.current) el.scrollIntoView({behavior:"smooth", block:"start"});
   };
+  // Sin botones en pantalla: los usa el atajo de teclado (flechas arriba/abajo).
   const goNext = () => { const next = Math.min(reelFeed.length-1, idx+1); scrollToIdx(next); };
   const goPrev = () => { const prev = Math.max(0, idx-1); scrollToIdx(prev); };
 
@@ -2153,8 +2372,8 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
   }, [idx]);
 
   const Stat = ({icon,val}) => (
-    <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12.5,color:C.surface,fontFamily:Fb,fontWeight:500,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>
-      <Icon name={icon} size={15} color={C.surface} stroke={1.7}/>{val}
+    <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:C.text,fontFamily:Fb,fontWeight:400}}>
+      <Icon name={icon} size={14} color={C.brand} stroke={1.7}/>{val}
     </div>
   );
 
@@ -2171,7 +2390,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         ref={scrollRef}
         className="reels-scroll"
         style={{
-          height:"100vh",
+          height:"100%",
           overflowY:"scroll",
           scrollSnapType:"y mandatory",
           scrollBehavior:"smooth",
@@ -2183,6 +2402,13 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
           const prop = props.find(x=>x.id===rl.propId);
           if (!prop) return null;
           const isActive = i === idx;
+          // Ventana de precarga. Sin esto los N videos del feed bajaban datos a
+          // la vez (el default del browser es "metadata", y Chrome desktop llega
+          // a usar "auto"). Solo el reel visible baja de verdad; sus dos vecinos
+          // se quedan en metadata para que el swipe siga arrancando al toque; el
+          // resto no pide nada hasta acercarse.
+          const dist = Math.abs(i - idx);
+          const preload = dist === 0 ? "auto" : dist === 1 ? "metadata" : "none";
           // Prioridad: video_url (Supabase Storage — reels publicados) > videoFile (blob local) > videoTakeFiles (draft)
           const reelVideoSrc = prop.video_url || prop.videoFile || (prop.videoTakeFiles && prop.videoTakeFiles[1]) || null;
           return (
@@ -2193,68 +2419,85 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
               style={{
                 position:"relative",
                 width:"100%",
-                height:"100vh",
+                height:"100%",
                 overflow:"hidden",
                 background:"#000",
+                display:"flex",
+                flexDirection:"column",
                 scrollSnapAlign:"start",
                 scrollSnapStop:"always",
                 flexShrink:0,
               }}
             >
-              {/* Background: user's video if available, else property image */}
-              {reelVideoSrc ? (
-                <video
-                  src={reelVideoSrc}
-                  autoPlay={isActive}
-                  muted={muted}
-                  loop
-                  playsInline
-                  preload={isActive ? "auto" : "metadata"}
-                  poster={prop.thumbnail_url || prop.img || undefined}
-                  style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}
-                />
-              ) : (
-                <img src={prop.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.55) saturate(1.05)"}}/>
-              )}
-              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.85) 100%)"}}/>
+              {/* ── Marco del video (Foco) ──
+                  object-fit: contain sobre negro: el video se ve entero, nunca
+                  se recorta ni desborda la pantalla. La info de la propiedad va
+                  en la franja de abajo, fuera de este marco, porque el video ya
+                  trae su propio texto quemado.
+                  Poster: prioridad al thumbnail generado por FFmpeg en el backend
+                  (Vale, pack video quality). Si no hay, cae al img de la propiedad. */}
+              <div style={{position:"relative",flex:1,minHeight:0,background:"#000",overflow:"hidden"}}>
+                {reelVideoSrc ? (
+                  <video ref={(el)=>registerVideo(el,i)} src={reelVideoSrc} poster={prop.thumbnail_url || prop.img || undefined} preload={preload} autoPlay={isActive} muted={muted} loop playsInline style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
+                ) : (
+                  <img src={prop.thumbnail_url || prop.img} alt="" style={{width:"100%",height:"100%",objectFit:"contain",display:"block",background:"#000"}}/>
+                )}
+                {/* Scrim solo arriba, para que se lean el logo y el botón de mute */}
+                <div style={{position:"absolute",top:0,left:0,right:0,height:96,background:"linear-gradient(180deg,rgba(0,0,0,0.45) 0%,rgba(0,0,0,0) 100%)",pointerEvents:"none"}}/>
 
-              {/* Action column — right side */}
-              <div style={{position:"absolute",right:12,bottom:250,display:"flex",flexDirection:"column",gap:22,alignItems:"center",zIndex:10}}>
-                <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
-                </button>
-                <button onClick={()=>{
-                  if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
-                  window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
-                }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
-                  <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
-                  <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
-                </button>
+                {/* Tocar el video alterna el sonido (el primer toque lo activa).
+                    zIndex 5 la deja debajo de la columna de acciones (zIndex 10). */}
+                <button
+                  onClick={toggleSound}
+                  aria-label={muted?"Activar sonido":"Silenciar"}
+                  style={{position:"absolute",inset:0,zIndex:5,background:"transparent",border:"none",padding:0,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}
+                />
+
+                {/* Action column — sobre el marco del video, a la derecha */}
+                <div style={{position:"absolute",right:12,bottom:16,display:"flex",flexDirection:"column",gap:20,alignItems:"center",zIndex:10}}>
+                  <button onClick={()=>onLike(prop.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <Icon name="heart" size={30} color={prop.liked?C.terracotta:C.surface} stroke={1.6} fill={prop.liked?C.terracotta:"none"}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.liked?"Guardado":"Guardar"}</span>
+                  </button>
+                  <button onClick={()=>{
+                    if (!prop.wa) { alert("Este publicador no ha configurado su WhatsApp todavía"); return; }
+                    window.open(waUrl(prop.wa,`Hola ${prop.user}, vi tu reel sobre "${prop.title}" en properties. Me interesa.`),"_blank");
+                  }} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:prop.wa?1:0.5}}>
+                    <Icon name="whatsapp" size={27} color={C.surface} stroke={1.6}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>WhatsApp</span>
+                  </button>
+                  <button onClick={()=>onShare&&onShare(prop)} title="Copiar el link de esta publicación" style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <Icon name="share" size={27} color={C.surface} stroke={1.6}/>
+                    <span style={{fontSize:10,color:C.surface,fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>Compartir</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Bottom info panel */}
-              <div key={isActive?`info-${idx}`:`info-static-${i}`} style={{position:"absolute",bottom:80,left:0,right:0,zIndex:10,padding:"0 16px",animation:isActive?"reelInfoIn 0.45s ease 0.1s both":"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <Avatar initials={prop.avatar} size={28} bg="rgba(255,255,255,0.22)"/>
-                  <span style={{fontSize:12,fontWeight:500,color:C.surface,fontFamily:Fb,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{prop.user}</span>
-                  <span style={{width:3,height:3,borderRadius:"50%",background:"rgba(255,255,255,0.4)"}}/>
-                  <span style={{fontSize:10.5,color:"rgba(255,255,255,0.7)",fontFamily:Fb,fontWeight:400,textShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>{rl.views} vistas</span>
+              {/* ── Franja de info — FUERA del área del video ──
+                  El padding inferior deja libre la barra de navegación fija. */}
+              <div key={isActive?`info-${idx}`:`info-static-${i}`} style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.line}`,padding:"12px 16px calc(12px + 66px + env(safe-area-inset-bottom, 0px))",animation:isActive?"reelInfoIn 0.35s ease both":"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <Avatar initials={prop.avatar} size={24} bg={C.surface2}/>
+                  <span style={{fontSize:11.5,fontWeight:500,color:C.ink,fontFamily:Fb}}>{prop.user}</span>
+                  <span style={{width:3,height:3,borderRadius:"50%",background:C.subtle}}/>
+                  <span style={{fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{rl.views} vistas</span>
+                  <span style={{marginLeft:"auto",fontSize:9,fontWeight:500,color:C.muted,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase",padding:"3px 9px",borderRadius:999,border:`1px solid ${C.line}`}}>{prop.type}</span>
                 </div>
-                <div style={{display:"inline-flex",alignItems:"center",padding:"4px 10px",borderRadius:999,background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.2)`,marginBottom:7}}>
-                  <span style={{fontSize:9,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.1em",textTransform:"uppercase"}}>{prop.type}</span>
+                <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:22,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1}}>{prop.cur} {fmt(prop.price)}</span>
+                  <span style={{fontSize:12.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>{publicLocation(prop)}</span>
                 </div>
-                <div style={{fontSize:24,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em",lineHeight:1.1,textShadow:"0 1px 8px rgba(0,0,0,0.6)"}}>{prop.cur} {fmt(prop.price)} <span style={{color:"rgba(255,255,255,0.65)",fontSize:15}}>· {prop.comuna}</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:16,marginTop:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:14,marginTop:8,flexWrap:"wrap"}}>
                   {prop.beds>0&&<Stat icon="bed" val={prop.beds}/>}
                   {prop.baths>0&&<Stat icon="bath" val={prop.baths}/>}
                   <Stat icon="ruler" val={`${prop.area} m² útil`}/>
                   {(prop.areaTotal || prop.areaTerreno) > 0 && <Stat icon="terrace" val={`${prop.areaTotal||prop.areaTerreno} m² tot`}/>}
                 </div>
-                <p style={{fontSize:12.5,color:"rgba(255,255,255,0.9)",fontFamily:Fb,fontWeight:400,margin:"10px 0 0",lineHeight:1.45,textShadow:"0 1px 6px rgba(0,0,0,0.6)"}}>{rl.caption}</p>
-                <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:12,padding:"13px 18px",borderRadius:12,background:C.surface,border:"none",cursor:"pointer",color:C.ink,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em",boxShadow:"0 6px 20px rgba(0,0,0,0.35)"}}>
+                {/* Una sola línea de texto: el video ya lleva su título quemado */}
+                <p style={{fontSize:12.5,color:C.text,fontFamily:Fb,fontWeight:400,margin:"8px 0 0",lineHeight:1.4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{prop.title || rl.caption}</p>
+                <button onClick={()=>onOpen&&onOpen(prop)} style={{width:"100%",marginTop:10,padding:"12px 18px",borderRadius:12,background:C.ink,border:"none",cursor:"pointer",color:C.bg,fontSize:13,fontWeight:500,fontFamily:Fb,display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.02em"}}>
                   Ver ficha completa
-                  <Icon name="arrowRight" size={15} color={C.ink} stroke={1.8}/>
+                  <Icon name="arrowRight" size={15} color={C.bg} stroke={1.8}/>
                 </button>
               </div>
             </div>
@@ -2269,25 +2512,21 @@ function Reels({props,onLike,onSave,onOpen,onChat,startPropId}) {
         <span style={{fontSize:17,fontWeight:400,color:C.surface,fontFamily:Fs,letterSpacing:"-0.01em"}}>C<em style={{fontStyle:"italic",color:C.brandSoft,fontWeight:400}}>2</em>C <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
       </div>
 
-      {/* Mute / unmute button (top right) */}
-      <button onClick={()=>setMuted(m=>!m)} style={{position:"absolute",top:18,right:18,zIndex:20,width:40,height:40,borderRadius:"50%",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}} title={muted?"Activar sonido":"Silenciar"}>
-        <Icon name={muted?"volumeOff":"volume"} size={18} color={C.surface} stroke={1.8}/>
+      {/* Altavoz (arriba a la derecha). 48px de target táctil. Mientras esté en
+          silencio lleva la palabra "Sonido" al lado: sin eso nadie descubre que
+          el reel tiene audio, porque el autoplay obliga a partir muteado. */}
+      <button
+        onClick={toggleSound}
+        aria-label={muted?"Activar sonido":"Silenciar"}
+        title={muted?"Activar sonido":"Silenciar"}
+        style={{position:"absolute",top:14,right:14,zIndex:30,minWidth:48,height:48,padding:muted?"0 17px 0 14px":0,borderRadius:999,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.25)`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}
+      >
+        <Icon name={muted?"volumeOff":"volume"} size={19} color={C.surface} stroke={1.8}/>
+        {muted && <span style={{fontSize:11.5,fontWeight:500,color:C.surface,fontFamily:Fb,letterSpacing:"0.02em"}}>Sonido</span>}
       </button>
 
-      {/* Pager indicator + arrows on the LEFT side, vertically centered (fixed) */}
-      <div style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:14,alignItems:"center",zIndex:20}}>
-        <button onClick={()=>goPrev()} disabled={idx===0} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===0?0.3:1}}>
-          <Icon name="chevronUp" size={16} color={C.surface} stroke={1.8}/>
-        </button>
-        <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
-          {reelFeed.map((_,i)=>(
-            <div key={i} style={{width:3,height:i===idx?16:6,borderRadius:2,background:i===idx?C.surface:"rgba(255,255,255,0.4)",transition:"all 0.2s"}}/>
-          ))}
-        </div>
-        <button onClick={()=>goNext()} disabled={idx===reelFeed.length-1} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:`1px solid rgba(255,255,255,0.18)`,borderRadius:"50%",width:38,height:38,cursor:idx===reelFeed.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx===reelFeed.length-1?0.3:1}}>
-          <Icon name="chevronDown" size={16} color={C.surface} stroke={1.8}/>
-        </button>
-      </div>
+      {/* Sin controles de paginado sobre el video: la navegación es scroll /
+          swipe y las flechas del teclado (ver el listener de keydown arriba). */}
 
     </div>
   );
@@ -2822,17 +3061,23 @@ function mapDbPropToUi(row) {
 // Fetch all published properties from the database (newest first)
 async function fetchProperties() {
   if (!supabase) return [];
-  // Paginación: traemos las primeras 24 propiedades del feed (grid + carousel).
-  // Suficiente para renderizar sin scrollear más de 2 pantallas en desktop y
-  // ~4 pantallas en mobile. Cuando el user scrollee al fondo, agregamos infinite
-  // scroll con range(24, 47), (48, 71), etc. — TODO cuando pase 24 props reales.
+  // Privacidad (Foco): columnas explícitas SIN la dirección exacta (loc/street/numero).
+  // Esas columnas están revocadas para el rol anónimo a nivel de base, pedirlas
+  // rompería la consulta. El público ve vanity_location/comuna.
+  const PUBLIC_COLS = "id, owner_id, type, types, operacion, rol, pais, region, comuna, sector, vanity_location, lat, lng, price, currency, beds, suites, baths, parks, area, area_terreno, area_total, hectareas, privados, title, description, amenities, thumbnail_url, video_url, video_take_urls, photo_urls, music_track, reel_title, reel_subtitle, title_style, take_speeds, take_order, take_durations, views, likes_count, status, nuevo, created_at, updated_at, contact_wa, condition, parking, terreno_m2, features, contact_method, terraza_m2";
+  // Paginación (Vale): traemos las primeras 24 propiedades del feed. Suficiente
+  // para renderizar sin scrollear más de 2 pantallas en desktop y ~4 en mobile.
+  // Cuando el user scrollee al fondo, agregamos infinite scroll con range(24, 47).
   const { data, error } = await supabase
     .from("properties")
-    .select("*, owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
+    .select(PUBLIC_COLS + ", owner:profiles!properties_owner_id_fkey(name, wa, avatar_url, verified)")
     .eq("status", "published")
     .order("created_at", { ascending: false })
-    .range(0, 23);
-  if (error) { console.warn("fetchProperties error", error); return []; }
+    .range(0, 23);  // Paginación (Vale): primera página. Después: infinite scroll con range(24, 47) etc.
+  // `null` (y no `[]`) para que el que llama distinga "falló la consulta" de
+  // "no hay publicaciones", y pueda avisarle al usuario en vez de dejarlo
+  // viendo los avisos de demo como si fueran reales. (Foco)
+  if (error) { console.warn("fetchProperties error", error); return null; }
   return (data || []).map(mapDbPropToUi);
 }
 
@@ -4286,7 +4531,7 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
           {items.map(p=>(
             <div key={p.id} onClick={()=>onTap(p)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",background:C.surface,border:`1px solid ${C.line}`,position:"relative"}}>
               <div style={{position:"relative"}}>
-                <img src={p.img} alt="" style={{width:"100%",height:110,objectFit:"cover",display:"block"}} />
+                <div style={{height:110}}><CoverMedia p={p} iconSize={26} labelSize={8}/></div>
                 <div style={{position:"absolute",top:6,right:6,width:28,height:28,borderRadius:"50%",background:"rgba(255,255,255,0.92)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   <Icon name="heart" size={13} color={C.terracotta} stroke={1.6} fill={C.terracotta}/>
                 </div>
@@ -4294,7 +4539,7 @@ function SavedView({props,onTap,subTab,setSubTab,selectedChat,setSelectedChat}) 
               <div style={{padding:10}}>
                 <p style={{margin:0,fontSize:11,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{p.title}</p>
                 <p style={{margin:"5px 0 0",fontSize:14,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>{p.cur} {fmt(p.price)}</p>
-                {p.comuna && <p style={{margin:"3px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>{p.comuna}</p>}
+                {publicLocation(p) && <p style={{margin:"3px 0 0",fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:400}}>{publicLocation(p)}</p>}
               </div>
             </div>
           ))}
@@ -4525,12 +4770,12 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
             <div key={p.id} style={{position:"relative",display:"flex",gap:12,padding:12,borderRadius:12,background:C.surface,border:`1px solid ${C.line}`,cursor:"pointer",transition:"all 0.15s"}}
               onMouseEnter={e=>e.currentTarget.style.borderColor=C.brand} onMouseLeave={e=>e.currentTarget.style.borderColor=C.line}
               onClick={()=>onOpenProp&&onOpenProp(p)}>
-              <img src={p.img} alt="" style={{width:66,height:66,borderRadius:10,objectFit:"cover"}} />
+              <div style={{width:66,height:66,flexShrink:0,borderRadius:10,overflow:"hidden"}}><CoverMedia p={p} iconSize={22} showLabel={false}/></div>
               <div style={{flex:1,minWidth:0}}>
                 <p style={{margin:0,fontSize:12.5,fontWeight:500,color:C.ink,fontFamily:Fb,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.title}</p>
                 <p style={{margin:"3px 0 0",fontSize:13,color:C.ink,fontFamily:Fs,fontWeight:400}}>{p.cur} {fmt(p.price)}</p>
                 <div style={{display:"flex",gap:12,marginTop:6,fontSize:10.5,color:C.muted,fontFamily:Fb,fontWeight:400}}>
-                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>{p.comuna||p.loc.split(",")[0]}</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="pin" size={11} color={C.muted} stroke={1.5}/>{p.loc || publicLocation(p)}</span>
                   <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon name="eye" size={11} color={C.muted} stroke={1.5}/>{p.nuevo?"Nueva":"1.2K"}</span>
                 </div>
               </div>
@@ -4660,7 +4905,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
                 <input value={epf.title} onChange={e=>setEpf({...epf,title:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
               </div>
               <div><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ubicación</label>
-                <input value={epf.loc} onChange={e=>setEpf({...epf,loc:e.target.value})} style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
+                <input value={epf.loc} onChange={e=>setEpf({...epf,loc:e.target.value})} placeholder="Dejala en blanco para no cambiarla" style={{display:"block",width:"100%",marginTop:6,padding:"11px 13px",borderRadius:10,background:C.surface,border:`1px solid ${C.line}`,color:C.ink,fontSize:13,fontFamily:Fb,fontWeight:400,outline:"none",boxSizing:"border-box"}}/>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
                 <div style={{flex:0.4}}><label style={{fontSize:10,color:C.muted,fontFamily:Fb,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>Moneda</label>
@@ -4977,7 +5222,16 @@ export default function App() {
   const { session, profile, setProfile, loading: authLoading } = useAuth();
   // Guest mode — explorar la app sin crear cuenta
   const [guestMode, setGuestMode] = useState(() => {
-    try { return window.localStorage.getItem("guest_mode") === "1"; } catch(e) { return false; }
+    try {
+      // Llegada desde "publicar" (vender.c2cprops.com) o link con ?guest=1:
+      // entrar como invitado de inmediato, sin interponer el login.
+      const qs = new URLSearchParams(window.location.search);
+      if (qs.get("guest") === "1" || qs.get("justPublished")) {
+        window.localStorage.setItem("guest_mode", "1");
+        return true;
+      }
+      return window.localStorage.getItem("guest_mode") === "1";
+    } catch(e) { return false; }
   });
   // Buyer profile — quick signup (nombre + WA), sin Supabase Auth
   const [buyerProfile, setBuyerProfile] = useState(() => {
@@ -5084,6 +5338,12 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
       return p || null;
     } catch(e) { return null; }
   })();
+  // ?prop=<id> → link directo a un aviso. Se lee al cargar para abrir la ficha
+  // y se mantiene sincronizado con history.replaceState mientras esté abierta.
+  const initialPropId = (() => {
+    try { return new URLSearchParams(window.location.search).get("prop") || null; }
+    catch(e) { return null; }
+  })();
   // Owner ID viene de greatdeal-app (?owner=<uuid>) cuando publica sin login.
   // Lo guardamos en localStorage para que la app reconozca al vendedor sin auth
   // formal — todas las propiedades con ese owner_id son "suyas".
@@ -5105,7 +5365,11 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [openProfilePanel,setOpenProfilePanel]=useState(null);
   const [selectedChat,setSelectedChat]=useState(null);
   const [toast,setToast]=useState(null);
-  const [props,setProps]=useState(PROPS);
+  const [props,setProps]=useState(supabase ? [] : PROPS); // demos solo si no hay base configurada (dev local)
+  const [loadError,setLoadError]=useState(false);
+  // Con Supabase el feed arranca vacío, así que hay que poder distinguir
+  // "todavía no llegó la respuesta" de "no hay nada publicado".
+  const [loadingProps,setLoadingProps]=useState(!!supabase);
   // Toast de bienvenida: si llegaste desde greatdeal-app (?justPublished=<id>),
   // celebrá que la propiedad ya está publicada + abrir directo tu reel.
   useEffect(() => {
@@ -5133,8 +5397,11 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
       try {
         const rows = await fetchProperties();
         if (!active) return;
-        if (rows && rows.length > 0) setProps([...rows, ...PROPS]);
-      } catch(e) { console.warn("Fetch error", e); }
+        if (rows === null) { setLoadError(true); return; }
+        setLoadError(false);
+        setProps(rows); // solo publicaciones reales: los PROPS de demo no se mezclan en producción
+      } catch(e) { console.warn("Fetch error", e); if (active) setLoadError(true); }
+      finally { if (active) setLoadingProps(false); }
     };
     refresh();
     // Real-time: cuando alguien publica/edita/borra, todos refrescan el feed
@@ -5208,6 +5475,56 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
 
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 2000); };
 
+  // ─── Link por aviso (?prop=<id>) ───────────────────────────────────────────
+  // Al cargar con ?prop=<id>, abrimos esa ficha apenas la propiedad esté en
+  // `props` (los avisos de Supabase llegan después del primer render).
+  const deepLinkDone = useRef(false);
+  useEffect(() => {
+    if (deepLinkDone.current || !initialPropId) return;
+    const p = props.find(x => String(x.id) === String(initialPropId));
+    if (!p) return;
+    deepLinkDone.current = true;
+    setView({t:"d", p});
+  }, [props, initialPropId]);
+  // Mientras haya una ficha abierta, la URL apunta a ese aviso (link compartible).
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (view?.t === "d" && view.p?.id != null) url.searchParams.set("prop", String(view.p.id));
+      else url.searchParams.delete("prop");
+      if (url.toString() !== window.location.href) {
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
+    } catch(e) {}
+  }, [view]);
+  // URL canónica de un aviso: origen + path actual + ?prop=<id>.
+  const propUrl = (id) => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = ""; url.hash = "";
+      url.searchParams.set("prop", String(id));
+      return url.toString();
+    } catch(e) { return ""; }
+  };
+  const shareProp = async (p) => {
+    const link = p && p.id != null ? propUrl(p.id) : "";
+    if (!link) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        // Fallback para contextos sin clipboard API (http, WebViews viejos)
+        const ta = document.createElement("textarea");
+        ta.value = link; ta.setAttribute("readonly", "");
+        ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      showToast("Link copiado");
+    } catch(e) { showToast("No se pudo copiar el link"); }
+  };
+
   // ─── Cargar likes/saved del user autenticado desde Supabase ─────────────
   // Tabla `user_actions` (user_id text, prop_id uuid, action text, created_at)
   // Al montar (o cuando cambia el user), traemos sus acciones y marcamos las props.
@@ -5278,6 +5595,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
   const [navConfirm,setNavConfirm]=useState(null); // pending tab to navigate to
   const [guestPromptFor,setGuestPromptFor]=useState(null); // texto a mostrar cuando un invitado intenta hacer algo de auth
   const [isidoraOpen,setIsidoraOpen]=useState(false); // chat popup inline de Isidora (asesora de compra)
+  const [feedPrefs,setFeedPrefs]=useState(null); // filtros que Isidora manda al Feed (se limpian al aplicarse)
   // ─── Signup rápido (nombre + WA + código skippable) ───
   const [signupName,setSignupName]=useState("");
   const [signupWa,setSignupWa]=useState("");
@@ -5419,10 +5737,10 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
           {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} />}
         </div>
         <div className="pc-content">
-        {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} />:(
+        {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} onShare={shareProp} />:(
           <>
-            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} />}
-            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} startPropId={reelStart} />}
+            {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} applyPrefs={feedPrefs} onPrefsApplied={()=>setFeedPrefs(null)} loading={loadingProps} loadError={loadError} />}
+            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} onShare={shareProp} startPropId={reelStart} />}
             {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps.filter(x=>x.id!==p.id)]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft} me={me}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile
@@ -5451,7 +5769,11 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
                   if (patch.price !== undefined) dbPatch.price = patch.price;
                   if (patch.cur !== undefined) dbPatch.currency = patch.cur;
                   if (patch.desc !== undefined) dbPatch.description = patch.desc;
-                  if (patch.loc !== undefined) dbPatch.loc = patch.loc;
+                  // El feed público ya no pide `loc`, así que el formulario de
+                  // edición lo abre vacío. Vacío significa "no la tocó", no
+                  // "borrala": si lo mandáramos tal cual, cualquier edición de
+                  // precio o título borraría la dirección guardada.
+                  if (patch.loc) dbPatch.loc = patch.loc;
                   const { error } = await supabase.from("properties").update(dbPatch).eq("id", id);
                   if (error) { console.error("Edit failed", error); showToast("Error al actualizar"); return; }
                 }
@@ -5480,22 +5802,16 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         {isidoraOpen && <IsidoraChat
           onClose={()=>setIsidoraOpen(false)}
           onApplyFilters={(prefs)=>{
-            // Aplicar filtros al feed + navegar a Explorar
-            if (prefs.operacion) setFOperacion(prefs.operacion);
-            if (prefs.tipo) setFType(prefs.tipo);
-            setFilters(f => ({
-              ...f,
-              priceMax: prefs.presupuestoMax ? String(prefs.presupuestoMax) : "",
-              beds: prefs.beds ? String(prefs.beds) : "",
-              currency: "UF",
-            }));
-            setQ(prefs.comuna || "");
+            // Los filtros viven en Feed: le pasamos las prefs y navegamos a Explorar.
+            // Objeto nuevo en cada llamada para que el efecto del Feed vuelva a correr.
+            setFeedPrefs({...prefs});
             setTab("feed");
           }}
         />}
         <UserCornerBadge me={me} onClick={()=>go("profile")} />
 
         {/* Toast feedback */}
+        {loadError && <div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,padding:"10px 16px",background:C.terracotta,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,textAlign:"center",zIndex:500,boxSizing:"border-box",letterSpacing:"0.01em"}}>No pudimos cargar las propiedades, recargá la página</div>}
         {toast && <div style={{position:"fixed",bottom:96,left:"50%",transform:"translateX(-50%)",padding:"10px 18px",borderRadius:999,background:C.ink,color:C.surface,fontSize:12.5,fontFamily:Fb,fontWeight:500,boxShadow:"0 8px 24px rgba(28,26,23,0.3)",zIndex:400,animation:"toastIn 0.2s ease",letterSpacing:"0.01em",pointerEvents:"none"}}>{toast}</div>}
 
         {/* Sell draft navigation guard */}
