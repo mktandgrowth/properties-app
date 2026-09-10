@@ -1292,9 +1292,11 @@ function FirstQuestionTrigger({ step, q, pushIsi, msgs }) {
 function Nav({active,go}) {
   // Tab 'sell' removido — la venta vive en el shell C2C (HOME → Quiero vender)
   // y arranca en greatdeal-app (fotos/videos) → tasar → publicar
+  // "Comprar" es el feed de reels: es la experiencia principal del comprador.
+  // "Explorar" (la grilla) salió de acá y ahora se llega con la lupa del header,
+  // que es donde la gente espera encontrar la búsqueda.
   const items=[
-    {id:"feed",l:"Explorar",icon:"grid"},
-    {id:"reels",l:"Reels",icon:"reels"},
+    {id:"reels",l:"Comprar",icon:"reels"},
     {id:"saved",l:"Guardados",icon:"heart"},
     {id:"profile",l:"Perfil",icon:"user"},
   ];
@@ -1315,7 +1317,7 @@ function Nav({active,go}) {
 }
 
 // ── Header ──
-function Header({sub,onNotif,onOpenAsesor}) {
+function Header({sub,onNotif,onOpenAsesor,onSearch}) {
   const [open,setOpen]=useState(false);
   const [aiOpen,setAiOpen]=useState(false);
   const unreadCount = NOTIFS.filter(n=>n.unread).length;
@@ -1330,7 +1332,13 @@ function Header({sub,onNotif,onOpenAsesor}) {
       </a>
       <nav style={{display:"flex",alignItems:"center",gap:4,position:"relative"}}>
         <a href={`${SHELL}/comprar`} style={{color:C.text,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Comprar</a>
+        {/* Lupa: reemplaza al tab "Explorar" que estaba abajo. Lleva a la grilla
+            con filtros, que es la búsqueda propiamente dicha. */}
+        <button onClick={()=>onSearch&&onSearch()} title="Buscar propiedades" aria-label="Buscar propiedades" style={{width:30,height:30,borderRadius:"50%",background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:C.text,flexShrink:0}}>
+          <Icon name="search" size={17} color={C.text} stroke={1.7}/>
+        </button>
         <a href={`${SHELL}/vender`} style={{color:C.text,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Publicar</a>
+        <a href={`${SHELL}/tasar`} style={{color:C.text,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb,whiteSpace:"nowrap"}}>Tasar</a>
         <button onClick={(e)=>{e.stopPropagation();setAiOpen(!aiOpen)}} style={{display:"inline-flex",alignItems:"center",gap:5,color:C.text,background:`rgba(74,49,34,0.04)`,border:`1px solid rgba(74,49,34,0.18)`,padding:"6px 12px",borderRadius:999,fontSize:12,fontWeight:500,letterSpacing:"0.03em",cursor:"pointer",fontFamily:Fb}}>
           <span style={{color:C.brand,fontSize:11}}>✦</span> Mi asistente IA <span style={{fontSize:9,transform:aiOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
         </button>
@@ -2249,7 +2257,7 @@ function CommentsSheet({propId, prop, onClose}) {
   );
 }
 
-function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
+function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId,onSearch}) {
   // Dynamic reel feed: user-published props with video first + hardcoded REELS, dedup
   const reelFeed = (() => {
     const seenPropIds = new Set();
@@ -2382,6 +2390,12 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
 
   return (
     <div className="reels-frame" style={{height:"100vh",position:"relative",overflow:"hidden",background:"#000"}}>
+      {/* La pantalla de reels es fullscreen y no monta el Header, así que sin
+          esto la búsqueda quedaba inalcanzable desde el tab Comprar. */}
+      <button onClick={()=>onSearch&&onSearch()} title="Buscar propiedades" aria-label="Buscar propiedades"
+        style={{position:"absolute",top:"calc(12px + env(safe-area-inset-top,0px))",right:12,zIndex:60,width:38,height:38,borderRadius:"50%",background:"rgba(0,0,0,0.42)",backdropFilter:"blur(8px)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Icon name="search" size={18} color={C.surface} stroke={1.8}/>
+      </button>
       <style>{`
         @keyframes reelInfoIn { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
         .reels-scroll::-webkit-scrollbar { display: none; }
@@ -4944,7 +4958,7 @@ function Profile({props,allProps,subTab,setSubTab,onGoTo,initialPanel,clearPanel
 // ═══ MAIN ═══
 // ─── Desktop sidebar nav ───
 // ─── Desktop TopBar — horizontal nav, replaces the sidebar on PC ───
-function TopBarDesktop({active,go,onNotif,onOpenAsesor}) {
+function TopBarDesktop({active,go,onNotif,onOpenAsesor,onSearch}) {
   const [aiOpen,setAiOpen]=useState(false);
   return (
     <header className="pc-topbar" style={{position:"sticky",top:0,zIndex:120,background:"rgba(10,10,11,0.92)",backdropFilter:"blur(20px)",borderBottom:`1px solid ${C.line}`,padding:"14px 28px",display:"none",alignItems:"center",justifyContent:"space-between",gap:24}}>
@@ -4957,7 +4971,12 @@ function TopBarDesktop({active,go,onNotif,onOpenAsesor}) {
       {/* Nav C2C unificado: Comprar / Vender / Mi asistente IA */}
       <nav style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
         <a href="https://c2cprops.com/comprar" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Comprar</a>
+        {/* Lupa: reemplaza al tab "Explorar" del nav inferior. */}
+        <button onClick={()=>onSearch&&onSearch()} title="Buscar propiedades" aria-label="Buscar propiedades" style={{width:34,height:34,borderRadius:"50%",background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:C.text,flexShrink:0}}>
+          <Icon name="search" size={18} color={C.text} stroke={1.7}/>
+        </button>
         <a href="https://c2cprops.com/vender" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb}}>Publicar</a>
+        <a href="https://c2cprops.com/tasar" style={{color:C.text,padding:"7px 16px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",textDecoration:"none",fontFamily:Fb,whiteSpace:"nowrap"}}>Tasar tu propiedad</a>
         <button onClick={(e)=>{e.stopPropagation();setAiOpen(!aiOpen)}} style={{display:"inline-flex",alignItems:"center",gap:6,color:C.text,background:`rgba(201,168,106,0.08)`,border:`1px solid ${C.brand}40`,padding:"7px 14px",borderRadius:999,fontSize:13,fontWeight:500,letterSpacing:"0.03em",cursor:"pointer",fontFamily:Fb}}>
           <span style={{color:C.brand,fontSize:12}}>✦</span> Mi asistente IA <span style={{fontSize:10,transform:aiOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
         </button>
@@ -5748,7 +5767,7 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
         }
       `}</style>
 
-      <TopBarDesktop active={tab} go={go} onNotif={onNotifAction} onOpenAsesor={()=>setIsidoraOpen(true)}/>
+      <TopBarDesktop active={tab} go={go} onNotif={onNotifAction} onOpenAsesor={()=>setIsidoraOpen(true)} onSearch={()=>go("feed")}/>
 
       {/* Banner de modo invitado — solo visible si entró sin cuenta */}
       {isGuest && (
@@ -5761,13 +5780,13 @@ function MainApp({ authProfile, setAuthProfile, isGuest, onExitGuest }) {
 
       <div className="main-app" style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,position:"relative"}}>
         <div className="mob-header">
-          {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} onOpenAsesor={()=>setIsidoraOpen(true)} />}
+          {tab!=="reels"&&!view&&<Header sub={tab==="feed"?"Encuentra tu próxima propiedad":tab==="sell"?"Publica tu propiedad":tab==="saved"?"Tus guardados":tab==="profile"?"Tu perfil":"Sector inmobiliario"} onNotif={onNotifAction} onOpenAsesor={()=>setIsidoraOpen(true)} onSearch={()=>go("feed")} />}
         </div>
         <div className="pc-content">
         {view?.t==="d"?<Detail p={props.find(x=>x.id===view.p.id)||view.p} back={()=>setView(null)} onLike={like} onSave={save} onShare={shareProp} />:(
           <>
             {tab==="feed"&&<Feed props={props} onTap={open} onOpenReel={openReel} applyPrefs={feedPrefs} onPrefsApplied={()=>setFeedPrefs(null)} loading={loadingProps} loadError={loadError} />}
-            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} onShare={shareProp} startPropId={reelStart} />}
+            {tab==="reels"&&<Reels props={props} onLike={like} onSave={save} onOpen={open} onChat={openChat} onShare={shareProp} startPropId={reelStart} onSearch={()=>go("feed")} />}
             {tab==="sell"&&<Sell onPublish={(p)=>{setProps(ps=>[p,...ps.filter(x=>x.id!==p.id)]); showToast("Propiedad publicada ✓"); setSellHasDraft(false);}} goTo={go} onDraftChange={setSellHasDraft} me={me}/>}
             {tab==="saved"&&<SavedView props={props} onTap={open} subTab={savedSubTab} setSubTab={setSavedSubTab} selectedChat={selectedChat} setSelectedChat={setSelectedChat} />}
             {tab==="profile"&&<Profile
