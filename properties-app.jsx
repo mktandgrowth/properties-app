@@ -1010,14 +1010,14 @@ function FloatingAssistant({ onOpen }) {
 // Estilo tipo widget WhatsApp/Joinchat: header dorado, mensajes en burbujas,
 // preguntas guiadas con botones. Al terminar aplica filtros al feed o abre WhatsApp.
 function IsidoraChat({ onClose, onApplyFilters }) {
-  const [step, setStep] = React.useState(0);
-  const [answers, setAnswers] = React.useState({});
-  const [msgs, setMsgs] = React.useState([
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [msgs, setMsgs] = useState([
     { from: "isi", text: "¡Hola! Soy Isidora 👋 tu asesora de compra de C2C." },
     { from: "isi", text: "Contame en 30 segundos qué buscás y te muestro las mejores opciones." },
   ]);
-  const listRef = React.useRef(null);
-  React.useEffect(() => {
+  const listRef = useRef(null);
+  useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [msgs]);
 
@@ -1087,7 +1087,7 @@ function IsidoraChat({ onClose, onApplyFilters }) {
   const isDone = step >= questions.length;
 
   // Cuando termina, aplicar filtros y mostrar resumen
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDone && !answers._applied) {
       const a = answers;
       const summary = [
@@ -1251,7 +1251,7 @@ function IsidoraChat({ onClose, onApplyFilters }) {
 
 // Small helper: input de texto para preguntas tipo texto
 function ChatTextInput({ placeholder, onSend }) {
-  const [val, setVal] = React.useState("");
+  const [val, setVal] = useState("");
   return (
     <div style={{ display: "flex", gap: 6 }}>
       <input
@@ -1278,7 +1278,7 @@ function ChatTextInput({ placeholder, onSend }) {
 
 // Efecto: cuando cambia el step, si es la primera vez que se pide una pregunta, mostrarla
 function FirstQuestionTrigger({ step, q, pushIsi, msgs }) {
-  React.useEffect(() => {
+  useEffect(() => {
     if (!q) return;
     // Solo pushear la pregunta si aún no está en los mensajes
     const alreadyAsked = msgs.some(m => m.from === "isi" && m.text === q.text);
