@@ -2491,12 +2491,7 @@ function Reels({props,onLike,onSave,onOpen,onChat,onShare,startPropId}) {
       </div>
       {/* ─── End slide track ─── */}
 
-      {/* Logo header — fixed, on top of slide track */}
-      <div style={{position:"absolute",top:18,left:18,zIndex:20,display:"flex",alignItems:"center",gap:8,pointerEvents:"none"}}>
-        <Logo size={22} color={C.ink} />
-        <span style={{fontSize:17,fontWeight:400,color:C.ink,fontFamily:Fs,letterSpacing:"-0.01em"}}>C<em style={{fontStyle:"italic",color:C.brandSoft,fontWeight:400}}>2</em>C <span style={{fontFamily:Fb,fontWeight:400,opacity:0.65,fontSize:11,letterSpacing:"0.14em",textTransform:"uppercase",marginLeft:4}}>Reels</span></span>
-      </div>
-
+      
       {/* Altavoz (arriba a la derecha). 48px de target táctil. Mientras esté en
           silencio lleva la palabra "Sonido" al lado: sin eso nadie descubre que
           el reel tiene audio, porque el autoplay obliga a partir muteado. */}
